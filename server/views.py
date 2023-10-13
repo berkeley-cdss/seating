@@ -451,7 +451,9 @@ def email(exam):
 
 @app.route('/')
 def index():
-    return redirect('/' + app.config['COURSE'] + '/' + app.config['EXAM'])
+    course = os.getenv('COURSE')
+    exams = Exam.query.filter(Exam.offering==course)
+    return render_template("select_exam.html.j2", title="Exam Seating for {}".format(course), exams=exams)
 
 @app.route('/favicon.ico')
 def favicon():
