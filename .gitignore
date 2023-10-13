@@ -99,3 +99,6 @@ ENV/
 
 # configs
 config.py
+
+# bootstrap
+setup.sh

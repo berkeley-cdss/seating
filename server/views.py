@@ -32,12 +32,13 @@ class ExamConverter(BaseConverter):
     regex = name_part + '/' + name_part + '/' + name_part + '/' + name_part
 
     def to_python(self, value):
-        if not current_user.is_authenticated:
-            session['after_login'] = request.url
-            raise Redirect(url_for('login'))
+        # Comment out all authentication for now
+        # if not current_user.is_authenticated:
+        #     session['after_login'] = request.url
+        #     raise Redirect(url_for('login'))
         offering, name = value.rsplit('/', 1)
-        if offering not in current_user.offerings:
-            abort(404)
+        # if offering not in current_user.offerings:
+        #     abort(401)
         exam = Exam.query.filter_by(offering=offering, name=name).first_or_404()
         return exam
 
@@ -77,7 +78,7 @@ class MultRoomForm(FlaskForm):
                                         ('159 Mulford', '159 Mulford'),
                                         ('105 North Gate', '105 North Gate'),
                                         ('1 Pimentel', '1 Pimentel'),
-                                        ('RSF FH ', 'RSF FH '),
+                                        ('RSF FH', 'RSF FH'),
                                         ('306 Soda', '306 Soda'),
                                         ('2040 VLSB', '2040 VLSB'),
                                         ('2050 VLSB', '2050 VLSB'),
