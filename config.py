@@ -30,7 +30,6 @@ PHOTO_DIRECTORY = os.getenv('PHOTO_DIRECTORY')
 
 # Used for redirects and auth: <domain>/COURSE/EXAM
 COURSE = os.getenv('COURSE', 'cal/test/fa23')
-EXAM = os.getenv('EXAM', 'midterm1')
 
 TEST_LOGIN = os.getenv('TEST_LOGIN')
 
