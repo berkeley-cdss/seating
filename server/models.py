@@ -36,6 +36,7 @@ class Exam(db.Model):
     offering = db.Column(db.String(255), nullable=False, index=True)
     name = db.Column(db.String(255), nullable=False, index=True)
     display_name = db.Column(db.String(255), nullable=False)
+    is_active = db.Column(db.BOOLEAN, nullable=False)
 
 class Room(db.Model):
     __tablename__ = 'rooms'
@@ -139,16 +140,19 @@ seed_exams = [
     Exam(   
         offering=app.config['COURSE'],  
         name='midterm1', 
-        display_name='Midterm 1',   
+        display_name='Midterm 1', 
+        is_active=False,  
     ),  
     Exam(   
         offering=app.config['COURSE'],  
         name='midterm2', 
-        display_name='Midterm 2',   
+        display_name='Midterm 2', 
+        is_active=False,  
     ),  
     Exam(   
         offering=app.config['COURSE'],  
         name='final', 
-        display_name='Final',   
+        display_name='Final',
+        is_active=False,   
     ),  
 ]

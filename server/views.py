@@ -479,12 +479,28 @@ def new_exam():
     form = ExamForm()
     course = os.getenv('COURSE')
     if form.validate_on_submit():
-        exam = Exam(offering=course, name=form.name.data, display_name=form.display_name.data)
+        Exam.query.filter_by(offering=course).update({"is_active": False})
+        exam = Exam(offering=course, name=form.name.data, display_name=form.display_name.data, is_active=True)
         db.session.add(exam)
         db.session.commit()
-
         return redirect(url_for("index"))
     return render_template("new_exam.html.j2", title="Exam Seating for {}".format(course), form=form)
+
+@app.route("/<exam:exam>/delete/", methods=["GET", "POST"])
+def delete_exam(exam):
+    db.session.delete(exam)
+    db.session.commit()
+    return redirect(url_for("index"))
+
+@app.route("/<exam:exam>/toggle/", methods=["GET", "POST"])
+def toggle_exam(exam):
+    if exam.is_active:
+        exam.is_active = False
+    else:
+        Exam.query.filter_by(offering=exam.offering).update({"is_active": False})
+        exam.is_active = True
+    db.session.commit()
+    return redirect(url_for("index"))
 
 @app.route('/<exam:exam>/')
 def exam(exam):
