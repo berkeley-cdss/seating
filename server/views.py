@@ -463,6 +463,29 @@ def favicon():
 def students_template():
     return send_file('static/img/students-template.png')
 
+class ExamForm(FlaskForm):
+    display_name = StringField('display_name', [InputRequired()], render_kw={"placeholder": "Midterm 1"})
+    name = StringField('name', [InputRequired()], render_kw={"placeholder": "midterm1"})
+    submit = SubmitField('create')
+
+    def validate_name(form, field):
+        if " " in field.data or field.data != field.data.lower():
+            from wtforms.validators import ValidationError
+            raise ValidationError('Exam name must be all lowercase with no spaces')
+
+
+@app.route("/new/", methods=["GET", "POST"])
+def new_exam():
+    form = ExamForm()
+    course = os.getenv('COURSE')
+    if form.validate_on_submit():
+        exam = Exam(offering=course, name=form.name.data, display_name=form.display_name.data)
+        db.session.add(exam)
+        db.session.commit()
+
+        return redirect(url_for("index"))
+    return render_template("new_exam.html.j2", title="Exam Seating for {}".format(course), form=form)
+
 @app.route('/<exam:exam>/')
 def exam(exam):
     return render_template('exam.html.j2', exam=exam)
