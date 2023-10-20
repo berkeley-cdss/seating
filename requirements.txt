@@ -1,4 +1,6 @@
 click==7.1.2
+markupsafe==2.0.1
+email_validator==2.0.0
 Flask==1.1.4
 Flask_Login==0.5.0
 Flask_OAuthlib==0.9.6
