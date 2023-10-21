@@ -22,6 +22,11 @@ OK_CLIENT_SECRET = os.getenv('OK_CLIENT_SECRET')
 GOOGLE_OAUTH2_CLIENT_ID = os.getenv('GOOGLE_CLIENT_ID')
 GOOGLE_OAUTH2_CLIENT_SECRET = os.getenv('GOOGLE_CLIENT_SECRET')
 
+CANVAS_SERVER_URL = os.getenv('CANVAS_SERVER_URL')
+CANVAS_CLIENT_ID = os.getenv('CANVAS_CLIENT_ID')
+CANVAS_CLIENT_SECRET = os.getenv('CANVAS_CLIENT_SECRET')
+CANVAS_COURSE_ID = os.getenv('CANVAS_COURSE_ID')
+
 # Email setup. Domain environment is for link in email.
 SENDGRID_API_KEY = os.getenv('SENDGRID_API_KEY')
 DOMAIN = os.getenv('DOMAIN', 'https://seating.test.org')

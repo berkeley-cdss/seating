@@ -15,7 +15,7 @@ from wtforms import HiddenField, SelectMultipleField, StringField, SubmitField, 
 from wtforms.validators import Email, InputRequired, URL
 
 from server import app
-from server.auth import google_oauth, ok_oauth
+from server.auth import google_oauth, canvas_oauth
 from server.models import db, Exam, Room, Seat, SeatAssignment, Student, slug
 
 name_part = '[^/]+'

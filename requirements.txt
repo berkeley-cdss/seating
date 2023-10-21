@@ -13,3 +13,4 @@ sendgrid==6.10.0
 SQLAlchemy==1.4.42
 Werkzeug==0.16.1
 WTForms==3.0.1
+canvasapi==3.2.0
