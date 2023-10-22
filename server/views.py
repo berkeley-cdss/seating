@@ -28,6 +28,8 @@ def index():
     Home page, which needs to be logged in to access.
     After logging in, fetch and present a list of course offerings.
     """
+    print("current user", current_user.__dict__)
+
     user = canvas_client.get_user(current_user.canvas_id)
     staff_course_dics, student_course_dics = canvas_client.get_user_courses_categorized(user)
     staff_offerings = [Offering(

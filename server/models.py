@@ -31,6 +31,7 @@ class StringSet(types.TypeDecorator):
 class User(db.Model, UserMixin):
     __tablename__ = 'users'
     id = db.Column(db.Integer, primary_key=True)
+    name = db.Column(db.String(255), index=True, nullable=False)
     canvas_id = db.Column(db.String(255), nullable=False, index=True)
     staff_offerings = db.Column(StringSet, nullable=False)
     student_offerings = db.Column(StringSet, nullable=False)

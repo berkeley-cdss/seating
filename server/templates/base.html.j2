@@ -76,6 +76,20 @@
                 <a class="mdl-navigation__link" href="{{ url_for('help') }}">Help</a>
             </nav>
           {% endif %}
+          {% if current_user.is_authenticated %}
+            <a id="auth-menu" class="mdl-navigation__link" href="#">
+                {{ current_user.name }} <i class="material-icons">expand_more</i>
+            </a>
+            <ul class="mdl-menu mdl-menu--bottom-left mdl-js-menu" for="auth-menu">
+              <a class="mdl-navigation__link" href="{{ url_for('logout') }}">
+              <li class="mdl-menu__item">Log Out</li>
+              </a>
+            </ul>
+          {% else %}
+            <a class="mdl-navigation__link" href="{{ url_for('login') }}">
+              Login
+            </a>
+          {% endif %}
         </div>
       </header>
 

@@ -94,6 +94,7 @@ def authorized():
     user_model = User.query.filter_by(canvas_id=user_info['id']).one_or_none()
     if not user_model:
         user_model = User(
+            name=user_info['name'],
             canvas_id=user_info['id'],
             staff_offerings=staff_offerings,
             student_offerings=student_offerings)
