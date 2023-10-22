@@ -7,10 +7,12 @@ from flask_login import UserMixin
 from flask_sqlalchemy import SQLAlchemy
 from sqlalchemy import PrimaryKeyConstraint, types
 from sqlalchemy.orm import backref
+from sqlalchemy import UniqueConstraint
 
 from server import app
 
 db = SQLAlchemy(app=app)
+
 
 class StringSet(types.TypeDecorator):
     impl = types.Text
@@ -24,19 +26,33 @@ class StringSet(types.TypeDecorator):
         else:
             return set(value.split(','))
 
+
 class User(db.Model, UserMixin):
     __tablename__ = 'users'
     id = db.Column(db.Integer, primary_key=True)
-    email = db.Column(db.String(255), nullable=False, index=True)
-    offerings = db.Column(StringSet, nullable=False)
+    canvas_id = db.Column(db.String(255), nullable=False, index=True)
+    staffing = db.Column(StringSet, nullable=False)
+
+
+class Offering(db.Model):
+    __tablename__ = 'offerings'
+    id = db.Column(db.Integer, primary_key=True)
+    canvas_id = db.Column(db.String(255), nullable=False, index=True)
+    name = db.Column(db.String(255), nullable=False)
+    code = db.Column(db.String(255), nullable=False)
+
 
 class Exam(db.Model):
     __tablename__ = 'exams'
     id = db.Column(db.Integer, primary_key=True)
-    offering = db.Column(db.String(255), nullable=False, index=True)
-    name = db.Column(db.String(255), nullable=False, index=True)
+    offering_canvas_id = db.Column(db.ForeignKey(
+        'offerings.canvas_id'), index=True, nullable=False)
+    name = db.Column(db.String(255), nullable=False, index=True, unique=True)
     display_name = db.Column(db.String(255), nullable=False)
     is_active = db.Column(db.BOOLEAN, nullable=False)
+
+    offering = db.relationship('Offering', backref=backref('exams', order_by='Exam.display_name'))
+
 
 class Room(db.Model):
     __tablename__ = 'rooms'
@@ -44,6 +60,10 @@ class Room(db.Model):
     exam_id = db.Column(db.ForeignKey('exams.id'), index=True, nullable=False)
     name = db.Column(db.String(255), nullable=False, index=True)
     display_name = db.Column(db.String(255), nullable=False)
+
+    __table_args__ = (
+        UniqueConstraint('exam_id', 'name', name='uq_exam_id_name'),
+    )
 
     exam = db.relationship('Exam', backref=backref('rooms', order_by='Room.display_name'))
 
@@ -54,6 +74,7 @@ class Room(db.Model):
             natsorted(g, key=lambda seat: seat.x)
             for _, g in itertools.groupby(seats, lambda seat: seat.row)
         ]
+
 
 class Seat(db.Model):
     __tablename__ = 'seats'
@@ -68,14 +89,15 @@ class Seat(db.Model):
 
     room = db.relationship('Room', backref='seats')
 
+
 class Student(db.Model):
     __tablename__ = 'students'
     id = db.Column(db.Integer, primary_key=True)
     exam_id = db.Column(db.ForeignKey('exams.id'), index=True, nullable=False)
+    canvas_id = db.Column(db.String(255), nullable=False, index=True)
     email = db.Column(db.String(255), index=True, nullable=False)
     name = db.Column(db.String(255), nullable=False)
     sid = db.Column(db.String(255))
-    bcourses_id = db.Column(db.String(255))
     wants = db.Column(StringSet, nullable=False)
     avoids = db.Column(StringSet, nullable=False)
 
@@ -84,6 +106,7 @@ class Student(db.Model):
     @property
     def first_name(self):
         return self.name.rsplit(',', 1)[-1].strip().title()
+
 
 class SeatAssignment(db.Model):
     __tablename__ = 'seat_assignments'
@@ -97,17 +120,21 @@ class SeatAssignment(db.Model):
     student = db.relationship('Student', backref=backref('assignment', uselist=False))
     seat = db.relationship('Seat', backref=backref('assignment', uselist=False))
 
+
 def slug(display_name):
     return re.sub(r'[^A-Za-z0-9._-]', '', display_name.lower())
 
 # Flask-CLI commands
 # Run with `flask <cmd>`
+
+
 @app.cli.command('initdb')
 def init_db():
     "Initializes the database"
     click.echo('Creating database...')
     db.create_all()
     db.session.commit()
+
 
 @app.cli.command('dropdb')
 def drop_db():
@@ -118,15 +145,21 @@ def drop_db():
         db.drop_all()
 
 # For development purposes only
+
+
 @app.cli.command('seeddb')
 def seed_db():
     "Seeds database with data"
-    for seed_exam in seed_exams:    
-        existing = Exam.query.filter_by(offering=seed_exam.offering, name=seed_exam.name).first()   
-        if not existing:    
-            click.echo('Adding seed exam {}...'.format(seed_exam.name)) 
-            db.session.add(seed_exam)
-            db.session.commit()
+    pass
+    # for seed_exam in seed_exams:
+    #     existing = Exam.query.filter_by(
+    #         canvas_id=seed_exam.canvas_id,
+    #         name=seed_exam.name).first()
+    #     if not existing:
+    #         click.echo('Adding seed exam {}...'.format(seed_exam.name))
+    #         db.session.add(seed_exam)
+    #         db.session.commit()
+
 
 @app.cli.command('resetdb')
 @click.pass_context
@@ -136,23 +169,32 @@ def reset_db(ctx):
     ctx.invoke(init_db)
     ctx.invoke(seed_db)
 
-seed_exams = [  
-    Exam(   
-        offering=app.config['COURSE'],  
-        name='midterm1', 
-        display_name='Midterm 1', 
-        is_active=False,  
-    ),  
-    Exam(   
-        offering=app.config['COURSE'],  
-        name='midterm2', 
-        display_name='Midterm 2', 
-        is_active=False,  
-    ),  
-    Exam(   
-        offering=app.config['COURSE'],  
-        name='final', 
-        display_name='Final',
-        is_active=False,   
-    ),  
-]
+
+# seed_offerings = [
+#     Offering(
+#         canvas_id=app.config['canvas_id'],
+#         name='cs61a',
+#         code='CS 61A',
+#     ),
+# ]
+
+# seed_exams = [
+#     Exam(
+#         canvas_id=app.config['canvas_id'],
+#         name='midterm1',
+#         display_name='Midterm 1',
+#         is_active=False,
+#     ),
+#     Exam(
+#         canvas_id=app.config['canvas_id'],
+#         name='midterm2',
+#         display_name='Midterm 2',
+#         is_active=False,
+#     ),
+#     Exam(
+#         canvas_id=app.config['canvas_id'],
+#         name='final',
+#         display_name='Final',
+#         is_active=False,
+#     ),
+# ]

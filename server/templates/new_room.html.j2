@@ -71,7 +71,7 @@
     <div class="mdl-grid">
       <div class="mdl-layout-spacer"></div>
       <div class="mdl-cell mdl-cell--4-col">
-        <form action="{{ url_for('mult_new_room', exam=exam) }}" method="post">
+        <form action="{{ url_for('choose_room', exam=exam) }}" method="post">
           {{ choose_form.hidden_tag() }}
           <div class="checkbox">{{ choose_form.rooms }}</div>
           <div class="form-buttons">{{ choose_form.submit(class="mdl-button mdl-js-button mdl-button--raised") }}</div>

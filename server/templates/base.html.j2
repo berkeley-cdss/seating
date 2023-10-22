@@ -21,16 +21,22 @@
       <header class="mdl-layout__header">
         <div class="mdl-layout__header-row">
         
-          {% if not exam %}
-            <a href="{{ url_for('index') }}">
+          {% if exam %}
+            <a href="{{ url_for('exam', exam=exam) }}">
               <span class="hidden-small mdl-layout__title">
-                {{ title }}
+                {{ exam.offering.name + " - " + exam.display_name }}
+              </span>
+            </a>
+          {% elif offering %}
+            <a href="{{ url_for('offering', offering=offering) }}">
+              <span class="hidden-small mdl-layout__title">
+                {{ offering.name }}
               </span>
             </a>
           {% else %}
-            <a href="{{ url_for('exam', exam=exam) }}">
+            <a href="{{ url_for('index') }}">
               <span class="hidden-small mdl-layout__title">
-                {{ exam.display_name }}
+                {{ title }}
               </span>
             </a>
           {% endif %}
@@ -55,8 +61,19 @@
               {% endfor %}
               </ul>
               <a class="mdl-navigation__link" href="{{ url_for('students', exam=exam) }}">Students</a>
-              <a class="mdl-navigation__link" href="{{ url_for('index') }}">Exams</a>
-              <a class="mdl-navigation__link" href="{{ url_for('help', exam=exam) }}">Help</a>
+              <a class="mdl-navigation__link" href="{{ url_for('offering', offering=exam.offering) }}">All Exams</a>
+              <a class="mdl-navigation__link" href="{{ url_for('index') }}">All Offerings</a>
+              <a class="mdl-navigation__link" href="{{ url_for('help') }}">Help</a>
+            </nav>
+          {% elif offering %}
+            <nav class="mdl-navigation">
+                <a class="mdl-navigation__link" href="{{ url_for('index') }}">All Offerings</a>
+                <a class="mdl-navigation__link" href="{{ url_for('help') }}">Help</a>
+            </nav>
+          {% else %}
+            <nav class="mdl-navigation">
+                <a class="mdl-navigation__link" href="{{ url_for('index') }}">All Offerings</a>
+                <a class="mdl-navigation__link" href="{{ url_for('help') }}">Help</a>
             </nav>
           {% endif %}
         </div>

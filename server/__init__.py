@@ -4,6 +4,7 @@ from flask import Flask
 import flask.ctx
 from werkzeug.exceptions import HTTPException
 
+
 class UrlRequestContext(flask.ctx.RequestContext):
     def match_request(self):
         pass
@@ -17,9 +18,11 @@ class UrlRequestContext(flask.ctx.RequestContext):
         except HTTPException as e:
             self.request.routing_exception = e
 
+
 class App(Flask):
     def request_context(self, environ):
         return UrlRequestContext(self, environ)
+
 
 app = App(__name__)
 
@@ -30,6 +33,7 @@ app.jinja_env.filters.update(
     max=max,
 )
 
-import server.auth
-import server.models
-import server.views
+
+import server.utils.auth  # noqa
+import server.models  # noqa
+import server.views  # noqa
