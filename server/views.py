@@ -264,10 +264,10 @@ def students(exam):
     return render_template('students.html.j2', exam=exam, students=students)
 
 
-@app.route('/<exam:exam>/students/<string:email>/')
-def student(exam, email):
+@app.route('/<exam:exam>/students/<string:canvas_id>/')
+def student(exam, canvas_id):
     student = Student.query.filter_by(
-        exam_id=exam.id, email=email).first_or_404()
+        exam_id=exam.id, canvas_id=canvas_id).first_or_404()
     return render_template('student.html.j2', exam=exam, student=student)
 # endregion
 
