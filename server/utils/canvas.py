@@ -24,3 +24,19 @@ def get_user_courses(user):
     if app.config['FLASK_ENV'] == 'development':
         return get_dev_user_courses(user['id'])
     return user.get_courses(enrollment_status='active')
+
+
+def get_user_courses_categorized(user):
+    courses_raw = get_user_courses(user)
+    staff_courses, student_courses = [], []
+    for c in courses_raw:
+        # c may be a dict or a Course object
+        c_dic = c.__dict__ if hasattr(c, '__dict__') else c
+        if 'id' not in c_dic or 'enrollments' not in c_dic:
+            continue
+        for e in c_dic['enrollments']:
+            if e["type"] == 'ta' or e["type"] == 'teacher':
+                staff_courses.append(c_dic)
+            if e["type"] == 'student':
+                student_courses.append(c_dic)
+    return staff_courses, student_courses

@@ -4,6 +4,12 @@ DEV_USER_DB = {
         'name': 'Yu Long',
         'global_id': '10000000000000',
         'effective_locale': 'en'
+    },
+    '234567': {
+        'id': 234567,
+        'name': 'Jimmy Xu',
+        'global_id': '10000000000001',
+        'effective_locale': 'en'
     }
 }
 
@@ -18,7 +24,12 @@ DEV_COURSE_DB = {
         'name': 'Introduction to Software Engineering (Fall 2023)',
         'sis_course_id': 'CRS:COMPSCI-169A-2023-D',
         'course_code': 'COMPSCI 169A-LEC-001',
-
+    },
+    '2345678': {
+        'id': 2345678,
+        'name': 'Introduction to the Internet: Architecture and Protocols (Fall 2022)',
+        'sis_course_id': '',
+        'course_code': 'COMPSCI 168',
     }
 }
 
@@ -34,8 +45,28 @@ DEV_ENROLLMENT_DB = {
                 'enrollments': [
                     {'type': 'ta', 'role': 'TaEnrollment', 'enrollment_state': 'active'}
                 ]
+            },
+        '2345678':
+            {
+                'enrollments': [
+                    {'type': 'student', 'role': 'StudentEnrollment', 'enrollment_state': 'active'}
+                ]
             }
-    }
+    },
+    '234567': {
+        '1234567':
+            {
+                'enrollments': [
+                    {'type': 'student', 'role': 'StudentEnrollment', 'enrollment_state': 'active'}
+                ]
+            },
+        '2345678':
+            {
+                'enrollments': [
+                    {'type': 'ta', 'role': 'TaEnrollment', 'enrollment_state': 'active'}
+                ]
+            }
+    },
 }
 
 
@@ -44,11 +75,11 @@ def get_dev_user_courses(user_id):
     return [DEV_COURSE_DB[str(course_id)] | dic[str(course_id)] for course_id in dic.keys()]
 
 
-DEV_OAUTH_RESP = \
-    {
+def get_dev_user_oauth_resp(user_id):
+    return {
         'access_token': 'dev_access_token',
         'token_type': 'Bearer',
-        'user': DEV_USER_DB[str(123456)],
+        'user': DEV_USER_DB[str(user_id)],
         'canvas_region': 'us-east-1',
         'refresh_token': 'dev_refresh_token',
         'expires_in': 3600

@@ -1,4 +1,3 @@
-from logging import config
 from flask import abort, redirect, request, session, url_for
 from flask_login import current_user
 from werkzeug.exceptions import HTTPException
@@ -6,7 +5,9 @@ from werkzeug.routing import BaseConverter
 import server.utils.canvas as canvas_client
 
 from server import app
-from server.models import db, Offering, Exam
+from server.models import SeatAssignment, Student, db, Offering, Exam
+
+GENERAL_STUDENT_HINT = "If you think this is a mistake, please contact your course staff."
 
 
 class Redirect(HTTPException):
@@ -36,11 +37,31 @@ class ExamConverter(BaseConverter):
             session['after_login'] = request.url
             raise Redirect(url_for('login'))
         _, canvas_id, _, exam_name = value.split('/', 3)
-        if str(canvas_id) not in current_user.staffing:
-            abort(403, "You are not a staff member in this offering.")
         exam = Exam.query.filter_by(
             offering_canvas_id=canvas_id, name=exam_name
-        ).first_or_404()
+        ).one_or_none()
+
+        if str(canvas_id) in current_user.staff_offerings:
+            pass
+        elif str(canvas_id) in current_user.student_offerings:
+            if not exam:
+                abort(404, "This exam is not initialized for seating. " + GENERAL_STUDENT_HINT)
+            print(exam, exam.students, current_user.canvas_id)
+            exam_student = Student.query.filter_by(
+                canvas_id=str(current_user.canvas_id), exam_id=exam.id).one_or_none()
+            if not exam_student:
+                abort(
+                    403, "You are not added as a student in this exam. " + GENERAL_STUDENT_HINT)
+            exam_student_seat = SeatAssignment.query.filter_by(
+                student_id=exam_student.id).one_or_none()
+            if not exam_student_seat:
+                abort(403,
+                      "You have not been assigned a seat for this exam. " + GENERAL_STUDENT_HINT)
+            # return Redirect(url_for('student_single_seat', exam=exam, seat=exam_student_seat))
+            raise Redirect(url_for('student_single_seat', seat_id=exam_student_seat.seat.id))
+        else:
+            abort(403, "You are not authorized to view this page." + GENERAL_STUDENT_HINT)
+
         return exam
 
     def to_url(self, exam):
@@ -59,11 +80,15 @@ class OfferingConverter(BaseConverter):
             session['after_login'] = request.url
             raise Redirect(url_for('login'))
         canvas_id = value.rsplit('/', 1)[-1]
-        if str(canvas_id) not in current_user.staffing:
-            abort(403, "You are not a staff member in this offering.")
+
         offering = Offering.query.filter_by(
             canvas_id=canvas_id).one_or_none()
         if not offering:
+            # visiting a offering route the first time as a staff member will create it in db
+            if str(canvas_id) not in current_user.staff_offerings:
+                abort(404,
+                      "This course offering is not initialized for seating." +
+                      GENERAL_STUDENT_HINT)
             course_raw = canvas_client.get_course(canvas_id)
             if not course_raw:
                 abort(404, "Offering not found from Canvas.")

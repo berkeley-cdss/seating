@@ -85,3 +85,8 @@ class EmailForm(FlaskForm):
     test_email = StringField('test_email')
     additional_text = TextAreaField('additional_text')
     submit = SubmitField('send')
+
+
+class DevLoginForm(FlaskForm):
+    login_as_yu = SubmitField('login as Yu (169 TA, 168 Student)')
+    login_as_jimmy = SubmitField('login as Jimmy (169 Student, 168 TA)')

@@ -8,18 +8,24 @@
     <ul class="mdl-list">
     {% for exam in exams %}
       <li class="mdl-list__item">
+        {% if is_staff %}
         <div class="material-icons std" onclick="location.href = '{{ url_for('toggle_exam', exam=exam) }}';" style="margin-left: 0">{{ "star" if exam.is_active else "star_border" }}</div>
+        {% endif %}
         <a class="mdl-list__item-primary-content" href="{{ url_for('exam', exam=exam) }}">
           {{ exam.display_name }}
         </a>
+        {% if is_staff %}
         <div class="material-icons std" onclick="location.href = '{{ url_for('delete_exam', exam=exam) }}';" style="float: right">clear</div>
+        {% endif %}
       </li>
     {% endfor %}
     </ul>
+  {% if is_staff %}
   </div>
   <button class="mdl-button mdl-js-button roomspg-add-room-button" onclick="location.href = '{{ url_for('new_exam', offering=offering) }}';">
     <i class="material-icons">add</i>
     Add exam
   </button>
+  {% endif %}
 </section>
 {% endblock %}

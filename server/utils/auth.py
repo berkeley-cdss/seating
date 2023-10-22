@@ -1,5 +1,6 @@
-from flask import redirect, request, session, url_for
-from flask_login import LoginManager, login_user, logout_user
+from os import abort
+from flask import redirect, request, session, url_for, render_template
+from flask_login import LoginManager, login_user, logout_user, current_user
 from flask_oauthlib.client import OAuth
 from oauth2client.contrib.flask_util import UserOAuth2
 
@@ -7,7 +8,8 @@ from oauth2client.contrib.flask_util import UserOAuth2
 from server import app
 from server.models import db, User
 import server.utils.canvas as canvas_client
-from server.utils.stub import DEV_OAUTH_RESP
+from server.utils.stub import get_dev_user_oauth_resp
+from server.form import DevLoginForm
 
 login_manager = LoginManager(app=app)
 
@@ -51,14 +53,31 @@ def unauthorized():
 @app.route('/login/')
 def login():
     if app.config['FLASK_ENV'] == 'development':
-        return redirect(url_for('authorized'))
+        return redirect(url_for('dev_login'))
     return canvas_oauth.authorize(callback=url_for('authorized', _external=True, _scheme='https'))
+
+
+@app.route('/dev_login/', methods=['GET', 'POST'])
+def dev_login():
+    if app.config['FLASK_ENV'] == 'development':
+        form = DevLoginForm()
+        if form.validate_on_submit():
+            if form.login_as_jimmy.data:
+                session["dev_user_id"] = 234567
+                return redirect(url_for('authorized'))
+            elif form.login_as_yu.data:
+                session["dev_user_id"] = 123456
+                return redirect(url_for('authorized'))
+            else:
+                abort(500, 'Invalid dev user')
+        return render_template('dev_login.html.j2', form=form)
+    return redirect(url_for('index'))
 
 
 @app.route('/authorized/')
 def authorized():
     if app.config['FLASK_ENV'] == 'development':
-        resp = DEV_OAUTH_RESP
+        resp = get_dev_user_oauth_resp(session["dev_user_id"])
     else:
         resp = canvas_oauth.authorized_response()
 
@@ -68,24 +87,20 @@ def authorized():
     user_info = resp['user']
 
     user = canvas_client.get_user(user_info['id'])
-    staffing = []
-    courses_raw = canvas_client.get_user_courses(user)
-    for c in courses_raw:
-        # c may be a dict or a Course object
-        c_dic = c.__dict__ if hasattr(c, '__dict__') else c
-        if 'id' not in c_dic or 'enrollments' not in c_dic:
-            continue
-        for e in c_dic['enrollments']:
-            if e["type"] == 'ta' or e["type"] == 'teacher':
-                staffing.append(str(c_dic['id']))
-                break
+    staff_course_dics, student_course_dics = canvas_client.get_user_courses_categorized(user)
+    staff_offerings = [str(c['id']) for c in staff_course_dics]
+    student_offerings = [str(c['id']) for c in student_course_dics]
 
     user_model = User.query.filter_by(canvas_id=user_info['id']).one_or_none()
     if not user_model:
-        user_model = User(canvas_id=user_info['id'], staffing=staffing)
+        user_model = User(
+            canvas_id=user_info['id'],
+            staff_offerings=staff_offerings,
+            student_offerings=student_offerings)
         db.session.add(user_model)
     else:
-        user_model.staffing = staffing
+        user_model.staff_offerings = staff_offerings
+        user_model.student_offerings = student_offerings
     db.session.commit()
 
     login_user(user_model, remember=True)

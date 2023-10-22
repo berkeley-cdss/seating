@@ -32,7 +32,8 @@ class User(db.Model, UserMixin):
     __tablename__ = 'users'
     id = db.Column(db.Integer, primary_key=True)
     canvas_id = db.Column(db.String(255), nullable=False, index=True)
-    staffing = db.Column(StringSet, nullable=False)
+    staff_offerings = db.Column(StringSet, nullable=False)
+    student_offerings = db.Column(StringSet, nullable=False)
 
 
 class Offering(db.Model):
@@ -137,6 +138,9 @@ class Student(db.Model):
     @property
     def first_name(self):
         return self.name.rsplit(',', 1)[-1].strip().title()
+
+    def __repr__(self):
+        return '<Student {} ({})>'.format(self.name, self.canvas_id)
 
 
 class SeatAssignment(db.Model):

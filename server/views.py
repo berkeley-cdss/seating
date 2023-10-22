@@ -1,18 +1,17 @@
-from math import log
 import re
 
 from flask import abort, redirect, render_template, request, send_file, url_for, flash
 from flask_login import current_user, login_required
 
 from server import app
-from server.models import db, Offering, Exam, Room, Seat, Student, SeatAssignment
+from server.models import db, Offering, Exam, Room, Seat, Student
 from server.form import ExamForm, RoomForm, ChooseRoomForm, StudentForm, DeleteStudentForm, \
     AssignForm, EmailForm
 from server.utils.auth import google_oauth
 import server.utils.canvas as canvas_client
 from server.utils.data import validate_room, validate_students
 from server.utils.exception import DataValidationError
-from server.utils.url import apply_converter, format_offering_url
+from server.utils.url import apply_converter
 from server.utils.assign import assign_students
 from server.utils.email import email_students
 
@@ -30,15 +29,20 @@ def index():
     After logging in, fetch and present a list of course offerings.
     """
     user = canvas_client.get_user(current_user.canvas_id)
-    offerings = []
-    for c in canvas_client.get_user_courses(user):
-        offering = Offering(
-            canvas_id=c['id'],
-            name=c['name'],
-            code=c['course_code'])
-        offerings.append(offering)
+    staff_course_dics, student_course_dics = canvas_client.get_user_courses_categorized(user)
+    staff_offerings = [Offering(
+        canvas_id=c['id'],
+        name=c['name'],
+        code=c['course_code'])
+        for c in staff_course_dics]
+    student_offerings = [Offering(
+        canvas_id=c['id'],
+        name=c['name'],
+        code=c['course_code'])
+        for c in student_course_dics]
     return render_template("select_offering.html.j2",
-                           title="Select a Course Offering", offerings=offerings)
+                           title="Select a Course Offering",
+                           staff_offerings=staff_offerings, student_offerings=student_offerings)
 
 
 @app.route('/<offering:offering>/')
@@ -47,8 +51,9 @@ def offering(offering):
     Path: /offerings/<canvas_id>
     Shows all exams created for a course offering.
     """
+    is_staff = str(offering.canvas_id) in current_user.staff_offerings
     return render_template("select_exam.html.j2",
-                           exams=offering.exams, offering=offering)
+                           exams=offering.exams, offering=offering, is_staff=is_staff)
 
 # endregion
 
@@ -61,6 +66,11 @@ def new_exam(offering):
     Path: /offerings/<canvas_id>/exams/new
     Creates a new exam for a course offering.
     """
+    # offering urls only checks login but does not check staff status
+    # this is exam creation route but still handled by offering converter
+    # it does need to check staff status, so we do it here
+    if str(offering.canvas_id) not in current_user.staff_offerings:
+        abort(403, "You are not a staff member in this offering.")
     form = ExamForm()
     if form.validate_on_submit():
         Exam.query.filter_by(offering_canvas_id=offering.canvas_id).update({"is_active": False})
@@ -114,6 +124,10 @@ def toggle_exam(exam):
 
 @app.route('/<exam:exam>/')
 def exam(exam):
+    """
+    Path: /offerings/<canvas_id>/exams/<exam_name>
+    Front page for an exam, which essentially shows all rooms created for an exam.
+    """
     return render_template('exam.html.j2', exam=exam)
 # endregion
 
@@ -192,6 +206,10 @@ def choose_room(exam):
 
 @app.route('/<exam:exam>/rooms/<string:name>/delete', methods=['GET', 'DELETE'])
 def delete_room(exam, name):
+    """
+    Path: /offerings/<canvas_id>/exams/<exam_name>/rooms/<room_name>/delete
+    Deletes a room for an exam.
+    """
     room = Room.query.filter_by(exam_id=exam.id, name=name).first_or_404()
     if room:
         db.session.delete(room)
@@ -315,6 +333,15 @@ def students_template():
     return send_file('static/img/students-template.png')
 # endregion
 
+# region Student-facing pages
+
+
+@app.route('/seats/<int:seat_id>/')
+def student_single_seat(seat_id):
+    seat = Seat.query.filter_by(id=seat_id).first_or_404()
+    return render_template('seat.html.j2', room=seat.room, seat=seat)
+# endregion
+
 
 @app.route('/<exam:exam>/students/photos/', methods=['GET', 'POST'])
 def new_photos(exam):
@@ -328,9 +355,3 @@ def photo(exam, email):
     photo_path = '{}/{}/{}.jpeg'.format(app.config['PHOTO_DIRECTORY'],
                                         exam.offering_canvas_id, student.bcourses_id)
     return send_file(photo_path, mimetype='image/jpeg')
-
-
-@app.route('/seat/<int:seat_id>/')
-def single_seat(seat_id):
-    seat = Seat.query.filter_by(id=seat_id).first_or_404()
-    return render_template('seat.html.j2', room=seat.room, seat=seat)
