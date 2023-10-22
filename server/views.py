@@ -239,20 +239,26 @@ def delete_students(exam):
     form = DeleteStudentForm()
     deleted, did_not_exist = set(), set()
     if form.validate_on_submit():
-        for email in re.split(r'\s|,', form.emails.data):
-            if not email:
-                continue
-            student = Student.query.filter_by(
-                exam_id=exam.id, email=email).first()
-            if student:
-                deleted.add(email)
-                if student.assignment:
-                    db.session.delete(student.assignment)
-                # TODO: should probabaly use bulk deletion
-                db.session.delete(student)
-            else:
-                did_not_exist.add(email)
+        if not form.use_all_emails.data:
+            emails = [x for x in re.split(r'\s|,', form.emails.data) if x]
+            for email in emails:
+                student = Student.query.filter_by(
+                    exam_id=exam.id, email=email).first()
+                if student:
+                    deleted.add(email)
+                    if student.assignment:
+                        db.session.delete(student.assignment)
+                    # TODO: should probabaly use bulk deletion
+                    db.session.delete(student)
+                else:
+                    did_not_exist.add(email)
+        else:
+            students = Student.query.filter_by(exam_id=exam.id)
+            deleted = {student.email for student in students}
+            students.delete()
         db.session.commit()
+        if not deleted and not did_not_exist:
+            abort(404, "No students deleted.")
     return render_template('delete_students.html.j2',
                            exam=exam, form=form, deleted=deleted, did_not_exist=did_not_exist)
 
@@ -281,7 +287,6 @@ def delete_student(exam, canvas_id):
         db.session.commit()
     return render_template('students.html.j2',
                            exam=exam, students=exam.students)
-# endregion
 
 
 @app.route('/<exam:exam>/students/assign/', methods=['GET', 'POST'])
@@ -304,6 +309,7 @@ def email(exam):
         email_students(exam, form)
         return redirect(url_for('students', exam=exam))
     return render_template('email.html.j2', exam=exam, form=form)
+# endregion
 
 # region Misc
 
@@ -312,7 +318,6 @@ def email(exam):
 @login_required
 def help():
     return render_template('help.html.j2', title="Help")
-# endregion
 
 
 @app.route('/favicon.ico')
@@ -323,6 +328,7 @@ def favicon():
 @app.route('/students-template.png')
 def students_template():
     return send_file('static/img/students-template.png')
+# endregion
 
 
 @app.route('/<exam:exam>/students/photos/', methods=['GET', 'POST'])

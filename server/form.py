@@ -1,7 +1,8 @@
 import re
 
 from flask_wtf import FlaskForm
-from wtforms import SelectMultipleField, StringField, SubmitField, TextAreaField, widgets
+from wtforms import BooleanField, SelectMultipleField, StringField, SubmitField, \
+    TextAreaField, widgets
 from wtforms.validators import Email, InputRequired, URL
 
 from server.utils.url import offering_regex, exam_regex
@@ -69,7 +70,8 @@ class StudentForm(FlaskForm):
 
 class DeleteStudentForm(FlaskForm):
     emails = TextAreaField('emails')
-    submit = SubmitField('delete')
+    use_all_emails = BooleanField('use_all_emails')
+    submit = SubmitField('delete by emails')
 
 
 class AssignForm(FlaskForm):
