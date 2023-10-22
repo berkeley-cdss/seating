@@ -6,7 +6,7 @@ from werkzeug.routing import BaseConverter
 import server.utils.canvas as canvas_client
 
 from server import app
-from server.models import db, Offering, Exam, Room, Seat, SeatAssignment, Student, slug
+from server.models import db, Offering, Exam
 
 
 class Redirect(HTTPException):

@@ -11,23 +11,18 @@ def assign_students(exam):
     Randomly assign them a seat.
     Repeat.
     """
-    students = set(Student.query.filter_by(
-        exam_id=exam.id, assignment=None
-    ).all())
-    seats = set(Seat.query.join(Seat.room).filter(
-        Room.exam_id == exam.id,
-        Seat.assignment is None,
-    ).all())
+    students = set(exam.unassigned_students)
+    seats = set(exam.unassigned_seats)
 
     def seats_available(preference):
         """
-        Return the number of seats available for a given preference.
+        Return seats available for a given preference.
         """
         wants, avoids = preference
         return [
             seat for seat in seats
-            if all(a in seat.attributes for a in wants) and
-            all(a not in seat.attributes for a in avoids)
+            if (all(a in seat.attributes for a in wants) and  # noqa
+                all(a not in seat.attributes for a in avoids))
         ]
 
     def arr_to_dict(arr, key_getter=lambda x: x):
@@ -42,12 +37,14 @@ def assign_students(exam):
 
     assignments = []
     while students:
-        students_by_preference = arr_to_dict(students, key=lambda student: (
+        students_by_preference = arr_to_dict(students, key_getter=lambda student: (
             frozenset(student.wants), frozenset(student.avoids)))
         seats_by_preference = {
             preference: seats_available(preference)
-            for preference in students_by_preference
+            for preference in students_by_preference.keys()
         }
+        print('seats_by_preference:', seats_by_preference)
+        print('students_by_preference:', students_by_preference)
         min_preference = min(seats_by_preference,
                              key=lambda k: len(seats_by_preference[k]))
         min_students = students_by_preference[min_preference]

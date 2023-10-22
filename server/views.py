@@ -5,7 +5,7 @@ from flask import abort, redirect, render_template, request, send_file, url_for,
 from flask_login import current_user, login_required
 
 from server import app
-from server.models import db, Offering, Exam, Room, Seat, Student
+from server.models import db, Offering, Exam, Room, Seat, Student, SeatAssignment
 from server.form import ExamForm, RoomForm, ChooseRoomForm, StudentForm, DeleteStudentForm, \
     AssignForm, EmailForm
 from server.utils.auth import google_oauth
@@ -47,9 +47,8 @@ def offering(offering):
     Path: /offerings/<canvas_id>
     Shows all exams created for a course offering.
     """
-    exams = Exam.query.filter(Exam.offering_canvas_id == offering.canvas_id)
     return render_template("select_exam.html.j2",
-                           exams=exams, offering=offering)
+                           exams=offering.exams, offering=offering)
 
 # endregion
 
@@ -186,20 +185,15 @@ def choose_room(exam):
             if room:
                 db.session.add(room)
                 db.session.commit()
-            return redirect(url_for('exam', exam=exam))
+        return redirect(url_for('exam', exam=exam))
     return render_template('new_room.html.j2',
                            exam=exam, new_form=new_form, choose_form=choose_form)
 
 
-@app.route('/<exam:exam>/rooms/<string:name>/delete', methods=['DELETE'])
+@app.route('/<exam:exam>/rooms/<string:name>/delete', methods=['GET', 'DELETE'])
 def delete_room(exam, name):
     room = Room.query.filter_by(exam_id=exam.id, name=name).first_or_404()
     if room:
-        seats = Seat.query.filter_by(room_id=room.id).all()
-        for seat in seats:
-            if seat.assignment:
-                db.session.delete(seat.assignment)
-            db.session.delete(seat)
         db.session.delete(room)
         db.session.commit()
     return render_template('exam.html.j2', exam=exam)
@@ -228,7 +222,7 @@ def new_students(exam):
             students = validate_students(exam, form)
             db.session.add_all(students)
             db.session.commit()
-            return redirect(url_for('exam', exam=exam))
+            return redirect(url_for('students', exam=exam))
         except DataValidationError as e:
             form.sheet_url.errors.append(str(e))
     return render_template('new_students.html.j2', exam=exam, form=form)
@@ -241,24 +235,18 @@ def delete_students(exam):
     if form.validate_on_submit():
         if not form.use_all_emails.data:
             emails = [x for x in re.split(r'\s|,', form.emails.data) if x]
-            for email in emails:
-                student = Student.query.filter_by(
-                    exam_id=exam.id, email=email).first()
-                if student:
-                    deleted.add(email)
-                    if student.assignment:
-                        db.session.delete(student.assignment)
-                    # TODO: should probabaly use bulk deletion
-                    db.session.delete(student)
-                else:
-                    did_not_exist.add(email)
+            students = Student.query.filter(
+                Student.email.in_(emails) & Student.exam_id == exam.id)
         else:
             students = Student.query.filter_by(exam_id=exam.id)
-            deleted = {student.email for student in students}
-            students.delete()
+        deleted = {student.email for student in students}
+        did_not_exist = set()
+        if not form.use_all_emails.data:
+            did_not_exist = set(emails) - deleted
+        students.delete()
         db.session.commit()
         if not deleted and not did_not_exist:
-            abort(404, "No students deleted.")
+            abort(404, "No change has been made.")
     return render_template('delete_students.html.j2',
                            exam=exam, form=form, deleted=deleted, did_not_exist=did_not_exist)
 
@@ -281,12 +269,9 @@ def delete_student(exam, canvas_id):
     student = Student.query.filter_by(
         exam_id=exam.id, canvas_id=canvas_id).first_or_404()
     if student:
-        if student.assignment:
-            db.session.delete(student.assignment)
         db.session.delete(student)
         db.session.commit()
-    return render_template('students.html.j2',
-                           exam=exam, students=exam.students)
+    return redirect(url_for('students', exam=exam))
 
 
 @app.route('/<exam:exam>/students/assign/', methods=['GET', 'POST'])
