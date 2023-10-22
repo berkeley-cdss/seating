@@ -38,6 +38,7 @@
           <th class="sort mdl-data-table__cell--non-numeric" data-sort="sid">Student ID</th>
           <th class="sort mdl-data-table__cell--non-numeric" data-sort="canvas_id">Canvas ID</th>
           <th class="sort mdl-data-table__cell--non-numeric" data-sort="assignment">Seat</th>
+          <th>Delete</th>
         </tr>
       </thead>
       <tbody class="list">
@@ -60,6 +61,9 @@
           {% else %}
             <span class="assignment">&mdash;</span>
           {% endif %}
+          </td>
+          <td>
+          <div class="material-icons std" onclick="location.href = '{{ url_for('delete_student', exam=exam, canvas_id=student.canvas_id) }}';" style="float: right;">clear</div>
           </td>
         </tr>
         {% endfor %}

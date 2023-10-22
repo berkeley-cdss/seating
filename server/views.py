@@ -260,8 +260,7 @@ def delete_students(exam):
 @app.route('/<exam:exam>/students/')
 def students(exam):
     # TODO load assignment and seat at the same time?
-    students = Student.query.filter_by(exam_id=exam.id).all()
-    return render_template('students.html.j2', exam=exam, students=students)
+    return render_template('students.html.j2', exam=exam, students=exam.students)
 
 
 @app.route('/<exam:exam>/students/<string:canvas_id>/')
@@ -269,6 +268,19 @@ def student(exam, canvas_id):
     student = Student.query.filter_by(
         exam_id=exam.id, canvas_id=canvas_id).first_or_404()
     return render_template('student.html.j2', exam=exam, student=student)
+
+
+@app.route('/<exam:exam>/students/<string:canvas_id>/delete', methods=['GET', 'DELETE'])
+def delete_student(exam, canvas_id):
+    student = Student.query.filter_by(
+        exam_id=exam.id, canvas_id=canvas_id).first_or_404()
+    if student:
+        if student.assignment:
+            db.session.delete(student.assignment)
+        db.session.delete(student)
+        db.session.commit()
+    return render_template('students.html.j2',
+                           exam=exam, students=exam.students)
 # endregion
 
 
