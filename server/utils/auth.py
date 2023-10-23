@@ -52,14 +52,14 @@ def unauthorized():
 
 @app.route('/login/')
 def login():
-    if app.config['FLASK_ENV'] == 'development':
+    if canvas_client.is_mock_canvas():
         return redirect(url_for('dev_login'))
     return canvas_oauth.authorize(callback=url_for('authorized', _external=True, _scheme='https'))
 
 
 @app.route('/dev_login/', methods=['GET', 'POST'])
 def dev_login():
-    if app.config['FLASK_ENV'] == 'development':
+    if canvas_client.is_mock_canvas():
         form = DevLoginForm()
         if form.validate_on_submit():
             if form.login_as_jimmy.data:
@@ -76,7 +76,7 @@ def dev_login():
 
 @app.route('/authorized/')
 def authorized():
-    if app.config['FLASK_ENV'] == 'development':
+    if canvas_client.is_mock_canvas():
         resp = get_dev_user_oauth_resp(session["dev_user_id"])
     else:
         resp = canvas_oauth.authorized_response()

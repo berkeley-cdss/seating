@@ -8,20 +8,24 @@ def _get_client(key):
     return Canvas(app.config['CANVAS_SERVER_URL'], key)
 
 
+def is_mock_canvas():
+    return app.config['MOCK_CANVAS']
+
+
 def get_user(canvas_id, key=None):
-    if app.config['FLASK_ENV'] == 'development':
+    if is_mock_canvas():
         return get_dev_user(canvas_id)
     return _get_client(key).get_user(canvas_id)
 
 
 def get_course(canvas_id, key=None):
-    if app.config['FLASK_ENV'] == 'development':
+    if is_mock_canvas():
         return get_dev_course(canvas_id)
     return _get_client(key).get_course(canvas_id)
 
 
 def get_user_courses(user):
-    if app.config['FLASK_ENV'] == 'development':
+    if is_mock_canvas():
         return get_dev_user_courses(user['id'])
     return user.get_courses(enrollment_status='active')
 
