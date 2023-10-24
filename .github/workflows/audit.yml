@@ -27,6 +27,7 @@ jobs:
     # needs: setup
     runs-on: ubuntu-latest
     steps:
+      - uses: actions/checkout@v3
       - name: Bootstrap
         uses: ./.github/actions/bootstrap
         with:
