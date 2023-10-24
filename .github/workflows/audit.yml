@@ -30,6 +30,7 @@ jobs:
         run: |
           pip list --outdated
       - name: Audit with safety
-        uses: pyupio/safety@2.3.5
+        run: |
+          safety check
       - name: Audit with pip-audit
         uses: pypa/gh-action-pip-audit@v1.0.8
