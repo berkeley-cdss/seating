@@ -44,22 +44,21 @@ def is_course_valid(c):
 
 def get_user_courses_categorized(user):
     courses_raw = get_user_courses(user)
-    staff_courses, student_courses, other = [], [], []
+    staff_courses, student_courses, other = set(), set(), set()
     for c in courses_raw:
         if not is_course_valid(c):
             continue
         for e in c.enrollments:
             if e["type"] == 'ta' or e["type"] == 'teacher':
-                staff_courses.append(c)
+                staff_courses.add(c)
             elif e["type"] == 'student':
-                student_courses.append(c)
+                student_courses.add(c)
             else:
-                other.append(c)
-    # do not repeat
-    staff_courses = list(set(staff_courses))
-    student_courses = list(set(student_courses) - set(staff_courses))
-    other = list(set(other) - set(staff_courses) - set(student_courses))
-    return staff_courses, student_courses, other
+                other.add(c)
+    # a course should not appear in more than one category
+    student_courses -= set(staff_courses)
+    other = other - set(staff_courses) - set(student_courses)
+    return list(staff_courses), list(student_courses), list(other)
 
 
 def api_course_to_model(course):
