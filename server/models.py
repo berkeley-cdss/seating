@@ -45,6 +45,7 @@ class Offering(db.Model):
     code = db.Column(db.String(255), nullable=False)
 
     exams = db.relationship('Exam', uselist=True, cascade='all, delete-orphan',
+                            order_by='Exam.display_name',
                             backref=backref('offering', uselist=False, single_parent=True))
 
     def __repr__(self):
@@ -61,8 +62,10 @@ class Exam(db.Model):
     is_active = db.Column(db.BOOLEAN, nullable=False)
 
     rooms = db.relationship('Room', uselist=True, cascade='all, delete-orphan',
+                            order_by='Room.display_name',
                             backref=backref('exam', uselist=False, single_parent=True))
     students = db.relationship('Student', uselist=True, cascade='all, delete-orphan',
+                               order_by='Student.name',
                                backref=backref('exam', uselist=False, single_parent=True))
     seats = association_proxy('rooms', 'seats')
 
@@ -90,6 +93,7 @@ class Room(db.Model):
     display_name = db.Column(db.String(255), nullable=False)
 
     seats = db.relationship('Seat', uselist=True, cascade='all, delete-orphan',
+                            order_by='Seat.name',
                             backref=backref('room', uselist=False, single_parent=True))
 
     __table_args__ = (

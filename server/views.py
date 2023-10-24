@@ -290,10 +290,10 @@ def delete_student(exam, canvas_id):
 def assign(exam):
     form = AssignForm()
     if form.validate_on_submit():
-        assignments = assign_students(exam)
-        if isinstance(assignments, str):
-            return assignments
-        db.session.add_all(assignments)
+        success, payload = assign_students(exam)
+        if not success:
+            return payload
+        db.session.add_all(payload)
         db.session.commit()
         return redirect(url_for('students', exam=exam))
     return render_template('assign.html.j2', exam=exam, form=form)

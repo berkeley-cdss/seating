@@ -58,6 +58,10 @@ def get_user_courses_categorized(user):
     # a course should not appear in more than one category
     student_courses -= set(staff_courses)
     other = other - set(staff_courses) - set(student_courses)
+    # sorted by course name
+    staff_courses = sorted(staff_courses, key=lambda c: c.name)
+    student_courses = sorted(student_courses, key=lambda c: c.name)
+    other = sorted(other, key=lambda c: c.name)
     return list(staff_courses), list(student_courses), list(other)
 
 

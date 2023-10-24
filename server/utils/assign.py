@@ -43,14 +43,14 @@ def assign_students(exam):
             preference: seats_available(preference)
             for preference in students_by_preference.keys()
         }
-        print('seats_by_preference:', seats_by_preference)
-        print('students_by_preference:', students_by_preference)
         min_preference = min(seats_by_preference,
                              key=lambda k: len(seats_by_preference[k]))
         min_students = students_by_preference[min_preference]
         min_seats = seats_by_preference[min_preference]
+
         if not min_seats:
-            return 'Assignment failed! No more seats for preference {}'.format(min_preference)
+            return (False,
+                    'Assignment failed! No more seats for preference {}'.format(min_preference))
 
         student = random.choice(min_students)
         seat = random.choice(min_seats)
@@ -59,4 +59,4 @@ def assign_students(exam):
         seats.remove(seat)
 
         assignments.append(SeatAssignment(student=student, seat=seat))
-    return assignments
+    return (True, assignments)

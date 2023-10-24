@@ -46,7 +46,6 @@ class ExamConverter(BaseConverter):
         elif str(canvas_id) in current_user.student_offerings:
             if not exam:
                 abort(404, "This exam is not initialized for seating. " + GENERAL_STUDENT_HINT)
-            print(exam, exam.students, current_user.canvas_id)
             exam_student = Student.query.filter_by(
                 canvas_id=str(current_user.canvas_id), exam_id=exam.id).one_or_none()
             if not exam_student:
@@ -57,7 +56,6 @@ class ExamConverter(BaseConverter):
             if not exam_student_seat:
                 abort(403,
                       "You have not been assigned a seat for this exam. " + GENERAL_STUDENT_HINT)
-            # return Redirect(url_for('student_single_seat', exam=exam, seat=exam_student_seat))
             raise Redirect(url_for('student_single_seat', seat_id=exam_student_seat.seat.id))
         else:
             abort(403, "You are not authorized to view this page." + GENERAL_STUDENT_HINT)
