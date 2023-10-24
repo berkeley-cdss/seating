@@ -228,7 +228,7 @@ ADMIN
 
 You can create an Ok OAuth client [here](https://okpy.org/admin/clients/), though it will need to be approved by an Ok admin before it can be used.
 
-## (Temporarily keeping it here) Testing and CI
+## (Temporarily keeping it here)
 
 run test and get coverage report
 
@@ -240,4 +240,23 @@ print existing coverage report
 
 ```
 coverage report
+```
+
+check broken packages
+
+```
+pip check
+```
+
+check with safety
+
+```
+safety check --full-report
+```
+
+check with pip-audit
+
+```
+pip-audit
+pip-audit --desc
 ```
