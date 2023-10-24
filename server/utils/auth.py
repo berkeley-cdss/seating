@@ -87,9 +87,9 @@ def authorized():
     user_info = resp['user']
 
     user = canvas_client.get_user(user_info['id'])
-    staff_course_dics, student_course_dics = canvas_client.get_user_courses_categorized(user)
-    staff_offerings = [str(c['id']) for c in staff_course_dics]
-    student_offerings = [str(c['id']) for c in student_course_dics]
+    staff_course_dics, student_course_dics, _ = canvas_client.get_user_courses_categorized(user)
+    staff_offerings = [str(c.id) for c in staff_course_dics]
+    student_offerings = [str(c.id) for c in student_course_dics]
 
     user_model = User.query.filter_by(canvas_id=user_info['id']).one_or_none()
     if not user_model:

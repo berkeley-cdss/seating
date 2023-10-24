@@ -28,23 +28,17 @@ def index():
     Home page, which needs to be logged in to access.
     After logging in, fetch and present a list of course offerings.
     """
-    print("current user", current_user.__dict__)
 
     user = canvas_client.get_user(current_user.canvas_id)
-    staff_course_dics, student_course_dics = canvas_client.get_user_courses_categorized(user)
-    staff_offerings = [Offering(
-        canvas_id=c['id'],
-        name=c['name'],
-        code=c['course_code'])
-        for c in staff_course_dics]
-    student_offerings = [Offering(
-        canvas_id=c['id'],
-        name=c['name'],
-        code=c['course_code'])
-        for c in student_course_dics]
+    staff_course_dics, student_course_dics, others = canvas_client.get_user_courses_categorized(
+        user)
+    staff_offerings = [canvas_client.api_course_to_model(c) for c in staff_course_dics]
+    student_offerings = [canvas_client.api_course_to_model(c) for c in student_course_dics]
     return render_template("select_offering.html.j2",
                            title="Select a Course Offering",
-                           staff_offerings=staff_offerings, student_offerings=student_offerings)
+                           staff_offerings=staff_offerings,
+                           student_offerings=student_offerings,
+                           other_offerings=others)
 
 
 @app.route('/<offering:offering>/')

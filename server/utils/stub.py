@@ -1,3 +1,12 @@
+class DictWrapperObject:
+    def __init__(self, dic):
+        self.__dict__.update(dic)
+
+
+def _dict_to_object(dic):
+    return DictWrapperObject(dic)
+
+
 DEV_USER_DB = {
     '123456': {
         'id': 123456,
@@ -15,7 +24,7 @@ DEV_USER_DB = {
 
 
 def get_dev_user(user_id):
-    return DEV_USER_DB[str(user_id)]
+    return _dict_to_object(DEV_USER_DB[str(user_id)])
 
 
 DEV_COURSE_DB = {
@@ -35,7 +44,7 @@ DEV_COURSE_DB = {
 
 
 def get_dev_course(course_id):
-    return DEV_COURSE_DB[str(course_id)]
+    return _dict_to_object(DEV_COURSE_DB[str(course_id)])
 
 
 DEV_ENROLLMENT_DB = {
@@ -72,7 +81,8 @@ DEV_ENROLLMENT_DB = {
 
 def get_dev_user_courses(user_id):
     dic = DEV_ENROLLMENT_DB[str(user_id)]
-    return [DEV_COURSE_DB[str(course_id)] | dic[str(course_id)] for course_id in dic.keys()]
+    return [_dict_to_object(DEV_COURSE_DB[str(course_id)] | dic[str(course_id)])
+            for course_id in dic.keys()]
 
 
 def get_dev_user_oauth_resp(user_id):

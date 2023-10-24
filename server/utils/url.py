@@ -90,12 +90,9 @@ class OfferingConverter(BaseConverter):
                       "This course offering is not initialized for seating." +
                       GENERAL_STUDENT_HINT)
             course_raw = canvas_client.get_course(canvas_id)
-            if not course_raw:
+            if not canvas_client.is_course_valid(course_raw):
                 abort(404, "Offering not found from Canvas.")
-            offering = Offering(
-                canvas_id=canvas_id,
-                name=course_raw['name'],
-                code=course_raw['course_code'])
+            offering = canvas_client.api_course_to_model(course_raw)
             db.session.add(offering)
             db.session.commit()
         return offering
