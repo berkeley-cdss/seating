@@ -10,7 +10,7 @@ permissions:
   contents: read
 
 jobs:
-  build:
+  setup:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v3
@@ -23,14 +23,30 @@ jobs:
           python -m pip install --upgrade pip
           if [ -f requirements.txt ]; then pip install -r requirements.txt; fi
           if [ -f requirements-dev.txt ]; then pip install -r requirements-dev.txt; fi
-      - name: Check broken dependencies
+  check-broken-dependencies:
+    needs: setup
+    runs-on: ubuntu-latest
+    steps:
+      - name: Audit with pip
         run: |
           pip check
+  audit-with-pip:
+    needs: setup
+    runs-on: ubuntu-latest
+    steps:
       - name: Audit with pip
         run: |
           pip list --outdated
+  audit-with-safety:
+    needs: setup
+    runs-on: ubuntu-latest
+    steps:
       - name: Audit with safety
         run: |
           safety check
+  audit-with-pip-audit:
+    needs: setup
+    runs-on: ubuntu-latest
+    steps:
       - name: Audit with pip-audit
         uses: pypa/gh-action-pip-audit@v1.0.8
