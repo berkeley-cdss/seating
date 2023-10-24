@@ -45,3 +45,4 @@ app.jinja_env.filters.update(
 import server.utils.auth  # noqa
 import server.models  # noqa
 import server.views  # noqa
+import tests.conftest  # noqa

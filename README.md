@@ -230,33 +230,11 @@ You can create an Ok OAuth client [here](https://okpy.org/admin/clients/), thoug
 
 ## (Temporarily keeping it here)
 
-run test and get coverage report
-
 ```
-pytest --cov=server tests/
-```
-
-print existing coverage report
-
-```
-coverage report
-```
-
-check broken packages
-
-```
-pip check
-```
-
-check with safety
-
-```
-safety check --full-report
-```
-
-check with pip-audit
-
-```
-pip-audit
-pip-audit --desc
+flask e2e
+flask unit
+flask test
+flask cov
+flask audit
+flask lint
 ```
