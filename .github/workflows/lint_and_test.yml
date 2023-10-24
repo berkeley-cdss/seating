@@ -50,9 +50,10 @@ jobs:
           touch reports/pytest-coverage.txt
       - name: Run tests with pytest
         run: |
+          # make sure pipe propogates exit code to fail on test failure
+          set -o pipefail
           pytest --junitxml=reports/pytest.xml --cov-report=term-missing:skip-covered --cov=server tests/ | tee reports/pytest-coverage.txt
-          exit_code=$?
-          echo "Exit code: $exit_code"
+          set +o pipefail
       - name: Pytest coverage comment
         uses: MishaKav/pytest-coverage-comment@main
         with:
