@@ -102,5 +102,8 @@ ENV/
 # configs
 config.py
 
+# coverage report
+reports/
+
 # bootstrap
 setup.sh
