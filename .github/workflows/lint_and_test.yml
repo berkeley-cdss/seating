@@ -21,6 +21,20 @@ jobs:
         uses: actions/setup-python@v3
         with:
           python-version: "3.10"
+      - name: Test before Env Var are exported
+        run: |
+          echo "$FLASK_APP"
+          echo "$FLASK_ENV"
+          echo "$CANVAS_CLIENT_ID"
+      - name: Exports all Github Environment Variables and Secrets
+        uses: oNaiPs/secrets-to-env-action@v1
+        with:
+          secrets: ${{ toJSON(secrets) }}
+      - name: Test to see If Env Var are exported
+        run: |
+          echo "$FLASK_APP"
+          echo "$FLASK_ENV"
+          echo "$CANVAS_CLIENT_ID"
       - name: Install dependencies
         run: |
           python -m pip install --upgrade pip
@@ -32,10 +46,6 @@ jobs:
           flake8 . --count --select=E9,F63,F7,F82 --show-source --statistics
           # exit-zero treats all errors as warnings.
           flake8 . --count --exit-zero --statistics
-      - name: Access an Env Var
-        run: |
-          echo ${{ vars.FLASK_APP }}
-          echo ${{ secrets.CANVAS_CLIENT_ID }}
       - name: Test with pytest
         run: |
           mkdir -p reports
