@@ -12,10 +12,15 @@ permissions:
   issues: write
 
 jobs:
-  test-with-pytest:
+  unit-test-with-pytest:
+    strategy:
+      matrix:
+        test-type: ["unit", "e2e"]
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v3
+      - name: Bootstrap
+        uses: ./.github/actions/bootstrap
       - name: Exports all Github Environment Secrets
         uses: oNaiPs/secrets-to-env-action@v1
         with:
@@ -27,16 +32,21 @@ jobs:
       - name: Prepare reports directory
         run: |
           mkdir -p reports
-          touch reports/pytest.xml
-          touch reports/pytest-coverage.txt
+          touch reports/pytest-${{ matrix.test-type }}.txt
+          touch reports/pytest-coverage-${{ matrix.test-type }}.txt
       - name: Run tests with pytest
         run: |
           # make sure pipe propogates exit code to fail on test failure
           set -o pipefail
-          pytest --junitxml=reports/pytest.xml --cov-report=term-missing:skip-covered --cov=server tests/ | tee reports/pytest-coverage.txt
+          pytest --junitxml=reports/pytest-${{ matrix.test-type }}.xml --cov-report=term-missing:skip-covered --cov=server tests/ | tee reports/pytest-coverage-${{ matrix.test-type }}.txt
           set +o pipefail
+  coverage-comment:
+    runs-on: ubuntu-latest
+    needs: unit-test-with-pytest
+    steps:
       - name: Pytest coverage comment
         uses: MishaKav/pytest-coverage-comment@main
         with:
-          pytest-coverage-path: reports/pytest-coverage.txt
-          junitxml-path: reports/pytest.xml
+          multiple-files: |
+            Unit Test, reports/pytest-coverage-unit.txt, reports/pytest-unit.xml
+            E2E Test, reports/pytest-coverage-e2e.txt, reports/pytest-e2e.xml
