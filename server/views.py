@@ -347,5 +347,5 @@ def photo(exam, email):
     student = Student.query.filter_by(
         exam_id=exam.id, email=email).first_or_404()
     photo_path = '{}/{}/{}.jpeg'.format(app.config['PHOTO_DIRECTORY'],
-                                        exam.offering_canvas_id, student.bcourses_id)
+                                        exam.offering_canvas_id, student.canvas_id)
     return send_file(photo_path, mimetype='image/jpeg')
