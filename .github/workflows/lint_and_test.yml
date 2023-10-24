@@ -2,10 +2,9 @@ name: Lint and Run Tests
 
 on:
   push:
-    # main and master, both
-    branches: ["main", "master"]
+    branches: ["main", "master", "develop"]
   pull_request:
-    branches: ["main", "master"]
+    branches: ["main", "master", "develop"]
 
 permissions:
   contents: read
