@@ -19,7 +19,7 @@ jobs:
       - name: Audit with pip
         run: |
           pip check
-  audit-with-pip:
+  check_package_updates:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v3
