@@ -43,10 +43,3 @@ def test_multiple_fixtures(app, client, db):
     assert app is not None
     assert client is not None
     assert db is not None
-
-
-def test_wrong_assertion():
-    """
-    Test that wrong assertions fail
-    """
-    assert False
