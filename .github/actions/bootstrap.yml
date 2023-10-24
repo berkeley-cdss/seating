@@ -1,0 +1,29 @@
+name: "bootstrap"
+description: "Sets up Python, exports all Github environments and installs dependencies"
+inputs:
+  dev-dep:
+    description: "Whether to install development dependencies"
+    required: false
+    default: "true"
+runs:
+  using: "composite"
+  steps:
+    - uses: actions/checkout@v3
+    - name: Set up Python 3.10
+      uses: actions/setup-python@v3
+      with:
+        python-version: "3.10"
+    - name: Exports all Github Environment Secrets
+      uses: oNaiPs/secrets-to-env-action@v1
+      with:
+        secrets: ${{ toJSON(secrets) }}
+    - name: Exports all Github Environment Variables
+      uses: oNaiPs/secrets-to-env-action@v1
+      with:
+        secrets: ${{ toJSON(vars) }}
+    - name: Install dependencies
+      run: |
+        python -m pip install --upgrade pip
+        pip install -r requirements.txt
+        if [ "${{ inputs.dev-dep }}" = "true" ]; then pip install -r requirements-dev.txt; fi
+      shell: bash
