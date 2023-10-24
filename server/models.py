@@ -56,7 +56,7 @@ class Exam(db.Model):
     id = db.Column(db.Integer, primary_key=True)
     offering_canvas_id = db.Column(db.ForeignKey(
         'offerings.canvas_id'), index=True, nullable=False)
-    name = db.Column(db.String(255), nullable=False, index=True, unique=True)
+    name = db.Column(db.String(255), nullable=False, index=True)
     display_name = db.Column(db.String(255), nullable=False)
     is_active = db.Column(db.BOOLEAN, nullable=False)
 
@@ -65,6 +65,10 @@ class Exam(db.Model):
     students = db.relationship('Student', uselist=True, cascade='all, delete-orphan',
                                backref=backref('exam', uselist=False, single_parent=True))
     seats = association_proxy('rooms', 'seats')
+
+    __table_args__ = (
+        UniqueConstraint('offering_canvas_id', 'name', name='uq_offering_canvas_id_name'),
+    )
 
     @property
     def unassigned_seats(self):

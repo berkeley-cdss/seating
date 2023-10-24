@@ -77,13 +77,11 @@ def new_exam(offering):
                         is_active=True)
             db.session.add(exam)
             db.session.commit()
-            print("exam", exam.offering_canvas_id, exam.name)
-            print("offering", offering)
             return redirect(url_for('offering', offering=offering))
-        except:
+        except Exception as e:
             db.session.rollback()
-            abort(400, "Exam name {} already exists for this offering.".format(
-                form.name.data))
+            abort(400, "An error occurred when inserting exam of name={}\n{}".format(
+                form.name.data, str(e)))
             return redirect(url_for('offering', offering=offering))
     return render_template("new_exam.html.j2",
                            title="Create an Exam for {}".format(offering.name),
