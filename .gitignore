@@ -1,5 +1,6 @@
 # Database
 app.db
+test.db
 
 # Secrets
 secrets.sh
@@ -52,6 +53,7 @@ nosetests.xml
 coverage.xml
 *,cover
 .hypothesis/
+.pytest_cache/
 
 # Translations
 *.mo

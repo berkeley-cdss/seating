@@ -13,6 +13,8 @@ SECRET_KEY = os.getenv('SECRET_KEY', 'development')
 # [development should be changed to mysql in the future]
 if FLASK_ENV == 'development':
     SQLALCHEMY_DATABASE_URI = 'sqlite:///' + os.path.join(BASE_DIR, 'app.db')
+elif FLASK_ENV == 'testing':
+    SQLALCHEMY_DATABASE_URI = 'sqlite:///' + os.path.join(BASE_DIR, 'test.db')
 else:
     SQLALCHEMY_DATABASE_URI = os.getenv('DATABASE_URL').replace('mysql://', 'mysql+pymysql://')
 SQLALCHEMY_TRACK_MODIFICATIONS = False

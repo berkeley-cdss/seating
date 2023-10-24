@@ -1,13 +1,13 @@
 # Exam Seating App
 
-The seating app assigns seats to students, taking some basic preferences into account. 
-Students can log in with their Ok account to view their seat in their room. 
+The seating app assigns seats to students, taking some basic preferences into account.
+Students can log in with their Ok account to view their seat in their room.
 General course staff can project the seating chart during the beginning of the exam
 and help individual students find their seat. An admin TA (configured through config vars)
 will be able to choose rooms, assign seats, and mass email students their seat assignment.
 
-This app uses Ok to manage access. Even if you aren't using Ok for assignments, 
-you should create a course on Ok and enroll all of your staff, academic interns, 
+This app uses Ok to manage access. Even if you aren't using Ok for assignments,
+you should create a course on Ok and enroll all of your staff, academic interns,
 and students with the appropriate roles.
 
 ## Usage (Admin TAs for Courses)
@@ -16,9 +16,10 @@ It's janky. Many steps involve directly poking the database. The only way to
 correct errors is to manually edit the database, so be careful.
 
 In summary, setting up the seating chart involves these steps:
+
 1. **Create an exam** (ex. Midterm 1 or Final). Or at least in the future you will be able to.
-For now, contact the slack to have your exam created for you if you did not set up the app.
-This step is already done for you if you can successfully view the seating app.
+   For now, contact the slack to have your exam created for you if you did not set up the app.
+   This step is already done for you if you can successfully view the seating app.
 2. **Add rooms.** Choose your rooms from our selection or import your own custom room.
 3. **Import students.** Customize your student preferences (left seat, front/back, buildings, etc.)
 4. **Assign! Then email!**
@@ -26,7 +27,9 @@ This step is already done for you if you can successfully view the seating app.
 Read further for more details regarding each step.
 
 ### Choosing rooms
+
 #### Import a room
+
 Room data is entered from a Google Sheet. If you picked your rooms from our selection,
 those rooms are imported from the master room sheet.
 
@@ -35,6 +38,7 @@ Master: https://drive.google.com/open?id=1cHKVheWv2JnHBorbtfZMW_3Sxj9VtGMmAUU2qG
 If the room you want does not exist, you can try looking through the [rooms](https://drive.google.com/drive/u/1/folders/0B7ZiW-W5STesMG50eDgxNlJBZ1E) used in the past years.
 
 #### Create a room
+
 You can also create and customize the room you want with a Google spreadsheet.
 
 One row of the spreadsheet corresponds to one row. The "Row" and "Seat" columns
@@ -57,7 +61,7 @@ you adding the sheet to the [master doc](https://drive.google.com/open?id=1cHKVh
 
 To import students, create a Google spreadsheet with the columns "Name",
 "Student ID", "Email", and "bCourses ID". The remaining columns are arbitrary attributes
-(ex: LEFTY, RIGHTY, BROKEN) that express student preferences. 
+(ex: LEFTY, RIGHTY, BROKEN) that express student preferences.
 
 For example, if a student has LEFTY=TRUE, they will be assigned a seat with the
 LEFTY attribute. If a student has LEFTY=FALSE, they will be assigned a seat
@@ -75,6 +79,7 @@ be assigned a seat. To reassign a student, delete their corresponding row from t
 ### Emailing students
 
 Students will receive an email that looks like
+
 ```
 Hi -name-,
 
@@ -98,7 +103,7 @@ issue with their seat, and to sign the email (e.g. "- Cal CS 61A Staff").
 To allow for roster photos to appear in the app, set the `PHOTO_DIRECTORY` env
 variable to a directory containing files at the path:
 
-	{PHOTO_DIRECTORY}/{Course Offering}/{bCourses ID}.jpeg
+    {PHOTO_DIRECTORY}/{Course Offering}/{bCourses ID}.jpeg
 
 The bCourses ID column is used to determine which photo to display for which
 student.
@@ -137,26 +142,31 @@ redirects to is hardcoded, so you may want to change that too. In the future,
 there should be an interface to CRUD exams.
 
 ## Setup (development)
+
 1. Clone the repository and change directories into the repository.
+
 ```
 	git clone https://github.com/Cal-CS-61A-Staff/seating.git
 	cd seating
 ```
 
 2. Create and activate a virtual environment.
-``` 
-	python3 -m venv env 
+
+```
+	python3 -m venv env
 	source env/bin/activate
 ```
 
 3. Use pip to install all the dependencies.
+
 ```
 	pip install -r requirements.txt
 ```
 
-4. Add yourself to `cal/test/fa18` course (both as student and instructor but with different emails). Development server uses `cal/test/fa18` as its test OKPY course. 
+4. Add yourself to `cal/test/fa18` course (both as student and instructor but with different emails). Development server uses `cal/test/fa18` as its test OKPY course.
 
 5. Make sure your virtual environment is activated. Then set up the environment variables.
+
 ```
 export FLASK_APP = server  (or server/__init__.py)
 export FLASK_ENV = development
@@ -164,34 +174,35 @@ export FLASK_ENV = development
 
 6. Modify `config.py` as necessary. Set `OK_CLIENT_ID`, `OK_CLIENT_SECRET`, `GOOGLE_OAUTH2_CLIENT_ID`, `GOOGLE_OAUTH2_CLIENT_SECRET`, `SENDGRID_API_KEY`, `PHOTO_DIRECTORY`, `EXAM`, `ADMIN` as needed.
 
-7. Import [demo data](https://docs.google.com/spreadsheets/d/1nC2vinn0k-_TLO0aLmLZtI9juEoSOVEvA3o40HGvXAw/edit?usp=drive_web&ouid=100612133541464602205) for students and rooms (photos TBA). 
+7. Import [demo data](https://docs.google.com/spreadsheets/d/1nC2vinn0k-_TLO0aLmLZtI9juEoSOVEvA3o40HGvXAw/edit?usp=drive_web&ouid=100612133541464602205) for students and rooms (photos TBA).
 
-4. Initialize tables and seed the data: `flask resetdb`
-This command drops previous tables, initializes tables and adds seeds the exams table. Students, rooms, etc. must be imported (see how in the previous section, Using the app). 
+8. Initialize tables and seed the data: `flask resetdb`
+   This command drops previous tables, initializes tables and adds seeds the exams table. Students, rooms, etc. must be imported (see how in the previous section, Using the app).
 
-5. Run the app: `flask run`
-This commands only needs to be run once.
+9. Run the app: `flask run`
+   This commands only needs to be run once.
 
-6. Open [localhost:5000](https://localhost:5000)
-
+10. Open [localhost:5000](https://localhost:5000)
 
 ## Production (First Time Deployment on dokku)
-	dokku apps:create seating
-	dokku mysql:create seating
-	dokku mysql:link seating seating
-	# Set DNS record
-	dokku domains:add seating seating.cs61a.org
-	# Change OK OAuth to support the domain
 
-	dokku config:set seating <ENVIRONMENT VARIABLES>
+    dokku apps:create seating
+    dokku mysql:create seating
+    dokku mysql:link seating seating
+    # Set DNS record
+    dokku domains:add seating seating.cs61a.org
+    # Change OK OAuth to support the domain
 
-	git remote add dokku dokku@apps.cs61a.org:seating
-	git push dokku master
+    dokku config:set seating <ENVIRONMENT VARIABLES>
 
-	dokku run seating flask initdb
-	dokku letsencrypt seating
+    git remote add dokku dokku@apps.cs61a.org:seating
+    git push dokku master
+
+    dokku run seating flask initdb
+    dokku letsencrypt seating
 
 In addition, add the following to `/home/dokku/seating/nginx.conf`:
+
 ```
 proxy_buffer_size   128k;
 proxy_buffers   4 256k;
@@ -199,6 +210,7 @@ proxy_busy_buffers_size   256k;
 ```
 
 ## Environment variables
+
 ```
 FLASK_APP=server/__init__.py
 SECRET_KEY
@@ -215,3 +227,17 @@ ADMIN
 ```
 
 You can create an Ok OAuth client [here](https://okpy.org/admin/clients/), though it will need to be approved by an Ok admin before it can be used.
+
+## (Temporarily keeping it here) Testing and CI
+
+run test and get coverage report
+
+```
+pytest --cov=server tests/
+```
+
+print existing coverage report
+
+```
+coverage report
+```
