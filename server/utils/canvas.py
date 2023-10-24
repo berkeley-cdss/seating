@@ -1,14 +1,18 @@
+from flask import session, request, url_for
 from canvasapi import Canvas
 
 from server import app
-from flask import session
 from server.models import Offering
 from server.utils.stub import get_dev_user, get_dev_course, get_dev_user_courses
+from server.utils.url import Redirect
 
 
 def _get_client(key=None):
     if not key:
-        key = session['access_token']
+        key = session.get('access_token', None)
+    if not key:
+        session['after_login'] = request.url
+        raise Redirect(url_for('login'))
     return Canvas(app.config['CANVAS_SERVER_URL'], key)
 
 
@@ -71,3 +75,9 @@ def api_course_to_model(course):
         name=course.name,
         code=course.course_code
     )
+
+
+def get_students(course_canvas_id, key=None):
+    # if is_mock_canvas():
+    #     return []
+    return get_course(course_canvas_id, key).get_users(enrollment_type='student')

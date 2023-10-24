@@ -51,6 +51,9 @@ class Offering(db.Model):
     def __repr__(self):
         return '<Offering {}>'.format(self.name)
 
+    def mark_all_exams_as_inactive(self):
+        Exam.query.filter_by(offering_canvas_id=self.canvas_id).update({"is_active": False})
+
 
 class Exam(db.Model):
     __tablename__ = 'exams'

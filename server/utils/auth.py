@@ -1,6 +1,6 @@
 from os import abort
 from flask import redirect, request, session, url_for, render_template
-from flask_login import LoginManager, login_user, logout_user, current_user
+from flask_login import LoginManager, login_user, logout_user, login_required
 from flask_oauthlib.client import OAuth
 from oauth2client.contrib.flask_util import UserOAuth2
 
@@ -110,6 +110,7 @@ def authorized():
 
 
 @app.route('/logout/')
+@login_required
 def logout():
     session.clear()
     logout_user()

@@ -49,7 +49,7 @@
                 Rooms <i class="material-icons">expand_more</i>
               </a>
               <ul class="mdl-menu mdl-menu--bottom-left mdl-js-menu" for="room-menu">
-                <a class="mdl-menu__item add-item" href="{{ url_for('new_room', exam=exam) }}"><i class="material-icons">add</i>
+                <a class="mdl-menu__item add-item" href="{{ url_for('import_room', exam=exam) }}"><i class="material-icons">add</i>
                   <span>Add rooms...</span>
                 </a>
               {% for room in exam.rooms %}

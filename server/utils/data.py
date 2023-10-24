@@ -8,7 +8,7 @@ from server.utils.exception import DataValidationError
 from server.models import Room, Seat, Student, slug
 
 
-def read_csv(sheet_url, sheet_range):
+def _read_csv(sheet_url, sheet_range):
     m = re.search(r'/spreadsheets/d/([a-zA-Z0-9-_]+)', sheet_url)
     if not m:
         raise DataValidationError('Enter a Google Sheets URL')
@@ -40,7 +40,7 @@ def read_csv(sheet_url, sheet_range):
     return headers, rows
 
 
-def validate_room(exam, room_form):
+def parse_form_and_validate_room(exam, room_form):
     room = Room(
         exam_id=exam.id,
         name=slug(room_form.display_name.data),
@@ -50,8 +50,8 @@ def validate_room(exam, room_form):
         exam_id=exam.id, name=room.name).first()
     if existing_room:
         raise DataValidationError('A room with that name already exists')
-    headers, rows = read_csv(room_form.sheet_url.data,
-                             room_form.sheet_range.data)
+    headers, rows = _read_csv(room_form.sheet_url.data,
+                              room_form.sheet_range.data)
     if 'row' not in headers:
         raise DataValidationError('Missing "row" column')
     elif 'seat' not in headers:
@@ -92,8 +92,28 @@ def validate_room(exam, room_form):
     return room
 
 
-def validate_students(exam, form):
-    headers, rows = read_csv(form.sheet_url.data, form.sheet_range.data)
+def parse_student_sheet(form):
+    return _read_csv(form.sheet_url.data, form.sheet_range.data)
+
+
+def parse_canvas_student_roster(roster):
+    headers = ['canvas id', 'email', 'name', 'student id']
+    rows = []
+    for student in roster:
+        stu_dict = {}
+        if hasattr(student, 'id'):
+            stu_dict['canvas id'] = student.id
+        if hasattr(student, 'email'):
+            stu_dict['email'] = student.email
+        if hasattr(student, 'short_name'):
+            stu_dict['name'] = student.short_name
+        if hasattr(student, 'sis_user_id'):
+            stu_dict['student id'] = student.sis_user_id
+        rows.append(stu_dict)
+    return headers, rows
+
+
+def validate_students(exam, headers, rows):
     if 'email' not in headers:
         raise DataValidationError('Missing "email" column')
     elif 'name' not in headers:
@@ -104,14 +124,17 @@ def validate_students(exam, form):
     for row in rows:
         canvas_id = row.pop(
             'bcourses id', row.pop('canvas id', None))
-        if not canvas_id:
+        email = row.pop('email', None)
+        name = row.pop('name', None)
+        if not canvas_id or not email or not name:
+            # dangerous. Might skip students without notifying staff
             continue
         student = Student.query.filter_by(exam_id=exam.id, canvas_id=canvas_id).first()
         if not student:
             student = Student(exam_id=exam.id, canvas_id=canvas_id)
-        student.name = row.pop('name', None) or student.sid
+        student.name = name or student.sid
         student.sid = row.pop('student id', None) or student.sid
-        student.email = row.pop('email', None) or student.email
+        student.email = email or student.email
         student.wants = {k for k, v in row.items() if v.lower() == 'true'}
         student.avoids = {k for k, v in row.items() if v.lower() == 'false'}
         students.append(student)

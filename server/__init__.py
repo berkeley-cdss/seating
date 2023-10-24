@@ -1,8 +1,9 @@
 import os
 
-from flask import Flask
+from flask import Flask, redirect
 import flask.ctx
 from werkzeug.exceptions import HTTPException
+from canvasapi.exceptions import InvalidAccessToken
 
 
 class UrlRequestContext(flask.ctx.RequestContext):
@@ -25,6 +26,13 @@ class App(Flask):
 
 
 app = App(__name__)
+
+
+# when canvas token expires or is invalid, redirect to login page
+@app.errorhandler(InvalidAccessToken)
+def handle_invalid_access_token(e):
+    return redirect('/login')
+
 
 app.config.from_object('config')
 

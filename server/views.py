@@ -4,12 +4,13 @@ from flask import abort, redirect, render_template, request, send_file, url_for,
 from flask_login import current_user, login_required
 
 from server import app
-from server.models import db, Offering, Exam, Room, Seat, Student
-from server.form import ExamForm, RoomForm, ChooseRoomForm, StudentForm, DeleteStudentForm, \
-    AssignForm, EmailForm
+from server.models import db, Exam, Room, Seat, Student
+from server.form import ExamForm, RoomForm, ChooseRoomForm, ImportStudentFromSheetForm, \
+    ImportStudentFromCanvasRosterForm, DeleteStudentForm, AssignForm, EmailForm
 from server.utils.auth import google_oauth
 import server.utils.canvas as canvas_client
-from server.utils.data import validate_room, validate_students
+from server.utils.data import parse_form_and_validate_room, validate_students, \
+    parse_student_sheet, parse_canvas_student_roster
 from server.utils.exception import DataValidationError
 from server.utils.url import apply_converter
 from server.utils.assign import assign_students
@@ -28,7 +29,6 @@ def index():
     Home page, which needs to be logged in to access.
     After logging in, fetch and present a list of course offerings.
     """
-
     user = canvas_client.get_user(current_user.canvas_id)
     staff_course_dics, student_course_dics, others = canvas_client.get_user_courses_categorized(
         user)
@@ -69,7 +69,7 @@ def new_exam(offering):
         abort(403, "You are not a staff member in this offering.")
     form = ExamForm()
     if form.validate_on_submit():
-        Exam.query.filter_by(offering_canvas_id=offering.canvas_id).update({"is_active": False})
+        offering.mark_all_exams_as_inactive()
         try:
             exam = Exam(offering_canvas_id=offering.canvas_id,
                         name=form.name.data,
@@ -109,8 +109,7 @@ def toggle_exam(exam):
         exam.is_active = False
     else:
         # only one exam can be active at a time, so deactivate all others first
-        Exam.query.filter_by(offering_canvas_id=exam.offering_canvas_id).update(
-            {"is_active": False})
+        exam.offering.mark_all_exams_as_inactive()
         exam.is_active = True
     db.session.commit()
     return redirect(url_for('offering', offering=exam.offering))
@@ -140,9 +139,9 @@ def import_room(exam):
                            exam=exam, new_form=new_form, choose_form=choose_form)
 
 
-@app.route('/<exam:exam>/rooms/import/new/', methods=['GET', 'POST'])
+@app.route('/<exam:exam>/rooms/import/from_custom_sheet/', methods=['GET', 'POST'])
 @google_oauth.required(scopes=['https://www.googleapis.com/auth/spreadsheets.readonly'])
-def new_room(exam):
+def import_room_from_custom_sheet(exam):
     """
     Path: /offerings/<canvas_id>/exams/<exam_name>/rooms/import/new
     """
@@ -151,7 +150,7 @@ def new_room(exam):
     room = None
     if new_form.validate_on_submit():
         try:
-            room = validate_room(exam, new_form)
+            room = parse_form_and_validate_room(exam, new_form)
         except Exception as e:
             new_form.sheet_url.errors.append(str(e))
         if new_form.create_room.data:
@@ -171,9 +170,9 @@ MASTER_ROOM_SHEET = 'https://docs.google.com/spreadsheets/d/' + \
     '1cHKVheWv2JnHBorbtfZMW_3Sxj9VtGMmAUU2qGJ33-s/edit?usp=sharing'
 
 
-@app.route('/<exam:exam>/rooms/import/choose/', methods=['GET', 'POST'])
+@app.route('/<exam:exam>/rooms/import/from_master_sheet/', methods=['GET', 'POST'])
 @google_oauth.required(scopes=['https://www.googleapis.com/auth/spreadsheets.readonly'])
-def choose_room(exam):
+def import_room_from_master_sheet(exam):
     """
     Path: /offerings/<canvas_id>/exams/<exam_name>/rooms/import/choose
     """
@@ -186,7 +185,7 @@ def choose_room(exam):
                 sheet_url=MASTER_ROOM_SHEET, sheet_range=r)
             room = None
             try:
-                room = validate_room(exam, f)
+                room = parse_form_and_validate_room(exam, f)
                 # TODO: proper error handling
             except Exception as e:
                 choose_form.rooms.errors.append(str(e))
@@ -225,19 +224,48 @@ def room(exam, name):
 # region Student CRUDI
 
 
-@app.route('/<exam:exam>/students/import/', methods=['GET', 'POST'])
+@app.route('/<exam:exam>/students/import/')
+def import_students(exam):
+    from_sheet_form = ImportStudentFromSheetForm()
+    from_canvas_form = ImportStudentFromCanvasRosterForm()
+    return render_template('new_students.html.j2', exam=exam,
+                           from_sheet_form=from_sheet_form, from_canvas_form=from_canvas_form)
+
+
+@app.route('/<exam:exam>/students/import/from_custom_sheet/', methods=['GET', 'POST'])
 @google_oauth.required(scopes=['https://www.googleapis.com/auth/spreadsheets.readonly'])
-def new_students(exam):
-    form = StudentForm()
-    if form.validate_on_submit():
+def import_students_from_custom_sheet(exam):
+    from_sheet_form = ImportStudentFromSheetForm()
+    from_canvas_form = ImportStudentFromCanvasRosterForm()
+    if from_sheet_form.validate_on_submit():
         try:
-            students = validate_students(exam, form)
+            headers, rows = parse_student_sheet(from_sheet_form)
+            students = validate_students(exam, headers, rows)
             db.session.add_all(students)
             db.session.commit()
             return redirect(url_for('students', exam=exam))
         except DataValidationError as e:
-            form.sheet_url.errors.append(str(e))
-    return render_template('new_students.html.j2', exam=exam, form=form)
+            from_sheet_form.sheet_url.errors.append(str(e))
+    return render_template('new_students.html.j2', exam=exam,
+                           from_sheet_form=from_sheet_form, from_canvas_form=from_canvas_form)
+
+
+@app.route('/<exam:exam>/students/import/from_canvas_roster/', methods=['GET', 'POST'])
+def import_students_from_canvas_roster(exam):
+    from_sheet_form = ImportStudentFromSheetForm()
+    from_canvas_form = ImportStudentFromCanvasRosterForm()
+    if from_canvas_form.validate_on_submit():
+        try:
+            students = canvas_client.get_students(exam.offering_canvas_id)
+            headers, rows = parse_canvas_student_roster(students)
+            students = validate_students(exam, headers, rows)
+            db.session.add_all(students)
+            db.session.commit()
+            return redirect(url_for('students', exam=exam))
+        except DataValidationError as e:
+            from_canvas_form.submit.errors.append(str(e))
+    return render_template('new_students.html.j2', exam=exam,
+                           from_sheet_form=from_sheet_form, from_canvas_form=from_canvas_form)
 
 
 @app.route('/<exam:exam>/students/delete/', methods=['GET', 'POST'])

@@ -62,9 +62,13 @@ class ChooseRoomForm(FlaskForm):
     submit = SubmitField('import')
 
 
-class StudentForm(FlaskForm):
+class ImportStudentFromSheetForm(FlaskForm):
     sheet_url = StringField('sheet_url', [URL()])
     sheet_range = StringField('sheet_range', [InputRequired()])
+    submit = SubmitField('import')
+
+
+class ImportStudentFromCanvasRosterForm(FlaskForm):
     submit = SubmitField('import')
 
 
