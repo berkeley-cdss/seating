@@ -1,4 +1,4 @@
-name: Lint and Run Tests
+name: Lint and Test
 
 on:
   push:
@@ -12,8 +12,6 @@ permissions:
 jobs:
   build:
     runs-on: ubuntu-latest
-    environment:
-      name: testing
     permissions:
       pull-requests: write
       issues: write
