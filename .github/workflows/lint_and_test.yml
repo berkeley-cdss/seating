@@ -51,6 +51,8 @@ jobs:
       - name: Run tests with pytest
         run: |
           pytest --junitxml=reports/pytest.xml --cov-report=term-missing:skip-covered --cov=server tests/ | tee reports/pytest-coverage.txt
+          exit_code=$?
+          echo "Exit code: $exit_code"
       - name: Pytest coverage comment
         uses: MishaKav/pytest-coverage-comment@main
         with:
