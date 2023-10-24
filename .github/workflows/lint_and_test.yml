@@ -26,10 +26,14 @@ jobs:
           echo "$FLASK_APP"
           echo "$FLASK_ENV"
           echo "$CANVAS_CLIENT_ID"
-      - name: Exports all Github Environment Variables and Secrets
+      - name: Exports all Github Environment Secrets
         uses: oNaiPs/secrets-to-env-action@v1
         with:
           secrets: ${{ toJSON(secrets) }}
+      - name: Exports all Github Environment Variables
+        uses: oNaiPs/secrets-to-env-action@v1
+        with:
+          secrets: ${{ toJSON(vars) }}
       - name: Test to see If Env Var are exported
         run: |
           echo "$FLASK_APP"
