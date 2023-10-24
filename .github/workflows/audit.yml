@@ -28,7 +28,7 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - name: Bootstrap
-        uses: berkeley-eecs/seating/.github/actions/bootstrap@v0.0.1
+        uses: ./.github/actions/bootstrap
         with:
           dev-dep: "true"
       - name: Audit with pip
