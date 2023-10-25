@@ -34,16 +34,28 @@ jobs:
           mkdir -p reports
           touch reports/pytest-${{ matrix.test-type }}.txt
           touch reports/pytest-coverage-${{ matrix.test-type }}.txt
-      - name: Run tests with pytest
+      - name: Run tests with pytest and generate reports
         run: |
           # make sure pipe propogates exit code to fail on test failure
           set -o pipefail
           pytest --junitxml=reports/pytest-${{ matrix.test-type }}.xml --cov-report=term-missing:skip-covered --cov=server tests/ | tee reports/pytest-coverage-${{ matrix.test-type }}.txt
           set +o pipefail
+      - name: Upload reports
+        uses: actions/upload-artifact@v3
+        with:
+          name: reports
+          path: reports/
+          retention-days: 1
+
   coverage-comment:
     runs-on: ubuntu-latest
     needs: unit-test-with-pytest
     steps:
+      - uses: actions/checkout@v3
+      - name: Download reports
+        uses: actions/download-artifact@v3
+        with:
+          name: reports
       - name: Pytest coverage comment
         uses: MishaKav/pytest-coverage-comment@main
         with:
