@@ -34,7 +34,16 @@ def handle_invalid_access_token(e):
     return redirect('/login')
 
 
-app.config.from_object('config')
+from config import ProductionConfig, DevelopmentConfig, TestingConfig  # noqa
+
+if os.getenv('FLASK_ENV').lower() == 'production':
+    app.config.from_object(ProductionConfig())
+elif os.getenv('FLASK_ENV').lower() == 'testing':
+    app.config.from_object(TestingConfig())
+elif os.getenv('FLASK_ENV').lower() == 'development':
+    app.config.from_object(DevelopmentConfig())
+else:
+    raise ValueError('FLASK_ENV not set to any of the valid values: production, testing, or development')
 
 app.jinja_env.filters.update(
     min=min,

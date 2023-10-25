@@ -17,7 +17,8 @@ def _get_client(key=None):
 
 
 def is_mock_canvas():
-    return app.config['MOCK_CANVAS'] and app.config['FLASK_ENV'] == 'development'
+    return app.config['MOCK_CANVAS'] and \
+        app.config['FLASK_ENV'].lower() != 'production'
 
 
 def get_user(canvas_id, key=None):
@@ -41,7 +42,6 @@ def get_user_courses(user):
 def is_course_valid(c):
     return not (not c) and \
         hasattr(c, 'id') and \
-        hasattr(c, 'enrollments') and \
         hasattr(c, 'name') and \
         hasattr(c, 'course_code')
 
