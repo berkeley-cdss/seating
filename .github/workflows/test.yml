@@ -52,10 +52,14 @@ jobs:
     needs: unit-test-with-pytest
     steps:
       - uses: actions/checkout@v3
+      - name: Prepare reports directory
+        run: |
+          mkdir -p reports
       - name: Download reports
         uses: actions/download-artifact@v3
         with:
           name: reports
+          path: reports/
       - name: Pytest coverage comment
         uses: MishaKav/pytest-coverage-comment@main
         with:
