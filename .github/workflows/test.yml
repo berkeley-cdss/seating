@@ -45,5 +45,5 @@ jobs:
         with:
           title: Coverage for ${{ matrix.test-type }} tests
           create-new-comment: true
-          pytest-coverage-path: reports/pytest-coverage-unit.txt
-          junitxml-path: reports/pytest-unit.xml
+          pytest-coverage-path: reports/pytest-coverage-${{ matrix.test-type }}.txt
+          junitxml-path: reports/pytest-${{ matrix.test-type }}.xml
