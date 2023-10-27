@@ -21,6 +21,9 @@ jobs:
       - uses: actions/checkout@v3
       - name: Bootstrap
         uses: ./.github/actions/bootstrap
+      # values set in GitHub repo vars/secrets are available as env vars in os
+      # but flask app expects them from os (flask uses os.getenv to fetech them)
+      # so we need to export them to os
       - name: Exports all GitHub Environment Secrets
         uses: oNaiPs/secrets-to-env-action@v1
         with:
@@ -36,7 +39,7 @@ jobs:
           touch reports/pytest-coverage-${{ matrix.test-type }}.txt
       - name: Run tests with pytest and generate reports
         run: |
-          # make sure pipe propogates exit code to fail on test failure
+          # make sure pipe propogates exit code to fail CI on test failure
           set -o pipefail
           pytest --junitxml=reports/pytest-${{ matrix.test-type }}.xml --cov-report=term-missing:skip-covered --cov=server tests/${{ matrix.test-type }}/ | tee reports/pytest-coverage-${{ matrix.test-type }}.txt
           set +o pipefail

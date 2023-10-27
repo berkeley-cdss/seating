@@ -18,7 +18,9 @@ jobs:
         uses: ./.github/actions/bootstrap
       - name: Lint with flake8
         run: |
-          # stop the build if there are Python syntax errors or undefined names
+          # specifically checks for syntax errors or undefined names
+          # only proceed further to check styles if there are no syntax errors
           flake8 . --count --select=E9,F63,F7,F82 --show-source --statistics
           # --exit-zero to treats all errors as warnings.
+          # this can pick up .flake8 config
           flake8 . --exit-zero --count --statistics

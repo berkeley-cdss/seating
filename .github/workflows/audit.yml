@@ -17,6 +17,8 @@ jobs:
       - name: Bootstrap
         uses: ./.github/actions/bootstrap
       - name: Audit with pip
+        # returns 1 if there are broken dependencies, 0 otherwise
+        # so, CI will fail if there are broken dependencies
         run: |
           pip check
   check-package-updates:
@@ -26,6 +28,7 @@ jobs:
       - name: Bootstrap
         uses: ./.github/actions/bootstrap
       - name: Audit with pip
+        # only informational, does not fail CI
         run: |
           pip list --outdated
   audit-with-safety:
@@ -35,6 +38,8 @@ jobs:
       - name: Bootstrap
         uses: ./.github/actions/bootstrap
       - name: Audit with safety
+        # returns 255 if there are vulnerabilities, 0 otherwise
+        # so, CI will fail if there are vulnerabilities
         run: |
           safety check
   audit-with-pip-audit:
@@ -43,5 +48,6 @@ jobs:
       - uses: actions/checkout@v3
       - name: Bootstrap
         uses: ./.github/actions/bootstrap
+        # will fail if there are vulnerabilities
       - name: Audit with pip-audit
         uses: pypa/gh-action-pip-audit@v1.0.8
