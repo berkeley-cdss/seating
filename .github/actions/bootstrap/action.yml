@@ -1,5 +1,5 @@
 name: "bootstrap"
-description: "Sets up Python, exports all Github environments and installs dependencies"
+description: "Sets up Python, exports all GitHub environments and installs dependencies"
 inputs:
   dev-dep:
     description: "Whether to install development dependencies"

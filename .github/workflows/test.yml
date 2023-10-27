@@ -21,11 +21,11 @@ jobs:
       - uses: actions/checkout@v3
       - name: Bootstrap
         uses: ./.github/actions/bootstrap
-      - name: Exports all Github Environment Secrets
+      - name: Exports all GitHub Environment Secrets
         uses: oNaiPs/secrets-to-env-action@v1
         with:
           secrets: ${{ toJSON(secrets) }}
-      - name: Exports all Github Environment Variables
+      - name: Exports all GitHub Environment Variables
         uses: oNaiPs/secrets-to-env-action@v1
         with:
           secrets: ${{ toJSON(vars) }}
