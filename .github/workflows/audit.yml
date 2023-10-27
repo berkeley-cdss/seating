@@ -2,9 +2,9 @@ name: Audit
 
 on:
   push:
-    branches: ["main", "master", "develop"]
+    branches: ["main"]
   pull_request:
-    branches: ["main", "master", "develop"]
+    branches: ["main"]
 
 permissions:
   contents: read
