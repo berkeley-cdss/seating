@@ -10,12 +10,6 @@ from server.models import db as sqlalchemy_db
 
 @pytest.fixture()
 def app():
-    flask_app.config.update({
-        'FLASK_ENV': 'testing',
-        'SQLALCHEMY_DATABASE_URI': 'sqlite:///' +
-        os.path.join(flask_app.config["BASE_DIR"], 'test.db')
-    })
-
     yield flask_app
 
 

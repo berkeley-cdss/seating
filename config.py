@@ -1,60 +1,84 @@
 import os
+from typing import Optional
+
+from server.typings.exception import EnvironmentalVariableMissingError
+from server.typings.enum import AppEnvironment, EmailSendingConfig
 
 
 class ConfigBase(object):
+
+    @staticmethod
+    def getenv(key, default: Optional[str] = None):
+        val = os.getenv(key, default)
+        if val is None:
+            raise EnvironmentalVariableMissingError(key)
+        return val
+
     FLASK_APP = "server"
     BASE_DIR = os.path.abspath(os.path.dirname(__file__))
 
     SQLALCHEMY_TRACK_MODIFICATIONS = False
-    LOCAL_TIMEZONE = os.getenv('TIMEZONE', 'US/Pacific')
+    LOCAL_TIMEZONE = getenv('TIMEZONE', 'US/Pacific')
 
     # Coogle API setup
-    GOOGLE_OAUTH2_CLIENT_ID = os.getenv('GOOGLE_CLIENT_ID')
-    GOOGLE_OAUTH2_CLIENT_SECRET = os.getenv('GOOGLE_CLIENT_SECRET')
+    GOOGLE_OAUTH2_CLIENT_ID = getenv('GOOGLE_CLIENT_ID')
+    GOOGLE_OAUTH2_CLIENT_SECRET = getenv('GOOGLE_CLIENT_SECRET')
 
     # Canvas API setup
-    CANVAS_SERVER_URL = os.getenv('CANVAS_SERVER_URL')
-    CANVAS_CLIENT_ID = os.getenv('CANVAS_CLIENT_ID')
-    CANVAS_CLIENT_SECRET = os.getenv('CANVAS_CLIENT_SECRET')
-    MOCK_CANVAS = os.getenv('MOCK_CANVAS', 'false').lower() == 'true'
+    CANVAS_SERVER_URL = getenv('CANVAS_SERVER_URL')
+    CANVAS_CLIENT_ID = getenv('CANVAS_CLIENT_ID')
+    CANVAS_CLIENT_SECRET = getenv('CANVAS_CLIENT_SECRET')
+
+    # Stub Setup, allow
+    MOCK_CANVAS = getenv('MOCK_CANVAS', 'false').lower() == 'true'
+    SEND_EMAIL = getenv('SEND_EMAIL', 'off').lower()
 
     # Email setup. Domain environment is for link in email.
-    SENDGRID_API_KEY = os.getenv('SENDGRID_API_KEY')
-    DOMAIN = os.getenv('DOMAIN')
+    SENDGRID_API_KEY = getenv('SENDGRID_API_KEY', "placeholder")
+    DOMAIN = getenv('DOMAIN', "placeholder")
 
-    PHOTO_DIRECTORY = os.getenv('PHOTO_DIRECTORY')
+    PHOTO_DIRECTORY = getenv('PHOTO_DIRECTORY', "placeholder")
 
 
 class ProductionConfig(ConfigBase):
-    DEBUG = False
-    TESTING = False
-    FLASK_ENV = 'production'
-    SECRET_KEY = os.getenv('SECRET_KEY')
+    FLASK_ENV = AppEnvironment.PRODUCTION.value
     MOCK_CANVAS = False
+    SEND_EMAIL = EmailSendingConfig.ON.value
+
+    @property
+    def SECRET_KEY(self):
+        return ConfigBase.getenv('SECRET_KEY')
 
     @property
     def SQLALCHEMY_DATABASE_URI(self):
-        return os.getenv('DATABASE_URL').replace('mysql://', 'mysql+pymysql://')
+        return ConfigBase.getenv('DATABASE_URL').replace('mysql://', 'mysql+pymysql://')
+
+
+class StagingConfig(ConfigBase):
+    FLASK_ENV = AppEnvironment.STAGING.value
+    MOCK_CANVAS = False
+    SEND_EMAIL = EmailSendingConfig.TEST.value
+
+    @property
+    def SQLALCHEMY_DATABASE_URI(self):
+        return ConfigBase.getenv('DATABASE_URL').replace('mysql://', 'mysql+pymysql://')
 
 
 class DevelopmentConfig(ConfigBase):
-    DEBUG = True
-    TESTING = False
-    FLASK_ENV = 'development'
+    FLASK_ENV = AppEnvironment.DEVELOPMENT.value
     SECRET_KEY = 'development'
 
     @property
     def SQLALCHEMY_DATABASE_URI(self):
-        return 'sqlite:///' + os.path.join(self.BASE_DIR, 'app.db')
+        return 'sqlite:///' + os.path.join(self.BASE_DIR, 'seating_app_{}.db'.format(self.FLASK_ENV))
 
 
 class TestingConfig(ConfigBase):
-    DEBUG = False
-    TESTING = True
-    FLASK_ENV = 'testing'
+    FLASK_ENV = AppEnvironment.TESTING.value
     SECRET_KEY = 'testing'
     MOCK_CANVAS = True
+    SEND_EMAIL = EmailSendingConfig.OFF.value
 
     @property
     def SQLALCHEMY_DATABASE_URI(self):
-        return 'sqlite:///' + os.path.join(self.BASE_DIR, 'test.db')
+        return 'sqlite:///' + os.path.join(self.BASE_DIR, 'seating_app_{}.db'.format(self.FLASK_ENV))

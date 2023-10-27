@@ -1,6 +1,5 @@
 # Database
-app.db
-test.db
+*.db
 
 # Secrets
 secrets.sh

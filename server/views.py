@@ -11,7 +11,7 @@ from server.utils.auth import google_oauth
 import server.utils.canvas as canvas_client
 from server.utils.data import parse_form_and_validate_room, validate_students, \
     parse_student_sheet, parse_canvas_student_roster
-from server.utils.exception import DataValidationError
+from server.typings.exception import DataValidationError
 from server.utils.url import apply_converter
 from server.utils.assign import assign_students
 from server.utils.email import email_students

@@ -5,6 +5,9 @@ import flask.ctx
 from werkzeug.exceptions import HTTPException
 from canvasapi.exceptions import InvalidAccessToken
 
+from server.typings.enum import AppEnvironment
+from server.typings.exception import EnvironmentalVariableMissingError
+
 
 class UrlRequestContext(flask.ctx.RequestContext):
     def match_request(self):
@@ -27,23 +30,31 @@ class App(Flask):
 
 app = App(__name__)
 
+from config import ConfigBase, ProductionConfig, StagingConfig, DevelopmentConfig, TestingConfig  # noqa
+env_value = ConfigBase.getenv('FLASK_ENV').lower()
 
-# when canvas token expires or is invalid, redirect to login page
+config_mapping = {
+    AppEnvironment.PRODUCTION.value: ProductionConfig,
+    AppEnvironment.TESTING.value: TestingConfig,
+    AppEnvironment.STAGING.value: StagingConfig,
+    AppEnvironment.DEVELOPMENT.value: DevelopmentConfig,
+}
+
+selected_config_class = config_mapping.get(env_value, None)
+
+if selected_config_class:
+    app.config.from_object(selected_config_class())
+else:
+    raise EnvironmentalVariableMissingError('FLASK_ENV')
+
+
 @app.errorhandler(InvalidAccessToken)
 def handle_invalid_access_token(e):
+    """
+    Redirects to login page if the Canvas access token is invalid or expired.
+    """
     return redirect('/login')
 
-
-from config import ProductionConfig, DevelopmentConfig, TestingConfig  # noqa
-
-if os.getenv('FLASK_ENV').lower() == 'production':
-    app.config.from_object(ProductionConfig())
-elif os.getenv('FLASK_ENV').lower() == 'testing':
-    app.config.from_object(TestingConfig())
-elif os.getenv('FLASK_ENV').lower() == 'development':
-    app.config.from_object(DevelopmentConfig())
-else:
-    raise ValueError('FLASK_ENV not set to any of the valid values: production, testing, or development')
 
 app.jinja_env.filters.update(
     min=min,
