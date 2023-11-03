@@ -1,5 +1,3 @@
-import os
-
 from flask import Flask, redirect
 import flask.ctx
 from werkzeug.exceptions import HTTPException
@@ -62,7 +60,16 @@ app.jinja_env.filters.update(
 )
 
 
-import server.utils.auth  # noqa
+import server.services.auth  # noqa
 import server.models  # noqa
+
+from server.controllers import ExamConverter, OfferingConverter  # noqa
+app.url_map.converters['exam'] = ExamConverter
+app.url_map.converters['offering'] = OfferingConverter
+
 import server.views  # noqa
+
+from server.controllers import auth_module  # noqa
+app.register_blueprint(auth_module)
+
 import tests.conftest  # noqa
