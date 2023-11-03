@@ -1,5 +1,5 @@
 from os import abort
-from flask import Blueprint, redirect, request, session, url_for, render_template
+from flask import redirect, request, session, url_for, render_template
 from flask_login import login_user, logout_user, login_required
 import server.services.canvas as canvas_client
 
