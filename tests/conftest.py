@@ -36,7 +36,7 @@ def db(app):
         sqlalchemy_db.drop_all()
 
 
-@pytest.fixture
+@pytest.fixture()
 def mocker():
     with responses.RequestsMock() as rsps:
         yield rsps
