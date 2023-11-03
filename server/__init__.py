@@ -75,7 +75,8 @@ import server.views  # noqa
 # registers blueprint controllers
 from server.controllers import auth_module, health_module  # noqa
 app.register_blueprint(auth_module)
-app.register_blueprint(health_module)
+if env_value != AppEnvironment.PRODUCTION.value:
+    app.register_blueprint(health_module)
 
 # registers flask cli commands
 import cli  # noqa
