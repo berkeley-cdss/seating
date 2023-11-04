@@ -1,4 +1,4 @@
-name: Test
+name: A11y
 
 on:
   push:
@@ -12,7 +12,7 @@ permissions:
   issues: write
 
 jobs:
-  unit-test-with-pytest:
+  audit-a11y-with-pytest:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v3
@@ -28,7 +28,7 @@ jobs:
           secrets: ${{ toJSON(vars) }}
       - name: Spin up Server and Wait
         run: |
-          flask run
+          flask run &
           sleep 7
       - name: Run A11y Audit
         run: |
