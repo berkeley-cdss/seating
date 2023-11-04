@@ -18,7 +18,8 @@ def print_violations(report):
         for node in violation['nodes']:
             print(f"  - Selector: {node['target']}")
             print(f"    HTML: {node['html']}")
-            print(f"    Remediation: {node['any'][0]['message']}")
+            if len(node['any']) > 0:
+                print(f"    Remediation: {node['any'][0]['message']}")
 
 
 def save_report(title, report):

@@ -12,7 +12,7 @@ permissions:
   issues: write
 
 jobs:
-  audit-a11y-with-pytest:
+  audit-a11y-with-axe:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v3
