@@ -30,6 +30,9 @@ if not canvas_client.is_mock_canvas():
         authorize_url=canvas_server_url + 'login/oauth2/auth',
     )
 else:
+    # dev login uses HTTP so we need to allow that for OAuth2
+    import os
+    os.environ['OAUTHLIB_INSECURE_TRANSPORT'] = '1'
     oauth_provider = oauth.remote_app(
         'seating_dev',
         consumer_key='development_key',
