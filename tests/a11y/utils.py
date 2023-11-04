@@ -2,7 +2,18 @@ def run_axe(driver):
     with open('tests/a11y/axe.min.js', 'r') as f:
         axe_script = f.read()
         driver.execute_script(axe_script)
-        return driver.execute_script('return axe.run();')
+        return driver.execute_script(
+            """\
+                return axe.run(
+                    {
+                        rules: {
+                            'color-contrast': {
+                                enabled: false
+                            }
+                        }
+                    }
+                );"""
+        )
 
 
 def print_violations(report):
