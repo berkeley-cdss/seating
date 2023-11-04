@@ -3,11 +3,13 @@ import server.services.canvas as canvas_client
 
 from server.controllers import dev_login_module
 from server.services.auth import oauth_provider
+from server.services.canvas.fake_data import FAKE_USERS
 
 
 @dev_login_module.route('/', methods=['GET', 'POST'])
 def dev_login_page():
     if canvas_client.is_mock_canvas():
+        available_mock_users = [(id, user['name']) for id, user in FAKE_USERS.items()]
         from server.forms import DevLoginForm
         form = DevLoginForm()
         if form.validate_on_submit():
@@ -18,7 +20,7 @@ def dev_login_page():
                     _external=True, _scheme="http")
             else:
                 abort(500, 'Invalid dev user')
-        return render_template('dev_login.html.j2', form=form)
+        return render_template('dev_login.html.j2', available_mock_users=available_mock_users, form=form)
     return redirect(url_for('index'))
 
 
@@ -41,9 +43,7 @@ def mock_token():
     user_id = request.form.get('code')
     if not user_id:
         abort(400, 'Invalid dev user')
-    with open('server/services/canvas/fake_data/fake_users.json', 'r') as f:
-        import json
-        FAKE_USERS = json.load(f)
+
     mock_response = {
         'access_token': 'dev_access_token',
         'token_type': 'Bearer',

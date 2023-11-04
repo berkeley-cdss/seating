@@ -1,20 +1,10 @@
 from __future__ import annotations
-import json
-
-FAKE_USERS = None
-FAKE_COURSES = None
-FAKE_ENROLLMENTS = None
+from server.services.canvas.fake_data import FAKE_USERS, FAKE_COURSES, FAKE_ENROLLMENTS
 
 
 class FakeCanvas:
     def __init__(self) -> None:
-        global FAKE_USERS, FAKE_COURSES, FAKE_ENROLLMENTS
-        with open('server/services/canvas/fake_data/fake_users.json', 'r') as f:
-            FAKE_USERS = json.load(f)
-        with open('server/services/canvas/fake_data/fake_courses.json', 'r') as f:
-            FAKE_COURSES = json.load(f)
-        with open('server/services/canvas/fake_data/fake_enrollments.json', 'r') as f:
-            FAKE_ENROLLMENTS = json.load(f)
+        pass
 
     def get_user(self, canvas_id) -> FakeUser:
         return FakeUser(canvas_id)

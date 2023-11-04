@@ -2,6 +2,12 @@
 {% import 'macros.html.j2' as macros with context %}
 
 {% block body %}
+<label>Currently Available Mock Users:</label>
+<ul>
+  {% for mock_user in available_mock_users %}
+    <li> {{mock_user}} </li>
+  {% endfor %}
+</ul>
 {% call macros.form(form) %}
 <main class="mdl-grid">
   <div class="form-buttons">
