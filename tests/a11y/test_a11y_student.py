@@ -1,8 +1,16 @@
-from tests.a11y.utils import run_axe, assert_no_violations, save_report
+from tests.a11y.utils import run_axe, assert_no_violations, save_report, print_violations
+
+
+def test_a11y_sanity(driver):
+    """
+    Checks a11y check are working
+    """
+    driver.get('http://localhost:5000/')
+    report = run_axe(driver)
+    assert report is not None
+
 
 # Only three pages are visible to students: select offering, select exam, and seating chart
-
-
 def test_a11y_select_offering_page(get_authed_driver):
     """
     Checks a11y for select offering page
