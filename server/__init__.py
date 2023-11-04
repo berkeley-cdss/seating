@@ -73,7 +73,8 @@ app.url_map.converters['offering'] = OfferingConverter
 import server.views  # noqa
 
 # registers blueprint controllers
-from server.controllers import auth_module, health_module  # noqa
+from server.controllers import auth_module, dev_login_module, health_module  # noqa
+app.register_blueprint(dev_login_module)
 app.register_blueprint(auth_module)
 app.register_blueprint(health_module)
 
