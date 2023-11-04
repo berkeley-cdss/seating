@@ -1,19 +1,23 @@
-def run_axe(driver):
+AXE_SCRIPT_CONTENT = None
+AXE_CONFIG_SCRIPT_CONTENT = None
+
+
+def load_axe_scripts():
+    print("Loading axe scripts...")
+    global AXE_SCRIPT_CONTENT, AXE_CONFIG_SCRIPT_CONTENT
     with open('tests/a11y/axe.min.js', 'r') as f:
-        axe_script = f.read()
-        driver.execute_script(axe_script)
-        return driver.execute_script(
-            """\
-                return axe.run(
-                    {
-                        rules: {
-                            'color-contrast': {
-                                enabled: false
-                            }
-                        }
-                    }
-                );"""
-        )
+        AXE_SCRIPT_CONTENT = f.read()
+    with open('tests/a11y/axe_config.js', 'r') as f:
+        AXE_CONFIG_SCRIPT_CONTENT = f.read()
+
+
+def run_axe(driver):
+    if AXE_SCRIPT_CONTENT is None or AXE_CONFIG_SCRIPT_CONTENT is None:
+        load_axe_scripts()
+
+    driver.execute_script(AXE_SCRIPT_CONTENT)
+    driver.execute_script(AXE_CONFIG_SCRIPT_CONTENT)
+    return driver.execute_script("return axe.run(AXE_CONFIG);")
 
 
 def print_violations(report):
