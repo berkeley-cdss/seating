@@ -40,7 +40,7 @@ jobs:
       - name: Start Flask server for e2e tests
         if: matrix.test-type == 'e2e'
         run: |
-          flask run &
+          flask run --debugger &
           sleep 5
       - name: Run tests with pytest and generate reports
         run: |
