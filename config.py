@@ -61,7 +61,9 @@ class StagingConfig(ConfigBase):
 
     @property
     def SQLALCHEMY_DATABASE_URI(self):
-        return ConfigBase.getenv('DATABASE_URL').replace('mysql://', 'mysql+pymysql://')
+        return 'sqlite:///' + os.path.join(self.BASE_DIR, 'seating_app_{}.db'.format(self.FLASK_ENV))
+        # use localdb for staging for now
+        # return ConfigBase.getenv('DATABASE_URL').replace('mysql://', 'mysql+pymysql://')
 
 
 class DevelopmentConfig(ConfigBase):
