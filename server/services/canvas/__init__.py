@@ -65,7 +65,7 @@ def get_user_courses_categorized(user: FakeUser | User) \
     return list(staff_courses), list(student_courses), list(other)
 
 
-def api_course_to_model(course) -> Offering:
+def api_course_to_model(course: Course | FakeCourse) -> Offering:
     return Offering(
         canvas_id=course.id,
         name=course.name,

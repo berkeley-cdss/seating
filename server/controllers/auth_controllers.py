@@ -29,11 +29,11 @@ def authorized():
     staff_offerings = [str(c.id) for c in staff_course_dics]
     student_offerings = [str(c.id) for c in student_course_dics]
 
-    user_model = User.query.filter_by(canvas_id=user_info['id']).one_or_none()
+    user_model = User.query.filter_by(canvas_id=str(user_info['id'])).one_or_none()
     if not user_model:
         user_model = User(
             name=user_info['name'],
-            canvas_id=user_info['id'],
+            canvas_id=str(user_info['id']),
             staff_offerings=staff_offerings,
             student_offerings=student_offerings)
         db.session.add(user_model)
