@@ -14,7 +14,7 @@ oauth = OAuth()
 canvas_server_url = app.config.get('CANVAS_SERVER_URL')
 consumer_key = app.config.get('CANVAS_CLIENT_ID')
 consumer_secret = app.config.get('CANVAS_CLIENT_SECRET')
-dev_oauth_server_url = 'http://localhost:5000/'
+dev_oauth_server_url = app.config.get('SERVER_BASE_URL')
 
 oauth_provider = None
 
