@@ -57,7 +57,6 @@ class ProductionConfig(ConfigBase):
 class StagingConfig(ConfigBase):
     FLASK_ENV = AppEnvironment.STAGING.value
     SECRET_KEY = 'staging'
-    MOCK_CANVAS = False
     SEND_EMAIL = EmailSendingConfig.TEST.value
 
     @property
