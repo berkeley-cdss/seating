@@ -1,3 +1,4 @@
+from turtle import title
 from flask import request, jsonify, abort, redirect, url_for, render_template
 import server.services.canvas as canvas_client
 
@@ -20,7 +21,7 @@ def dev_login_page():
                     _external=True, _scheme="http")
             else:
                 abort(500, 'Invalid dev user')
-        return render_template('dev_login.html.j2', available_mock_users=available_mock_users, form=form)
+        return render_template('dev_login.html.j2', available_mock_users=available_mock_users, form=form, title="Dev Login")
     return redirect(url_for('index'))
 
 
