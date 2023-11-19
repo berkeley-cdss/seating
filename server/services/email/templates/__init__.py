@@ -31,7 +31,6 @@ def get_email(
     with open(body_path) as f:
         body = _make_substitutions(f.read(), body_substitutions)
     content = EmailContent(subject, body, re.match('[Tt]rue', body_html) is not None)
-    print(content)
     return content
 
 

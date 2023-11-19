@@ -1,4 +1,4 @@
-import smtplib
+from smtplib import SMTP
 from email.message import EmailMessage
 
 
@@ -10,7 +10,7 @@ class SMTPConfig:
         self.password = password
 
 
-def send_email(*, smtp: SMTPConfig, from_addr, to_addr, subject, body, body_html=None, use_tls=True):
+def send_email(*, smtp: SMTPConfig, from_addr, to_addr, subject, body, body_html=None):
     msg = EmailMessage()
     msg['From'] = from_addr
     msg['To'] = to_addr
@@ -21,11 +21,11 @@ def send_email(*, smtp: SMTPConfig, from_addr, to_addr, subject, body, body_html
         msg.add_alternative(body_html, subtype='html')
 
     try:
-        with smtplib.SMTP(smtp.smtp_server, smtp.smtp_port) as server:
-            if use_tls:
-                server.starttls()
-            server.login(smtp.username, smtp.password)
-            server.send_message(msg)
+        server = SMTP(smtp.smtp_server, smtp.smtp_port)
+        server.starttls()
+        server.login(smtp.username, smtp.password)
+        server.send_message(msg)
+        server.quit()
         return True
     except Exception as e:
         print(e)

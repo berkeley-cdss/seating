@@ -12,27 +12,9 @@ _email_config = SMTPConfig(
 )
 
 
-def test_send_email():
-    test_email = templates.get_email(EmailTemplate.ASSIGNMENT_INFORM_EMAIL,
-                                     {"EXAM": "test exam"},
-                                     {"NAME": "test name",
-                                         "COURSE": "test course",
-                                         "EXAM": "test exam",
-                                         "ROOM": "test room",
-                                         "SEAT": "test seat",
-                                         "URL": "test/url",
-                                         "ADDITIONAL_INFO": "test additional text",
-                                         "SIGNATURE": "test signature"})
-    send_email(smtp=_email_config,
-               from_addr="johnsonlongyu@gmail.com",
-               to_addr="long_yu@berkeley.edu",
-               subject=test_email.subject,
-               body=test_email.body,
-               body_html=test_email.body if test_email.body_html else None)
-
-
 def email_students(exam, form):
     pass
+
 
 # def email_students(exam, form):
 #     """Emails students in batches of 900"""

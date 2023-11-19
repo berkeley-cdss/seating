@@ -83,6 +83,3 @@ app.register_blueprint(health_module)
 
 # registers flask cli commands
 import cli  # noqa
-
-from server.services.email import test_send_email  # noqa
-test_send_email()  # noqa
