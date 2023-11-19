@@ -231,8 +231,11 @@ CANVAS_SERVER_URL=
 CANVAS_CLIENT_ID=
 CANVAS_CLIENT_SECRET=
 
-# sendgrid api key, get it from sendgrid dashboard
-SENDGRID_API_KEY=
+# email setup, use any smtp server
+EMAIL_SERVER=
+EMAIL_PORT=
+EMAIL_USE_TLS=
+EMAIL_USERNAME=
 
 # misc
 DOMAIN=localhost:5000
