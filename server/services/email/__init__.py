@@ -1,8 +1,10 @@
 from server import app
-from server.models import db, Room, Seat, SeatAssignment
+from server.models import db, Exam, SeatAssignment, Offering
 from server.services.email.smtp import SMTPConfig, send_email
 import server.services.email.templates as templates
 from server.typings.enum import EmailTemplate
+from flask import url_for
+import os
 
 _email_config = SMTPConfig(
     app.config.get('EMAIL_SERVER'),
@@ -12,8 +14,48 @@ _email_config = SMTPConfig(
 )
 
 
-def email_students(exam, form):
-    pass
+def email_students(exam: Exam, form):
+    ASSIGNMENT_PER_PAGE = 500
+    page_number = 1
+
+    while True:
+        assignments = exam.get_assignments(
+            emailed=False,
+            limit=ASSIGNMENT_PER_PAGE,
+            offset=(page_number - 1) * ASSIGNMENT_PER_PAGE
+        )
+        if not assignments:
+            break
+        page_number += 1
+
+        for assignment in assignments:
+            if _email_single_assignment(exam.offering, exam, assignment, form):
+                assignment.emailed = True
+
+        db.session.commit()
+
+
+def _email_single_assignment(offering: Offering, exam: Exam, assignment: SeatAssignment, form) -> bool:
+    seat_path = url_for('student_single_seat', seat_id=assignment.seat.id)
+    seat_absolute_path = os.path.join(app.config['DOMAIN'], seat_path)
+    student_email = \
+        templates.get_email(EmailTemplate.ASSIGNMENT_INFORM_EMAIL,
+                            {"EXAM": exam.display_name},
+                            {"NAME": assignment.student.first_name,
+                                "COURSE": offering.name,
+                                "EXAM": exam.display_name,
+                                "ROOM": assignment.seat.room.display_name,
+                                "SEAT": assignment.seat.name,
+                                "URL": seat_absolute_path,
+                                "ADDITIONAL_INFO": form.additional_text.data,
+                                "SIGNATURE": form.from_name.data})
+
+    return send_email(smtp=_email_config,
+                      from_addr=form.from_email.data,
+                      to_addr=assignment.student.email,
+                      subject=student_email.subject,
+                      body=student_email.body,
+                      body_html=student_email.body if student_email.body_html else None)
 
 
 # def email_students(exam, form):
