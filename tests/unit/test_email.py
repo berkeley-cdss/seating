@@ -83,14 +83,14 @@ from aiosmtpd.controller import Controller  # noqa
 from aiosmtpd.handlers import Message as MessageHandler  # noqa
 from email import message_from_string  # noqa
 
-_fake_email_config = SMTPConfig('127.0.0.1', 1025, 'user', 'pass')
+_fake_email_config = SMTPConfig('127.0.0.1', 1025, 'user', 'pass', use_tls=False, use_auth=False)
 
 
 class CustomMessageHandler(MessageHandler):
-    received_message = None
+    received_message = []
 
     def handle_message(self, message):
-        CustomMessageHandler.received_message = message_from_string(message.as_string())
+        CustomMessageHandler.received_message.append(message_from_string(message.as_string()))
 
 
 @pytest.fixture()
@@ -105,7 +105,7 @@ def smtp_server():
 
     yield controller
 
-    CustomMessageHandler.received_message = None
+    CustomMessageHandler.received_message = []
     controller.stop()
     thread.join()
 
@@ -124,7 +124,7 @@ def test_send_plain_text_email_with_mock_smtp_server(smtp_server):
 
     assert success
 
-    msg = CustomMessageHandler.received_message
+    msg = CustomMessageHandler.received_message[0]
 
     assert msg is not None
     assert msg['From'] == TEST_FROM_EMAIL
@@ -148,7 +148,7 @@ def test_send_html_email_with_mock_smtp_server(smtp_server):
 
     assert success
 
-    msg = CustomMessageHandler.received_message
+    msg = CustomMessageHandler.received_message[0]
 
     # check html content
     html = _get_content(msg, 'text/html')
@@ -179,7 +179,7 @@ def test_send_seating_html_email_with_mock_smtp_server(smtp_server):
 
     assert success
 
-    msg = CustomMessageHandler.received_message
+    msg = CustomMessageHandler.received_message[0]
 
     assert msg['From'] == TEST_FROM_EMAIL
     assert msg['To'] == TEST_TO_EMAIL
@@ -188,3 +188,7 @@ def test_send_seating_html_email_with_mock_smtp_server(smtp_server):
     html = _get_content(msg, 'text/html')
     assert html is not None
     assert test_seating_email.body in html
+
+
+def test_send_email_for_exam_with_mock_smtp_server(smtp_server):
+    pass

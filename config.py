@@ -34,7 +34,7 @@ class ConfigBase(object):
     MOCK_CANVAS = getenv('MOCK_CANVAS', 'false').lower() == 'true'
     SEND_EMAIL = getenv('SEND_EMAIL', 'off').lower()
 
-    # Email setup. Domain environment is for link in email.
+    # Email setup.
     EMAIL_SERVER = getenv('EMAIL_SERVER', "unset")
     EMAIL_PORT = getenv('EMAIL_PORT', "unset")
     EMAIL_USERNAME = getenv('EMAIL_USERNAME', "unset")

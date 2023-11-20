@@ -37,7 +37,7 @@ def email_students(exam: Exam, form):
 
 def _email_single_assignment(offering: Offering, exam: Exam, assignment: SeatAssignment, form) -> bool:
     seat_path = url_for('student_single_seat', seat_id=assignment.seat.id)
-    seat_absolute_path = os.path.join(app.config['DOMAIN'], seat_path)
+    seat_absolute_path = os.path.join(app.config.get('SERVER_BASE_URL'), seat_path)
     student_email = \
         templates.get_email(EmailTemplate.ASSIGNMENT_INFORM_EMAIL,
                             {"EXAM": exam.display_name},
@@ -47,11 +47,11 @@ def _email_single_assignment(offering: Offering, exam: Exam, assignment: SeatAss
                                 "ROOM": assignment.seat.room.display_name,
                                 "SEAT": assignment.seat.name,
                                 "URL": seat_absolute_path,
-                                "ADDITIONAL_INFO": form.additional_text.data,
-                                "SIGNATURE": form.from_name.data})
+                                "ADDITIONAL_INFO": form.additional_info.data,
+                                "SIGNATURE": form.signature.data})
 
     return send_email(smtp=_email_config,
-                      from_addr=form.from_email.data,
+                      from_addr=form.from_addr.data,
                       to_addr=assignment.student.email,
                       subject=student_email.subject,
                       body=student_email.body,

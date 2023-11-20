@@ -238,7 +238,7 @@ EMAIL_USE_TLS=
 EMAIL_USERNAME=
 
 # misc
-DOMAIN=localhost:5000
+SERVER_BASE_URL=localhost:5000
 LOCAL_TIMEZONE=US/Pacific
 ```
 
