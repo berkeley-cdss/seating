@@ -83,6 +83,8 @@ from aiosmtpd.controller import Controller  # noqa
 from aiosmtpd.handlers import Message as MessageHandler  # noqa
 from email import message_from_string  # noqa
 
+_fake_email_config = SMTPConfig('127.0.0.1', 1025, 'user', 'pass')
+
 
 class CustomMessageHandler(MessageHandler):
     received_message = None
@@ -93,7 +95,9 @@ class CustomMessageHandler(MessageHandler):
 
 @pytest.fixture()
 def smtp_server():
-    controller = Controller(CustomMessageHandler(), hostname='127.0.0.1', port=1025)
+    controller = Controller(CustomMessageHandler(),
+                            hostname=_fake_email_config.smtp_server,
+                            port=_fake_email_config.smtp_port)
     # has to use 127.0.0.1 instead of localhost so that the test can run on Github Actions
     # otherwise, the test does not seem to be able to find the smtp server
     thread = threading.Thread(target=controller.start)
@@ -101,6 +105,7 @@ def smtp_server():
 
     yield controller
 
+    CustomMessageHandler.received_message = None
     controller.stop()
     thread.join()
 
@@ -109,10 +114,9 @@ def test_send_plain_text_email_with_mock_smtp_server(smtp_server):
     """
     Use a local fake smtp server to test that plain text email is sent correctly
     """
-    smtp_config = SMTPConfig(smtp_server.hostname, smtp_server.port, "user", "pass")
 
     success = send_email(
-        smtp=smtp_config,
+        smtp=_fake_email_config,
         from_addr=TEST_FROM_EMAIL,
         to_addr=TEST_TO_EMAIL,
         subject=TEST_SUBJECT,
@@ -121,7 +125,6 @@ def test_send_plain_text_email_with_mock_smtp_server(smtp_server):
     assert success
 
     msg = CustomMessageHandler.received_message
-    CustomMessageHandler.received_message = None
 
     assert msg is not None
     assert msg['From'] == TEST_FROM_EMAIL
@@ -134,10 +137,9 @@ def test_send_html_email_with_mock_smtp_server(smtp_server):
     """
     Use a local fake smtp server to test that html email is sent correctly
     """
-    smtp_config = SMTPConfig(smtp_server.hostname, smtp_server.port, "user", "pass")
 
     success = send_email(
-        smtp=smtp_config,
+        smtp=_fake_email_config,
         from_addr=TEST_FROM_EMAIL,
         to_addr=TEST_TO_EMAIL,
         subject=TEST_SUBJECT,
@@ -147,29 +149,42 @@ def test_send_html_email_with_mock_smtp_server(smtp_server):
     assert success
 
     msg = CustomMessageHandler.received_message
-    CustomMessageHandler.received_message = None
 
     # check html content
     html = _get_content(msg, 'text/html')
     assert html is not None
     assert TEST_BODY_HTML in html
 
-# def test_send_test_email(smtp_server):
-#     test_email = \
-#         templates.get_email(EmailTemplate.ASSIGNMENT_INFORM_EMAIL,
-#                             {"EXAM": "test exam"},
-#                             {"NAME": "test name",
-#                                 "COURSE": "test course",
-#                                 "EXAM": "test exam",
-#                                 "ROOM": "test room",
-#                                 "SEAT": "test seat",
-#                                 "URL": "test/url",
-#                                 "ADDITIONAL_INFO": "test additional text",
-#                                 "SIGNATURE": "test signature"})
 
-#     send_email(smtp=_email_config,
-#                from_addr=TEST_FROM_EMAIL,
-#                to_addr=TEST_TO_EMAIL,
-#                subject=test_email.subject,
-#                body=test_email.body,
-#                body_html=test_email.body if test_email.body_html else None)
+def test_send_seating_html_email_with_mock_smtp_server(smtp_server):
+
+    test_seating_email = \
+        templates.get_email(EmailTemplate.ASSIGNMENT_INFORM_EMAIL,
+                            {"EXAM": "test exam"},
+                            {"NAME": "test name",
+                                "COURSE": "test course",
+                                "EXAM": "test exam",
+                                "ROOM": "test room",
+                                "SEAT": "test seat",
+                                "URL": "test/url",
+                                "ADDITIONAL_INFO": "test additional text",
+                                "SIGNATURE": "test signature"})
+
+    success = send_email(smtp=_fake_email_config,
+                         from_addr=TEST_FROM_EMAIL,
+                         to_addr=TEST_TO_EMAIL,
+                         subject=test_seating_email.subject,
+                         body=test_seating_email.body,
+                         body_html=test_seating_email.body if test_seating_email.body_html else None)
+
+    assert success
+
+    msg = CustomMessageHandler.received_message
+
+    assert msg['From'] == TEST_FROM_EMAIL
+    assert msg['To'] == TEST_TO_EMAIL
+    assert msg['Subject'] == test_seating_email.subject
+
+    html = _get_content(msg, 'text/html')
+    assert html is not None
+    assert test_seating_email.body in html

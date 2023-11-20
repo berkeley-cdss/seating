@@ -9,6 +9,9 @@ class SMTPConfig:
         self.username = username
         self.password = password
 
+    def __repr__(self) -> str:
+        return f'SMTPConfig(smtp_server={self.smtp_server}, smtp_port={self.smtp_port}, username={self.username}, password={self.password})'  # noqa
+
 
 def send_email(*, smtp: SMTPConfig, from_addr, to_addr, subject, body, body_html=None):
     msg = EmailMessage()
