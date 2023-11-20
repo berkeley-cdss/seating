@@ -12,7 +12,10 @@ TEST_BODY = 'Test Body'
 TEST_BODY_HTML = '<html><body><h1>Test Body</h1></body></html>'
 
 
-def get_content(msg: Message, type='text/html'):
+def _get_content(msg: Message, type='text/html'):
+    """
+    returns the content of the email body with the given type
+    """
     if msg.is_multipart():
         for part in msg.get_payload():
             if part.get_content_type() == type:
@@ -25,6 +28,9 @@ def get_content(msg: Message, type='text/html'):
 
 @patch('server.services.email.smtp.SMTP')
 def test_send_plain_text_email(mock_smtp):
+    """
+    Stubs out the SMTP server and checks that plain text email is sent correctly
+    """
 
     success = send_email(smtp=_email_config,
                          from_addr=TEST_FROM_EMAIL,
@@ -53,6 +59,9 @@ def test_send_plain_text_email(mock_smtp):
 
 @patch('server.services.email.smtp.SMTP')
 def test_send_html_email(mock_smtp):
+    """
+    Stubs out the SMTP server and checks that html email is sent correctly
+    """
 
     success = send_email(smtp=_email_config,
                          from_addr=TEST_FROM_EMAIL,
@@ -64,7 +73,7 @@ def test_send_html_email(mock_smtp):
     assert success
 
     msg = mock_smtp.return_value.send_message.call_args[0][0]
-    html = get_content(msg, 'text/html')
+    html = _get_content(msg, 'text/html')
     assert html is not None
     assert TEST_BODY_HTML in html
 
@@ -84,7 +93,9 @@ class CustomMessageHandler(MessageHandler):
 
 @pytest.fixture()
 def smtp_server():
-    controller = Controller(CustomMessageHandler(), hostname='localhost', port=1025)
+    controller = Controller(CustomMessageHandler(), hostname='127.0.0.1', port=1025)
+    # has to use 127.0.0.1 instead of localhost so that the test can run on Github Actions
+    # otherwise, the test does not seem to be able to find the smtp server
     thread = threading.Thread(target=controller.start)
     thread.start()
 
@@ -95,6 +106,9 @@ def smtp_server():
 
 
 def test_send_plain_text_email_with_mock_smtp_server(smtp_server):
+    """
+    Use a local fake smtp server to test that plain text email is sent correctly
+    """
     smtp_config = SMTPConfig(smtp_server.hostname, smtp_server.port, "user", "pass")
 
     success = send_email(
@@ -117,6 +131,9 @@ def test_send_plain_text_email_with_mock_smtp_server(smtp_server):
 
 
 def test_send_html_email_with_mock_smtp_server(smtp_server):
+    """
+    Use a local fake smtp server to test that html email is sent correctly
+    """
     smtp_config = SMTPConfig(smtp_server.hostname, smtp_server.port, "user", "pass")
 
     success = send_email(
@@ -133,6 +150,26 @@ def test_send_html_email_with_mock_smtp_server(smtp_server):
     CustomMessageHandler.received_message = None
 
     # check html content
-    html = get_content(msg, 'text/html')
+    html = _get_content(msg, 'text/html')
     assert html is not None
     assert TEST_BODY_HTML in html
+
+# def test_send_test_email(smtp_server):
+#     test_email = \
+#         templates.get_email(EmailTemplate.ASSIGNMENT_INFORM_EMAIL,
+#                             {"EXAM": "test exam"},
+#                             {"NAME": "test name",
+#                                 "COURSE": "test course",
+#                                 "EXAM": "test exam",
+#                                 "ROOM": "test room",
+#                                 "SEAT": "test seat",
+#                                 "URL": "test/url",
+#                                 "ADDITIONAL_INFO": "test additional text",
+#                                 "SIGNATURE": "test signature"})
+
+#     send_email(smtp=_email_config,
+#                from_addr=TEST_FROM_EMAIL,
+#                to_addr=TEST_TO_EMAIL,
+#                subject=test_email.subject,
+#                body=test_email.body,
+#                body_html=test_email.body if test_email.body_html else None)
