@@ -22,11 +22,13 @@ def send_email(*, smtp: SMTPConfig, from_addr, to_addr, subject, body, body_html
 
     try:
         server = SMTP(smtp.smtp_server, smtp.smtp_port)
-        server.starttls()
-        server.login(smtp.username, smtp.password)
+        if server.has_extn('STARTTLS'):
+            server.starttls()
+        if server.has_extn('AUTH'):
+            server.login(smtp.username, smtp.password)
         server.send_message(msg)
         server.quit()
         return True
     except Exception as e:
-        print(e)
+        print(f"Error sending email: {e}\n Config: \n{smtp}")
         return False

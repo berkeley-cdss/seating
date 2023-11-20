@@ -11,7 +11,6 @@ from sqlalchemy import UniqueConstraint
 from sqlalchemy.ext.associationproxy import association_proxy
 
 from server import app
-from server.views import assign
 
 db = SQLAlchemy(app=app)
 
