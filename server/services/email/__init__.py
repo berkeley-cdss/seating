@@ -17,6 +17,7 @@ _email_config = SMTPConfig(
 def email_students(exam: Exam, form):
     ASSIGNMENT_PER_PAGE = 500
     page_number = 1
+    emailed_count = 0
 
     while True:
         assignments = exam.get_assignments(
@@ -29,10 +30,20 @@ def email_students(exam: Exam, form):
         page_number += 1
 
         for assignment in assignments:
-            if _email_single_assignment(exam.offering, exam, assignment, form):
+            result = _email_single_assignment(exam.offering, exam, assignment, form)
+            if result[0]:
+                emailed_count += 1
                 assignment.emailed = True
+            else:
+                db.session.commit()
+                return result
+        else:
+            db.session.commit()
 
-        db.session.commit()
+    if emailed_count == 0:
+        return (False, "No unemailed assignments found.")
+
+    return (True, )
 
 
 def _email_single_assignment(offering: Offering, exam: Exam, assignment: SeatAssignment, form) -> bool:
@@ -60,71 +71,3 @@ def _email_single_assignment(offering: Offering, exam: Exam, assignment: SeatAss
                       subject=effective_subject,
                       body=student_email.body,
                       body_html=student_email.body if student_email.body_html else None)
-
-
-# def email_students(exam, form):
-#     """Emails students in batches of 900"""
-#     sg = sendgrid.SendGridAPICslient(api_key=app.config['SENDGRID_API_KEY'])
-#     test = form.test_email.data
-#     while True:
-#         limit = 1 if test else 900
-#         assignments = SeatAssignment.query.join(SeatAssignment.seat).join(Seat.room).filter(
-#             Room.exam_id == exam.id,
-#             not SeatAssignment.emailed
-#         ).limit(limit).all()
-#         if not assignments:
-#             break
-
-#         data = {
-#             'personalizations': [
-#                 {
-#                     'to': [
-#                         {
-#                             'email': test if test else assignment.student.email,
-#                         }
-#                     ],
-#                     'substitutions': {
-#                         '-name-': assignment.student.first_name,
-#                         '-room-': assignment.seat.room.display_name,
-#                         '-seat-': assignment.seat.name,
-#                         '-seatid-': str(assignment.seat.id),
-#                     },
-#                 }
-#                 for assignment in assignments
-#             ],
-#             'from': {
-#                 'email': form.from_email.data,
-#                 'name': form.from_name.data,
-#             },
-#             'subject': form.subject.data,
-#             'content': [
-#                 {
-#                     'type': 'text/plain',
-#                     'value': '''
-# Hi -name-,
-
-# Here's your assigned seat for {}:
-
-# Room: -room-
-
-# Seat: -seat-
-
-# You can view this seat's position on the seating chart at:
-# {}/seat/-seatid-/
-
-# {}
-# '''.format(exam.display_name, app.config['DOMAIN'], form.additional_text.data)
-#                 },
-#             ],
-#         }
-
-#         response = sg.client.mail.send.post(request_body=data)
-#         if response.status_code < 200 or response.status_code >= 400:
-#             raise Exception('Could not send mail. Status: {}. Body: {}'.format(
-#                 response.status_code, response.body
-#             ))
-#         if test:
-#             return
-#         for assignment in assignments:
-#             assignment.emailed = True
-#         db.session.commit()

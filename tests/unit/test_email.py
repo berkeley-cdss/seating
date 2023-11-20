@@ -38,7 +38,7 @@ def test_send_plain_text_email(mock_smtp):
                          subject=TEST_SUBJECT,
                          body=TEST_BODY)
 
-    assert success
+    assert success[0]
 
     # check the use of smtp server
     mock_smtp.assert_called_with(_email_config.smtp_server, _email_config.smtp_port)
@@ -70,7 +70,7 @@ def test_send_html_email(mock_smtp):
                          body=TEST_BODY,
                          body_html=TEST_BODY_HTML)
 
-    assert success
+    assert success[0]
 
     msg = mock_smtp.return_value.send_message.call_args[0][0]
     html = _get_content(msg, 'text/html')
@@ -122,7 +122,7 @@ def test_send_plain_text_email_with_mock_smtp_server(smtp_server):
         subject=TEST_SUBJECT,
         body=TEST_BODY)
 
-    assert success
+    assert success[0]
 
     msg = CustomMessageHandler.received_message[0]
 
@@ -146,7 +146,7 @@ def test_send_html_email_with_mock_smtp_server(smtp_server):
         body=TEST_BODY,
         body_html=TEST_BODY_HTML)
 
-    assert success
+    assert success[0]
 
     msg = CustomMessageHandler.received_message[0]
 
@@ -177,7 +177,7 @@ def test_send_seating_html_email_with_mock_smtp_server(smtp_server):
                          body=test_seating_email.body,
                          body_html=test_seating_email.body if test_seating_email.body_html else None)
 
-    assert success
+    assert success[0]
 
     msg = CustomMessageHandler.received_message[0]
 
