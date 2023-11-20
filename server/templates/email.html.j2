@@ -15,13 +15,24 @@
       <label class="mdl-textfield__label" for="signature">Sender signature</label>
     </div>
   </div>
-  <div class="mdl-cell mdl-cell--7-col delist">
+  <div class="mdl-cell mdl-cell--10-col delist">
     <h5>Additional Info</h5>
     <div class="mdl-textfield mdl-js-textfield">
       {{ form.additional_info(class="mdl-textfield__input", type="text", rows="10", id="additional_info") }}
       <label class="mdl-textfield__label" for="additional_info">Additional Info...</label>
     </div>
   <div>
+  <div class="mdl-cell mdl-cell--10-col delist">
+    <h5>Overrides</h5>
+    <div class="mdl-textfield mdl-js-textfield">
+      {{ form.override_subject(class="mdl-textfield__input", type="Subject", id="subject") }}
+      <label class="mdl-textfield__label" for="subject">Override Email Subject</label>
+    </div>
+    <div class="mdl-textfield mdl-js-textfield">
+      {{ form.override_to_addr(class="mdl-textfield__input", type="Test Email", id="testemail") }}
+      <label class="mdl-textfield__label" for="testemail">Override Receipt Address</label>
+    </div>
+  </div>
   <div class="form-buttons">
     {{ form.submit(class="mdl-button mdl-js-button mdl-button--raised") }}
   </div>
