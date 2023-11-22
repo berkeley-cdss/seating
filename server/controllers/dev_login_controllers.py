@@ -16,7 +16,8 @@ def dev_login_page():
         if form.validate_on_submit():
             if form.user_id.data:
                 return oauth_provider.authorize(
-                    callback=url_for('auth.authorized'), state=None,
+                    callback=url_for('auth.authorized'),
+                    state=None,
                     user_id=form.user_id.data,
                     _external=True, _scheme="http")
             else:
@@ -27,6 +28,7 @@ def dev_login_page():
 
 @dev_login_module.route('/oauth2/auth/', methods=['GET'])
 def mock_authorize():
+    print("mock_authorize")
     redirect_uri = request.args.get('redirect_uri', None)
     state = request.args.get('state', '')
     user_id = request.args.get('user_id', None)
