@@ -33,7 +33,6 @@ def db(app):
         yield sqlalchemy_db
 
         sqlalchemy_db.session.remove()
-        sqlalchemy_db.drop_all()
 
 
 @pytest.fixture()
@@ -77,6 +76,7 @@ def seeded_db(app):
     with app.app_context():
         sqlalchemy_db.drop_all()
         sqlalchemy_db.create_all()
+        sqlalchemy_db.session.rollback()
 
         seed_dir_paths = [os.path.join(app.config.get('BASE_DIR'), d)
                           for d in app.config.get('FIXTURES_DIRS')]
@@ -89,13 +89,9 @@ def seeded_db(app):
                     continue
                 seed_files_names.append(file)
 
-        sqlalchemy_db.create_all()
-        sqlalchemy_db.session.rollback()
-
         for filename in seed_files_names:
             ff.load_fixtures_from_file(sqlalchemy_db, filename, seed_dir_paths)
 
         yield sqlalchemy_db
 
         sqlalchemy_db.session.expunge_all()
-        sqlalchemy_db.drop_all()
