@@ -1,6 +1,3 @@
-from selenium.webdriver.common.by import By
-
-
 def test_webdriver_health(driver):
     """
     Test that webdriver works

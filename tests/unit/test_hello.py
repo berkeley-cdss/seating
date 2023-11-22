@@ -36,6 +36,24 @@ def test_db_rollback(db):
     assert User.query.filter_by(name='test').first() is None
 
 
+def test_seeded_db(seeded_db):
+    """
+    Test that seeded database works
+    """
+    assert User.query.count() > 0
+    # now remove all user
+    User.query.delete()
+    seeded_db.session.commit()
+    assert User.query.count() == 0
+
+
+def test_seeded_db_rollback(seeded_db):
+    """
+    Test that the previous test did not affect the seeded database
+    """
+    assert User.query.count() > 0
+
+
 def test_mocking(mocker):
     """
     Test that api mocking works

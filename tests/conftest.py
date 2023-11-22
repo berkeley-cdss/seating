@@ -68,3 +68,34 @@ def get_authed_driver(driver):
         return driver
 
     yield _get_authed_driver
+
+
+@pytest.fixture()
+def seeded_db(app):
+    import flask_fixtures as ff
+
+    with app.app_context():
+        sqlalchemy_db.drop_all()
+        sqlalchemy_db.create_all()
+
+        seed_dir_paths = [os.path.join(app.config.get('BASE_DIR'), d)
+                          for d in app.config.get('FIXTURES_DIRS')]
+        seed_files_names = []
+        seed_file_formats = set(['.yaml', '.yml', '.json'])
+
+        for d in seed_dir_paths:
+            for file in os.listdir(d):
+                if not any([file.endswith(form) for form in seed_file_formats]):
+                    continue
+                seed_files_names.append(file)
+
+        sqlalchemy_db.create_all()
+        sqlalchemy_db.session.rollback()
+
+        for filename in seed_files_names:
+            ff.load_fixtures_from_file(sqlalchemy_db, filename, seed_dir_paths)
+
+        yield sqlalchemy_db
+
+        sqlalchemy_db.session.expunge_all()
+        sqlalchemy_db.drop_all()
