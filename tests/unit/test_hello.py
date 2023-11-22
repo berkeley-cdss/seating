@@ -1,4 +1,4 @@
-from server.models import User
+from server.models import Seat, User, Offering, Exam, Room, Student
 
 
 def test_health():
@@ -41,6 +41,13 @@ def test_seeded_db(seeded_db):
     Test that seeded database works
     """
     assert User.query.count() > 0
+    assert Offering.query.count() > 0
+    assert Exam.query.count() > 0
+    room = Room.query.first()
+    assert room is not None
+    assert room.seats is not None
+    assert Student.query.count() > 0
+
     # now remove all user
     User.query.delete()
     seeded_db.session.commit()
