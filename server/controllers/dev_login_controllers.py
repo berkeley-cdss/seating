@@ -28,7 +28,6 @@ def dev_login_page():
 
 @dev_login_module.route('/oauth2/auth/', methods=['GET'])
 def mock_authorize():
-    print("mock_authorize")
     redirect_uri = request.args.get('redirect_uri', None)
     state = request.args.get('state', '')
     user_id = request.args.get('user_id', None)
