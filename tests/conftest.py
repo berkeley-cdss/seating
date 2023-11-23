@@ -1,7 +1,10 @@
 import os
+import subprocess
+import time
 
 import pytest
 import responses
+
 from selenium import webdriver
 from selenium.webdriver.chrome.options import Options
 
@@ -42,8 +45,17 @@ def mocker():
         yield rsps
 
 
+@pytest.fixture(scope="session", autouse=True)
+def start_flask_app():
+    # Start Flask server with coverage tracking
+    server = subprocess.Popen(['coverage', 'run', '--source', 'server', '-m', 'flask', 'run'])
+    time.sleep(1)  # Wait for the server to start
+    yield
+    server.terminate()  # Stop the server after tests are done
+
+
 @pytest.fixture()
-def driver():
+def driver(start_flask_app):
     options = Options()
     options.add_argument('--headless')
     options.add_argument('--disable-gpu')
