@@ -45,7 +45,7 @@ def mocker():
         yield rsps
 
 
-@pytest.fixture(scope="session", autouse=True)
+@pytest.fixture()
 def start_flask_app():
     # Start Flask server with coverage tracking
     server = subprocess.Popen(['coverage', 'run', '--source', 'server', '-m', 'flask', 'run'])
