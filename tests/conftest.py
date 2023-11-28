@@ -47,11 +47,23 @@ def mocker():
 
 @pytest.fixture()
 def start_flask_app():
-    # Start Flask server with coverage tracking
+    import requests
+    TIMEOUT = 5
     server = subprocess.Popen(['coverage', 'run', '--source', 'server', '-m', 'flask', 'run'])
-    time.sleep(1)  # Wait for the server to start
+    start_time = time.time()
+    while True:
+        try:
+            response = requests.get(flask_app.config.get("SERVER_BASE_URL"))
+            if response.status_code < 400:
+                break
+        except requests.ConnectionError:
+            if time.time() - start_time > TIMEOUT:
+                raise TimeoutError("Flask server did not start within 5 seconds")
+            time.sleep(0.5)
+
     yield
-    server.terminate()  # Stop the server after tests are done
+
+    server.terminate()
 
 
 @pytest.fixture()
