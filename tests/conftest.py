@@ -99,7 +99,6 @@ def seeded_db(app):
     with app.app_context():
         sqlalchemy_db.drop_all()
         sqlalchemy_db.create_all()
-        sqlalchemy_db.session.rollback()
 
         seed_db()
 

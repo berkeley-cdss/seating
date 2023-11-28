@@ -12,7 +12,7 @@ def test_a11y_sanity(driver):
 
 
 # Only three pages are visible to students: select offering, select exam, and seating chart
-def test_a11y_select_offering_page(get_authed_driver):
+def test_a11y_select_offering_page(seeded_db, get_authed_driver):
     """
     Checks a11y for select offering page
     """
@@ -20,7 +20,7 @@ def test_a11y_select_offering_page(get_authed_driver):
     assert_no_violations(report)
 
 
-def test_a11y_select_exam_page(get_authed_driver):
+def test_a11y_select_exam_page(seeded_db, get_authed_driver):
     """
     Checks a11y for select exam page
     """
