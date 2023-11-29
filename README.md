@@ -105,27 +105,7 @@ Student and email data could come from different sources (Google Sheets, csv upl
 
 #### Emailing students
 
-(Under Construction; content might be outdated)
-
-Students will receive an email that looks like
-
-```
-Hi -name-,
-
-Here's your assigned seat for -exam-:
-
-Room: -room-
-
-Seat: -seat-
-
-You can view this seat's position on the seating chart at:
-<domain>/seat/-seatid-/
-
--additional text-
-```
-
-The "additional text" is a good place to tell them what to do if they have an
-issue with their seat, and to sign the email (e.g. "- Cal CS 61A Staff").
+In the emailing page, you should specify minimally sender's address and sender's signature. The signature is appended to the end of the email body. You can also specify additional text to be appended to the end of the email body (this is a good place to tell students what to do if they have concerns about their seating assignments). The email body is generated from a template. The template is a html file that you can edit. The template is located at `server/services/email/templates/assignment_inform_email.html` and its variables are automatically filled in.
 
 #### Get Roster Photos
 
@@ -231,11 +211,14 @@ CANVAS_SERVER_URL=
 CANVAS_CLIENT_ID=
 CANVAS_CLIENT_SECRET=
 
-# sendgrid api key, get it from sendgrid dashboard
-SENDGRID_API_KEY=
+# email setup, use any smtp server
+EMAIL_SERVER=
+EMAIL_PORT=
+EMAIL_USE_TLS=
+EMAIL_USERNAME=
 
 # misc
-DOMAIN=localhost:5000
+SERVER_BASE_URL=localhost:5000
 LOCAL_TIMEZONE=US/Pacific
 ```
 
@@ -258,10 +241,8 @@ flask unit
 flask e2e
 # run a11y tests
 flask a11y
-# run all tests (unit, e2e)
+# run all tests (unit, e2e, a11y)
 flask test
-# run coverage
-flask cov
 # run security audit
 flask audit
 ```
@@ -270,14 +251,31 @@ flask audit
 
 #### Testing
 
-(under construction)
-our framework is pytest, using selenium for e2e testing
-should mention deets on oauth/api stubbing, email testing
+This repo is equipped with some typical testing scaffoldings you might expect to find in a full-stack application:
+
+- Test runner: `pytest`
+- Coverage: `pytest-cov`, which uses `coverage.py` under the hood
+- HTTP request stubbing: `responses`
+- Seeding database from fixture files: `flask-fixtures`
+- Webdriver for UI/e2e tests: `selenium`
+
+There are a few other aspects worth noting:
+
+- Canvas OAuth
+
+We did not use `responses` library to stub out Auth API Call. Instead, when `MOCK_CANVAS` env var is set to `True`, our app would connect to a fake local OAuth2 server instead of the actual Canvas OAuth2 server. It still completes the entire OAuth2 flow but draws user information from `server/services/canvas/fake_data/fake_users.json`.
+
+- Canvas API
+
+We did not use `responses` library to stub out Canvas API as we are using the `canvasapi` library instead of calling HTTP endpoints directly. What we did is to use a fake `CanvasClient` when `MOCK_CANVAS` env var is set to `True`, which draws information from `server/services/canvas/fake_data`.
+
+- Email
+
+We provide three ways to test the email feature.
 
 #### CI/CD
 
-(under construction)
-github actions for now
+We are using
 
 #### Deployment
 
