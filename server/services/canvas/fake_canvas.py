@@ -1,4 +1,6 @@
 from __future__ import annotations
+from datetime import datetime
+
 from server.services.canvas.fake_data import FAKE_USERS, FAKE_COURSES, FAKE_ENROLLMENTS
 
 
@@ -37,6 +39,13 @@ class FakeCourse:
         self.course_code = FAKE_COURSES[str(canvas_id)]['course_code']
         self.sis_course_id = FAKE_COURSES[str(canvas_id)]['sis_course_id']
         self.enrollments = enrollments
+        self.start_at = FAKE_COURSES[str(canvas_id)]['start_at']
+        # Canvas Course object has the start_at field in ISO 8601 format
+        # and its start_at_date is a datetime object parsed from the ISO 8601 string
+        # however datetime.fromisoformat cannot properly parse ISO 8601 format until 3.11
+        # so we use datetime.strptime instead
+        # self.start_at_date = datetime.fromisoformat(self.start_at)
+        self.start_at_date = datetime.strptime(self.start_at, '%Y-%m-%dT%H:%M:%SZ')
 
     def get_users(self, *, enrollment_type) -> list[FakeUser]:
         users = []
