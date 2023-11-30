@@ -41,6 +41,9 @@ class ConfigBase(object):
     EMAIL_USERNAME = getenv('EMAIL_USERNAME', "unset")
     EMAIL_PASSWORD = getenv('EMAIL_PASSWORD', "unset")
 
+    # Master room sheet
+    MASTER_ROOM_SHEET_URL = getenv('MASTER_ROOM_SHEET_URL', "unset")
+
     PHOTO_DIRECTORY = getenv('PHOTO_DIRECTORY', "unset")
 
 

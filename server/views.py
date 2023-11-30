@@ -164,10 +164,6 @@ def import_room_from_custom_sheet(exam):
                            exam=exam, new_form=new_form, choose_form=choose_form, room=room)
 
 
-MASTER_ROOM_SHEET = 'https://docs.google.com/spreadsheets/d/' + \
-    '1cHKVheWv2JnHBorbtfZMW_3Sxj9VtGMmAUU2qGJ33-s/edit?usp=sharing'
-
-
 @app.route('/<exam:exam>/rooms/import/from_master_sheet/', methods=['GET', 'POST'])
 @google_oauth.required(scopes=['https://www.googleapis.com/auth/spreadsheets.readonly'])
 def import_room_from_master_sheet(exam):
@@ -180,7 +176,7 @@ def import_room_from_master_sheet(exam):
         for r in choose_form.rooms.data:
             f = RoomForm(
                 display_name=r,
-                sheet_url=MASTER_ROOM_SHEET, sheet_range=r)
+                sheet_url=app.config.get("MASTER_ROOM_SHEET_URL"), sheet_range=r)
             room = None
             try:
                 room = parse_form_and_validate_room(exam, f)

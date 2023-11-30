@@ -39,7 +39,7 @@ class ChooseRoomForm(FlaskForm):
     rooms = MultiCheckboxField(choices=[('277 Cory', '277 Cory'),
                                         ('145 Dwinelle', '145 Dwinelle'),
                                         ('155 Dwinelle', '155 Dwinelle'),
-                                        ('10 Evans', '10 Evans'),
+                                        ('Evans 10', 'Evans 10'),
                                         ('100 GPB', '100 GPB'),
                                         ('A1 Hearst Field Annex', 'A1 Hearst Field Annex'),
                                         ('Hearst Gym', 'Hearst Gym'),
