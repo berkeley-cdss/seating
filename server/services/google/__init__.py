@@ -24,7 +24,6 @@ def _get_spreadsheet_service():
             app.config.get('GCP_SA_CRED_FILE'), scopes=SCOPES)
     elif cred_type == GcpSaCredType.ENV.value:
         decoded_credentials = base64.b64decode(app.config.get('GCP_SA_CRED_VALUE'))
-        print(decoded_credentials)
         service_account_info = json.loads(decoded_credentials)
         credentials = service_account.Credentials.from_service_account_info(
             service_account_info, scopes=SCOPES)
