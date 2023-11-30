@@ -227,7 +227,6 @@ def import_students(exam):
 
 
 @app.route('/<exam:exam>/students/import/from_custom_sheet/', methods=['GET', 'POST'])
-# @google_oauth.required(scopes=['https://www.googleapis.com/auth/spreadsheets.readonly'])
 def import_students_from_custom_sheet(exam):
     from_sheet_form = ImportStudentFromSheetForm()
     from_canvas_form = ImportStudentFromCanvasRosterForm()
