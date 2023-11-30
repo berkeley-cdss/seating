@@ -2,13 +2,13 @@ import re
 import itertools
 
 from apiclient import errors
-
+from server import app
 from server.typings.exception import DataValidationError
 
 from google.oauth2 import service_account
 from googleapiclient.discovery import build
 
-SERVICE_ACCOUNT_FILE = 'gcp-service-account-credentials.json'
+SERVICE_ACCOUNT_FILE = app.config.get('GOOGLE_SERVICE_ACCOUNT_CREDS_FILE_PATH')
 
 SCOPES = ['https://www.googleapis.com/auth/spreadsheets.readonly']
 

@@ -22,9 +22,8 @@ class ConfigBase(object):
     SQLALCHEMY_TRACK_MODIFICATIONS = False
     LOCAL_TIMEZONE = getenv('TIMEZONE', 'US/Pacific')
 
-    # Coogle API setup
-    GOOGLE_OAUTH2_CLIENT_ID = getenv('GOOGLE_CLIENT_ID')
-    GOOGLE_OAUTH2_CLIENT_SECRET = getenv('GOOGLE_CLIENT_SECRET')
+    # Coogle Service Account Cred setup
+    GOOGLE_SERVICE_ACCOUNT_CREDS_FILE_PATH = getenv('GOOGLE_SERVICE_ACCOUNT_CREDS_FILE_PATH')
 
     # Canvas API setup
     CANVAS_SERVER_URL = getenv('CANVAS_SERVER_URL')
