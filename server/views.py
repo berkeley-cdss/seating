@@ -7,6 +7,7 @@ from server import app
 from server.models import SeatAssignment, db, Exam, Room, Seat, Student
 from server.forms import ExamForm, RoomForm, ChooseRoomForm, ImportStudentFromSheetForm, \
     ImportStudentFromCanvasRosterForm, DeleteStudentForm, AssignForm, EmailForm, EditStudentForm
+from server.services import get_spreadsheet_tabs
 from server.services.auth import google_oauth
 import server.services.canvas as canvas_client
 from server.services.email import email_students
@@ -132,7 +133,7 @@ def import_room(exam):
     Path: /offerings/<canvas_id>/exams/<exam_name>/rooms/import
     """
     new_form = RoomForm()
-    choose_form = ChooseRoomForm()
+    choose_form = ChooseRoomForm(room_list=get_spreadsheet_tabs(app.config.get('MASTER_ROOM_SHEET_URL')))
     return render_template('new_room.html.j2',
                            exam=exam, new_form=new_form, choose_form=choose_form)
 
@@ -171,7 +172,7 @@ def import_room_from_master_sheet(exam):
     Path: /offerings/<canvas_id>/exams/<exam_name>/rooms/import/choose
     """
     new_form = RoomForm()
-    choose_form = ChooseRoomForm()
+    choose_form = ChooseRoomForm(room_list=get_spreadsheet_tabs(app.config.get('MASTER_ROOM_SHEET_URL')))
     if choose_form.validate_on_submit():
         for r in choose_form.rooms.data:
             f = RoomForm(
