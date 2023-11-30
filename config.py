@@ -2,15 +2,15 @@ import os
 from typing import Optional
 
 from server.typings.exception import EnvironmentalVariableMissingError
-from server.typings.enum import AppEnvironment, EmailSendingConfig
+from server.typings.enum import AppEnvironment, EmailSendingConfig, GcpSaCredType
 
 
 class ConfigBase(object):
 
     @staticmethod
-    def getenv(key, default: Optional[str] = None):
+    def getenv(key, default: Optional[str] = None, *, optional=False):
         val = os.getenv(key, default)
-        if val is None:
+        if not optional and val is None:
             raise EnvironmentalVariableMissingError(key)
         return val
 
@@ -23,7 +23,9 @@ class ConfigBase(object):
     LOCAL_TIMEZONE = getenv('TIMEZONE', 'US/Pacific')
 
     # Coogle Service Account Cred setup
-    GOOGLE_SERVICE_ACCOUNT_CREDS_FILE_PATH = getenv('GOOGLE_SERVICE_ACCOUNT_CREDS_FILE_PATH')
+    GCP_SA_CRED_TYPE = getenv('GCP_SA_CRED_TYPE', GcpSaCredType.FILE.value)
+    GCP_SA_CRED_FILE = getenv('GCP_SA_CRED_FILE', optional=True)
+    GCP_SA_CRED_VALUE = getenv('GCP_SA_CRED_VALUE', optional=True)
 
     # Canvas API setup
     CANVAS_SERVER_URL = getenv('CANVAS_SERVER_URL')
@@ -35,13 +37,13 @@ class ConfigBase(object):
     SEND_EMAIL = getenv('SEND_EMAIL', 'off').lower()
 
     # Email setup.
-    EMAIL_SERVER = getenv('EMAIL_SERVER', "unset")
-    EMAIL_PORT = getenv('EMAIL_PORT', "unset")
-    EMAIL_USERNAME = getenv('EMAIL_USERNAME', "unset")
-    EMAIL_PASSWORD = getenv('EMAIL_PASSWORD', "unset")
+    EMAIL_SERVER = getenv('EMAIL_SERVER', optional=True)
+    EMAIL_PORT = getenv('EMAIL_PORT', optional=True)
+    EMAIL_USERNAME = getenv('EMAIL_USERNAME', optional=True)
+    EMAIL_PASSWORD = getenv('EMAIL_PASSWORD', optional=True)
 
     # Master room sheet
-    MASTER_ROOM_SHEET_URL = getenv('MASTER_ROOM_SHEET_URL', "unset")
+    MASTER_ROOM_SHEET_URL = getenv('MASTER_ROOM_SHEET_URL', optional=True)
 
     PHOTO_DIRECTORY = getenv('PHOTO_DIRECTORY', "unset")
 
