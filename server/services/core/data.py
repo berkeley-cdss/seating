@@ -1,4 +1,4 @@
-from server.services import get_spreadsheet_tab_content, get_spreadsheet_tabs
+from server.services.google import get_spreadsheet_tab_content
 
 from server.typings.exception import DataValidationError
 from server.models import Room, Seat, Student, slug

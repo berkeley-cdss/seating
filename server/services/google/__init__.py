@@ -1,13 +1,21 @@
 import re
 import itertools
 
-from apiclient import discovery, errors
+from apiclient import errors
 
-from server.services.auth import google_oauth
 from server.typings.exception import DataValidationError
 
-DISCOVERY_URL = ('https://sheets.googleapis.com/$discovery/rest?'
-                 'version=v4')
+from google.oauth2 import service_account
+from googleapiclient.discovery import build
+
+SERVICE_ACCOUNT_FILE = 'gcp-service-account-credentials.json'
+
+SCOPES = ['https://www.googleapis.com/auth/spreadsheets.readonly']
+
+credentials = service_account.Credentials.from_service_account_file(
+    SERVICE_ACCOUNT_FILE, scopes=SCOPES)
+
+service = build('sheets', 'v4', credentials=credentials)
 
 
 def _get_spreadsheet_id(sheet_url):
@@ -17,14 +25,8 @@ def _get_spreadsheet_id(sheet_url):
     return m.group(1)
 
 
-def _get_spreadsheet_service(sheet_url):
-    return discovery.build('sheets', 'v4', http=google_oauth.http(),
-                           discoveryServiceUrl=DISCOVERY_URL)
-
-
 def get_spreadsheet_tabs(sheet_url):
     spreadsheet_id = _get_spreadsheet_id(sheet_url)
-    service = _get_spreadsheet_service(sheet_url)
     try:
         sheet_metadata = service.spreadsheets().get(spreadsheetId=spreadsheet_id).execute()
         sheets = sheet_metadata.get('sheets', '')
@@ -35,7 +37,6 @@ def get_spreadsheet_tabs(sheet_url):
 
 def get_spreadsheet_tab_content(sheet_url, tab_name):
     spreadsheet_id = _get_spreadsheet_id(sheet_url)
-    service = _get_spreadsheet_service(sheet_url)
     try:
         result = service.spreadsheets().values().get(
             spreadsheetId=spreadsheet_id, range=tab_name).execute()
