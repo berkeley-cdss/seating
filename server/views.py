@@ -9,7 +9,7 @@ from server.forms import ExamForm, RoomForm, ChooseRoomForm, ImportStudentFromSh
     ImportStudentFromCanvasRosterForm, DeleteStudentForm, AssignForm, EmailForm, EditStudentForm
 from server.services.google import get_spreadsheet_tabs
 import server.services.canvas as canvas_client
-from server.services.email import email_students
+from server.services.email import email_students, email_student
 from server.services.core.data import parse_form_and_validate_room, validate_students, \
     parse_student_sheet, parse_canvas_student_roster
 from server.services.core.assign import assign_students
@@ -351,7 +351,7 @@ def assign(exam):
 
 
 @app.route('/<exam:exam>/students/email/', methods=['GET', 'POST'])
-def email(exam):
+def email_all_students(exam):
     form = EmailForm()
     if form.validate_on_submit():
         success, payload = email_students(exam, form)
@@ -359,6 +359,16 @@ def email(exam):
             return payload
         return redirect(url_for('students', exam=exam))
     return render_template('email.html.j2', exam=exam, form=form)
+
+
+@app.route('/<exam:exam>/students/email/<string:student_id>/', methods=['GET', 'POST'])
+def email_single_student(exam, student_id):
+    form = EmailForm()
+    if form.validate_on_submit():
+        success, payload = email_student(exam, student_id, form)
+        if not success:
+            return payload
+        return redirect(url_for('students', exam=exam))
 # endregion
 
 # region Misc

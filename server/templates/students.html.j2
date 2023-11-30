@@ -59,6 +59,9 @@
             <a class="assignment" href="{{ url_for('room', exam=exam, name=seat.room.name, seat=seat.name) }}">
               {{ seat.room.display_name }} {{ seat.name }}
             </a>
+            {% if not student.assignment.emailed %}
+              <div class="material-icons" style="text-align: center; margin: 0; cursor: pointer;" onclick="location.href = '{{ url_for('email_single', exam=exam, canvas_id=student.canvas_id) }}';" style="float: right;">email</div>
+            {% endif %}
           {% else %}
             <span class="assignment" style="text-align: center;">NOT SET<br>Wants: {{ student.wants }}<br>Avoids: {{ student.avoids }}</span>
           {% endif %}

@@ -1,5 +1,5 @@
 from server import app
-from server.models import db, Exam, SeatAssignment, Offering
+from server.models import Student, db, Exam, SeatAssignment, Offering
 from server.services.email.smtp import SMTPConfig, send_email
 import server.services.email.templates as templates
 from server.typings.enum import EmailTemplate
@@ -44,6 +44,17 @@ def email_students(exam: Exam, form):
         return (False, "No unemailed assignments found.")
 
     return (True, )
+
+
+def email_student(exam: Exam, student_db_id: int, form):
+    assignment: SeatAssignment = Student.query.get(student_db_id).assignment
+    if assignment is None:
+        return (False, "Student has no assignment.")
+    result = _email_single_assignment(exam.offering, exam, assignment, form)
+    if result[0]:
+        assignment.emailed = True
+        db.session.commit()
+    return result
 
 
 def _email_single_assignment(offering: Offering, exam: Exam, assignment: SeatAssignment, form) -> bool:
