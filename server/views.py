@@ -135,7 +135,8 @@ def import_room(exam):
     new_form = RoomForm()
     choose_form = ChooseRoomForm(room_list=get_spreadsheet_tabs(app.config.get('MASTER_ROOM_SHEET_URL')))
     return render_template('new_room.html.j2',
-                           exam=exam, new_form=new_form, choose_form=choose_form)
+                           exam=exam, new_form=new_form, choose_form=choose_form,
+                           master_sheet_url=app.config.get('MASTER_ROOM_SHEET_URL'))
 
 
 @app.route('/<exam:exam>/rooms/import/from_custom_sheet/', methods=['GET', 'POST'])
@@ -162,7 +163,8 @@ def import_room_from_custom_sheet(exam):
                     "Room name {} already exists for this exam.".format(room.name))
             return redirect(url_for('exam', exam=exam))
     return render_template('new_room.html.j2',
-                           exam=exam, new_form=new_form, choose_form=choose_form, room=room)
+                           exam=exam, new_form=new_form, choose_form=choose_form, room=room,
+                           master_sheet_url=app.config.get('MASTER_ROOM_SHEET_URL'))
 
 
 @app.route('/<exam:exam>/rooms/import/from_master_sheet/', methods=['GET', 'POST'])
@@ -189,7 +191,8 @@ def import_room_from_master_sheet(exam):
                 db.session.commit()
         return redirect(url_for('exam', exam=exam))
     return render_template('new_room.html.j2',
-                           exam=exam, new_form=new_form, choose_form=choose_form)
+                           exam=exam, new_form=new_form, choose_form=choose_form,
+                           master_sheet_url=app.config.get('MASTER_ROOM_SHEET_URL'))
 
 
 @app.route('/<exam:exam>/rooms/<string:name>/delete', methods=['GET', 'DELETE'])
