@@ -84,5 +84,6 @@ def api_course_to_model(course: Course | FakeCourse) -> Offering:
     return Offering(
         canvas_id=course.id,
         name=course.name,
-        code=course.course_code
+        code=course.course_code,
+        start_at=course.start_at,
     )
