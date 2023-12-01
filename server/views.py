@@ -234,8 +234,10 @@ def import_students_from_custom_sheet(exam):
         try:
             headers, rows = parse_student_sheet(from_sheet_form)
             new_students, updated_students, invalid_students = validate_students(exam, headers, rows)
-            db.session.add_all(new_students + updated_students)
-            db.session.commit()
+            to_commit = new_students + updated_students
+            if to_commit:
+                db.session.add_all(to_commit)
+                db.session.commit()
             flash(
                 f"Import done. {len(new_students)} new students, {len(updated_students)} updated students"
                 f" {len(invalid_students)} invalid students.", 'success')
@@ -245,9 +247,9 @@ def import_students_from_custom_sheet(exam):
             if invalid_students:
                 flash(
                     f"Invalid students: {invalid_students}", 'error')
-
             return redirect(url_for('students', exam=exam))
         except Exception as e:
+            flash(f"Failed to import students from custom sheet: {str(e)}", 'error')
             from_sheet_form.sheet_url.errors.append(str(e))
     return render_template('new_students.html.j2', exam=exam,
                            from_sheet_form=from_sheet_form, from_canvas_form=from_canvas_form)
@@ -263,8 +265,10 @@ def import_students_from_canvas_roster(exam):
             students = course.get_users(enrollment_type='student')
             headers, rows = parse_canvas_student_roster(students)
             new_students, updated_students, invalid_students = validate_students(exam, headers, rows)
-            db.session.add_all(new_students + updated_students)
-            db.session.commit()
+            to_commit = new_students + updated_students
+            if to_commit:
+                db.session.add_all(to_commit)
+                db.session.commit()
             flash(
                 f"Import done. {len(new_students)} new students, {len(updated_students)} updated students"
                 f" {len(invalid_students)} invalid students.", 'success')
@@ -276,6 +280,7 @@ def import_students_from_canvas_roster(exam):
                     f"Invalid students: {invalid_students}", 'error')
             return redirect(url_for('students', exam=exam))
         except Exception as e:
+            flash(f"Failed to import students from Canvas roster: {str(e)}", 'error')
             from_canvas_form.submit.errors.append(str(e))
     return render_template('new_students.html.j2', exam=exam,
                            from_sheet_form=from_sheet_form, from_canvas_form=from_canvas_form)

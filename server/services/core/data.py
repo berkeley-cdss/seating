@@ -94,14 +94,14 @@ def validate_students(exam, headers, rows):
             'bcourses id', row.pop('canvas id', None))
         email = row.pop('email', None)
         name = row.pop('name', None)
-        if not canvas_id or not email or not name:
+        if not canvas_id:
             invalid_students.append(row)
         student = Student.query.filter_by(exam_id=int(exam.id), canvas_id=str(canvas_id)).first()
         is_new = False
         if not student:
             is_new = True
             student = Student(exam_id=exam.id, canvas_id=canvas_id)
-        student.name = name or student.sid
+        student.name = name or student.name
         student.email = email or student.email
         if not student.name or not student.email:
             invalid_students.append(row)
