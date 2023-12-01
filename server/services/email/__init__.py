@@ -57,7 +57,7 @@ def email_student(exam: Exam, student_db_id: int, form):
     return result
 
 
-def _email_single_assignment(offering: Offering, exam: Exam, assignment: SeatAssignment, form) -> bool:
+def _email_single_assignment(offering: Offering, exam: Exam, assignment: SeatAssignment, form):
     seat_path = url_for('student_single_seat', seat_id=assignment.seat.id)
     seat_absolute_path = os.path.join(app.config.get('SERVER_BASE_URL'), seat_path)
 

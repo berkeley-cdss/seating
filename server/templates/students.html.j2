@@ -16,7 +16,7 @@
         <label class="mdl-textfield__label" for="search-expandable">Search</label>
       </div>
     </div>
-      <div id="tt5" class="material-icons std" onclick="location.href = '{{ url_for('email', exam=exam) }}';" style="float: right;">email</div>
+      <div id="tt5" class="material-icons std" onclick="location.href = '{{ url_for('email_all_students', exam=exam) }}';" style="float: right;">email</div>
       <div class="mdl-tooltip" data-mdl-for="tt5">Email</div>
 
       <div id="tt4" class="material-icons std" onclick="location.href = '{{ url_for('delete_students', exam=exam) }}';" style="float: right;">delete</div>
@@ -60,7 +60,7 @@
               {{ seat.room.display_name }} {{ seat.name }}
             </a>
             {% if not student.assignment.emailed %}
-              <div class="material-icons" style="text-align: center; margin: 0; cursor: pointer;" onclick="location.href = '{{ url_for('email_single', exam=exam, canvas_id=student.canvas_id) }}';" style="float: right;">email</div>
+              <div class="material-icons" style="text-align: center; margin: 0; cursor: pointer;" onclick="location.href = '{{ url_for('email_single_student', exam=exam, student_id=student.id) }}';" style="float: right;">email</div>
             {% endif %}
           {% else %}
             <span class="assignment" style="text-align: center;">NOT SET<br>Wants: {{ student.wants }}<br>Avoids: {{ student.avoids }}</span>

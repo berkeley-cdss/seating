@@ -369,6 +369,8 @@ def email_single_student(exam, student_id):
         if not success:
             return payload
         return redirect(url_for('students', exam=exam))
+    return render_template('email.html.j2', exam=exam, form=form)
+
 # endregion
 
 # region Misc
