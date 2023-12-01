@@ -1,3 +1,5 @@
+import email
+from math import e
 from server import app
 from server.models import Student, db, Exam, SeatAssignment, Offering
 from server.services.email.smtp import SMTPConfig, send_email
@@ -17,7 +19,9 @@ _email_config = SMTPConfig(
 def email_students(exam: Exam, form):
     ASSIGNMENT_PER_PAGE = 500
     page_number = 1
-    emailed_count = 0
+
+    email_success: set[Student] = set()
+    email_failure: set[Student] = set()
 
     while True:
         assignments = exam.get_assignments(
@@ -27,23 +31,18 @@ def email_students(exam: Exam, form):
         )
         if not assignments:
             break
-        page_number += 1
 
         for assignment in assignments:
             result = _email_single_assignment(exam.offering, exam, assignment, form)
             if result[0]:
-                emailed_count += 1
+                email_success.add(assignment.student)
                 assignment.emailed = True
             else:
-                db.session.commit()
-                return result
-        else:
-            db.session.commit()
+                email_failure.add(assignment.student)
 
-    if emailed_count == 0:
-        return (False, "No unemailed assignments found.")
+        db.session.commit()
 
-    return (True, )
+    return email_success, email_failure
 
 
 def email_student(exam: Exam, student_db_id: int, form):

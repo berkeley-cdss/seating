@@ -2,7 +2,7 @@ import os
 from typing import Optional
 
 from server.typings.exception import EnvironmentalVariableMissingError
-from server.typings.enum import AppEnvironment, EmailSendingConfig, GcpSaCredType
+from server.typings.enum import AppEnvironment, GcpSaCredType
 
 
 class ConfigBase(object):

@@ -1,6 +1,6 @@
 import re
 
-from flask import abort, redirect, render_template, request, send_file, url_for
+from flask import abort, redirect, render_template, request, send_file, url_for, flash
 from flask_login import current_user, login_required
 
 from server import app
@@ -342,10 +342,12 @@ def assign(exam):
     form = AssignForm()
     if form.validate_on_submit():
         success, payload = assign_students(exam)
-        if not success:
-            return payload
-        db.session.add_all(payload)
-        db.session.commit()
+        if success:
+            db.session.add_all(payload)
+            db.session.commit()
+            flash("Successfully assigned students.", 'success')
+        else:
+            flash("Failed to assign students. Everything rolled back.\n{}".format(payload), 'error')
         return redirect(url_for('students', exam=exam))
     return render_template('assign.html.j2', exam=exam, form=form)
 
@@ -354,9 +356,15 @@ def assign(exam):
 def email_all_students(exam):
     form = EmailForm()
     if form.validate_on_submit():
-        success, payload = email_students(exam, form)
-        if not success:
-            return payload
+        success_students, failure_students = email_students(exam, form)
+        if failure_students:
+            names = [s.name for s in failure_students]
+            flash(f"Failed to email students: {', '.join(names)}", 'error')
+        if success_students:
+            names = [s.name for s in success_students]
+            flash(f"Successfully emailed students: {', '.join(names)}", 'success')
+        if not success_students and not failure_students:
+            flash("No students were emailed.", 'warning')
         return redirect(url_for('students', exam=exam))
     return render_template('email.html.j2', exam=exam, form=form)
 
@@ -366,8 +374,10 @@ def email_single_student(exam, student_id):
     form = EmailForm()
     if form.validate_on_submit():
         success, payload = email_student(exam, student_id, form)
-        if not success:
-            return payload
+        if success:
+            flash(f"Successfully emailed student with id: {student_id}", 'success')
+        else:
+            flash(f"Failed to email student with id: {student_id}\n{payload}", 'error')
         return redirect(url_for('students', exam=exam))
     return render_template('email.html.j2', exam=exam, form=form)
 
