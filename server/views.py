@@ -265,6 +265,7 @@ def import_students_from_canvas_roster(exam):
             students = course.get_users(enrollment_type='student')
             headers, rows = parse_canvas_student_roster(students)
             new_students, updated_students, invalid_students = validate_students(exam, headers, rows)
+            print(new_students, updated_students, invalid_students)
             to_commit = new_students + updated_students
             if to_commit:
                 db.session.add_all(to_commit)
@@ -281,7 +282,7 @@ def import_students_from_canvas_roster(exam):
             return redirect(url_for('students', exam=exam))
         except Exception as e:
             flash(f"Failed to import students from Canvas roster: {str(e)}", 'error')
-            from_canvas_form.submit.errors.append(str(e))
+            from_canvas_form.submit.errors.append(e)
     return render_template('new_students.html.j2', exam=exam,
                            from_sheet_form=from_sheet_form, from_canvas_form=from_canvas_form)
 
