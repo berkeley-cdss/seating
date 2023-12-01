@@ -165,12 +165,6 @@ class Student(db.Model):
     assignment = db.relationship('SeatAssignment', uselist=False, cascade='all, delete-orphan',
                                  backref=backref('student', uselist=False, single_parent=True))
 
-    @validates('email')
-    def validate_email(self, key, address):
-        if '@' not in address:
-            raise ValueError("Failed simple email validation")
-        return address
-
     @property
     def first_name(self):
         return self.name.rsplit(',', 1)[-1].strip().title()

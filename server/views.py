@@ -247,10 +247,9 @@ def import_students_from_custom_sheet(exam):
             if invalid_students:
                 flash(
                     f"Invalid students: {invalid_students}", 'error')
-            return redirect(url_for('students', exam=exam))
         except Exception as e:
-            flash(f"Failed to import students from custom sheet: {str(e)}", 'error')
-            from_sheet_form.sheet_url.errors.append(str(e))
+            flash(f"Failed to import students due to an unexpected error: {e.message}", 'error')
+        return redirect(url_for('students', exam=exam))
     return render_template('new_students.html.j2', exam=exam,
                            from_sheet_form=from_sheet_form, from_canvas_form=from_canvas_form)
 
@@ -279,10 +278,9 @@ def import_students_from_canvas_roster(exam):
             if invalid_students:
                 flash(
                     f"Invalid students: {invalid_students}", 'error')
-            return redirect(url_for('students', exam=exam))
         except Exception as e:
-            raise e
-            from_canvas_form.submit.errors.append(e.s)
+            flash(f"Failed to import students due to an unexpected error: {e.message}", 'error')
+        return redirect(url_for('students', exam=exam))
     return render_template('new_students.html.j2', exam=exam,
                            from_sheet_form=from_sheet_form, from_canvas_form=from_canvas_form)
 
