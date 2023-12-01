@@ -6,7 +6,7 @@ import re
 from flask_login import UserMixin
 from flask_sqlalchemy import SQLAlchemy
 from sqlalchemy import PrimaryKeyConstraint, types
-from sqlalchemy.orm import backref
+from sqlalchemy.orm import backref, validates
 from sqlalchemy import UniqueConstraint
 from sqlalchemy.ext.associationproxy import association_proxy
 
@@ -164,6 +164,12 @@ class Student(db.Model):
 
     assignment = db.relationship('SeatAssignment', uselist=False, cascade='all, delete-orphan',
                                  backref=backref('student', uselist=False, single_parent=True))
+
+    @validates('email')
+    def validate_email(self, key, address):
+        if '@' not in address:
+            raise ValueError("Failed simple email validation")
+        return address
 
     @property
     def first_name(self):
