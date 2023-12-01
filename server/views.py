@@ -264,7 +264,6 @@ def import_students_from_canvas_roster(exam):
             students = course.get_users(enrollment_type='student')
             headers, rows = parse_canvas_student_roster(students)
             new_students, updated_students, invalid_students = validate_students(exam, headers, rows)
-            print(new_students, updated_students, invalid_students)
             to_commit = new_students + updated_students
             if to_commit:
                 db.session.add_all(to_commit)
