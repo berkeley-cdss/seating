@@ -13,7 +13,6 @@ from server.services.email import email_students, email_student
 from server.services.core.data import parse_form_and_validate_room, validate_students, \
     parse_student_sheet, parse_canvas_student_roster
 from server.services.core.assign import assign_students
-from server.typings.exception import DataValidationError
 
 # region Offering CRUDI
 
