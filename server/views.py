@@ -281,8 +281,8 @@ def import_students_from_canvas_roster(exam):
                     f"Invalid students: {invalid_students}", 'error')
             return redirect(url_for('students', exam=exam))
         except Exception as e:
-            flash(f"Failed to import students from Canvas roster: {str(e)}", 'error')
-            from_canvas_form.submit.errors.append(e)
+            raise e
+            from_canvas_form.submit.errors.append(e.s)
     return render_template('new_students.html.j2', exam=exam,
                            from_sheet_form=from_sheet_form, from_canvas_form=from_canvas_form)
 
