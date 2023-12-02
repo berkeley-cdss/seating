@@ -43,7 +43,7 @@ def _prepare_seat(room_form):
     for row in rows:
         seat = Seat()
         seat.row, seat.seat = row.pop('row', None), row.pop('seat', None)
-        seat.fixed = seat.row and seat.seat
+        seat.fixed = bool(seat.row and seat.seat)
 
         # if we leave either row or seat blank, we regard it as a movable seat
         # movable seats does not have a fixed coordinate or name, but it still attributes
