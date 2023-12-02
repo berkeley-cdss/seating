@@ -119,6 +119,14 @@ class Room(db.Model):
     def start_at_time(self):
         return parse_ISO8601(self.start_at)
 
+    @property
+    def start_at_time_display(self):
+        return self.start_at_time.strftime('%I:%M %p - %b %d, %Y') if self.start_at_time else "Start Time TBA"
+
+    @property
+    def duration_display(self):
+        return f"{self.duration_minutes} mins" if self.duration_minutes else "Duration TBA"
+
     seats = db.relationship('Seat', uselist=True, cascade='all, delete-orphan',
                             order_by='Seat.name',
                             backref=backref('room', uselist=False, single_parent=True))

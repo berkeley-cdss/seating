@@ -57,12 +57,12 @@
                     {{ room.display_name }}
                     {% if room.start_at %}
                       <span style="margin-right: 5px;"><small>
-                        {{ room.start_at_time.strftime('%Y-%m-%d %H:%M') }}
+                        {{ room.start_at_time_display }}
                       </small></span>
                     {% endif %}
                     {% if room.duration_minutes %}
                       <span><small>
-                        {{ ' ({} mins)'.format(room.duration_minutes) }}
+                        {{ room.duration_display }}
                       </small></span>
                     {% endif %}
                 </li>

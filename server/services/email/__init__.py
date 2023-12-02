@@ -27,8 +27,10 @@ def email_about_assignment(exam, form, to_addrs):
             failure_addrs.add(to_addr)
             continue
         assignment = student.assignment
+
         seat_path = url_for('student_single_seat', seat_id=assignment.seat.id)
         seat_absolute_path = os.path.join(app.config.get('SERVER_BASE_URL'), seat_path)
+
         subject = templates.make_substitutions(form.subject.data, {"EXAM": exam.display_name})
         body = templates.make_substitutions(form.body.data,
                                             {"NAME": assignment.student.first_name,
@@ -36,7 +38,10 @@ def email_about_assignment(exam, form, to_addrs):
                                              "EXAM": exam.display_name,
                                              "ROOM": assignment.seat.room.display_name,
                                              "SEAT": assignment.seat.name,
-                                             "URL": seat_absolute_path})
+                                             "START_TIME": assignment.seat.room.start_at_time_display,
+                                             "DURATION": assignment.seat.room.duration_display,
+                                             "URL": seat_absolute_path,
+                                             })
         success, payload = send_email(
             smtp=_email_config,
             from_addr=form.from_addr.data,
