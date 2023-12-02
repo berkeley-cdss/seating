@@ -103,6 +103,9 @@ class Exam(db.Model):
             query = query.offset(offset)
         return query.all()
 
+    def get_room(self, room_id):
+        return Room.query.filter_by(id=room_id, exam_id=self.id).first()
+
     def __repr__(self):
         return '<Exam {}>'.format(self.name)
 
@@ -118,15 +121,19 @@ class Room(db.Model):
 
     @property
     def start_at_time(self):
-        return parse_ISO8601(self.start_at)
+        return parse_ISO8601(self.start_at) if self.start_at else None
 
     @property
     def start_at_time_display(self):
-        return self.start_at_time.strftime('%I:%M %p - %b %d, %Y') if self.start_at_time else "Start Time TBA"
+        return self.start_at_time.strftime('%I:%M %p - %b %d, %Y') if self.start_at else "Start Time TBA"
 
     @property
     def duration_display(self):
         return f"{self.duration_minutes} mins" if self.duration_minutes else "Duration TBA"
+
+    @property
+    def name_and_start_at_time_display(self):
+        return f"{self.display_name} ({self.start_at_time_display})"
 
     seats = db.relationship('Seat', uselist=True, cascade='all, delete-orphan',
                             order_by='Seat.name',

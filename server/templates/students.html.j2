@@ -65,16 +65,32 @@
               <div>NOT ASSIGNED</div>
               <small>
                 {% if student.wants %}
-                Wants:
-                {% for want in student.wants %}
-                    {{ want }}
-                {% endfor %}
+                  <div>Wants:
+                  {% for want in student.wants %}
+                      {{ want }}
+                  {% endfor %}
+                  </div>
                 {% endif %}
                 {% if student.avoids %}
-                <br>Avoids:
-                {% for avoid in student.avoids %}
-                    {{ avoid }}
-                {% endfor %}
+                  <div>Avoids:
+                  {% for avoid in student.avoids %}
+                      {{ avoid }}
+                  {% endfor %}
+                  </div>
+                {% endif %}
+                {% if student.room_wants %}
+                  <div>Room Wants:
+                  {% for room_want in student.room_wants %}
+                      {{ exam.get_room(room_want).name_and_start_at_time_display }}
+                  {% endfor %}
+                  </div>
+                {% endif %}
+                {% if student.room_avoids %}
+                  <div>Room Avoids:
+                  {% for room_avoid in student.room_avoids %}
+                      {{ exam.get_room(room_avoid).name_and_start_at_time_display }}
+                  {% endfor %}
+                  </div>
                 {% endif %}
               </small>
             </span>

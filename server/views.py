@@ -389,8 +389,10 @@ def edit_student(exam, canvas_id):
         student.room_avoids = new_room_avoids_set
         # if wants or avoids changed, delete original assignment
         # we need to compare sets because order does not matter
-        if orig_wants_set != new_wants_set or orig_avoids_set != new_avoids_set\
-                or orig_room_wants_set != new_room_wants_set or orig_room_avoids_set != new_room_avoids_set:
+        if orig_wants_set != new_wants_set \
+                or orig_avoids_set != new_avoids_set \
+                or orig_room_wants_set != new_room_wants_set \
+                or orig_room_avoids_set != new_room_avoids_set:
             if student.assignment:
                 db.session.delete(student.assignment)
         student.email = form.email.data

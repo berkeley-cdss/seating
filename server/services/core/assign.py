@@ -18,18 +18,23 @@ def assign_students(exam):
     def seats_available(preference):
         """
         Return seats available for a given preference.
+        Remember: any([]) return False, all([]) return True
         """
-        wants, avoids = preference
+        wants, avoids, room_wants, room_avoids = preference
         return [
             seat for seat in seats
             if (all(a in seat.attributes for a in wants) and  # noqa
-                all(a not in seat.attributes for a in avoids))
+                all(a not in seat.attributes for a in avoids) and  # noqa
+                (not room_wants or any(int(a) == seat.room.id for a in room_wants)) and  # noqa
+                all(int(a) != seat.room.id for a in room_avoids)
+                )
         ]
 
     assignments = []
     while students:
         students_by_preference = arr_to_dict(students, key_getter=lambda student: (
-            frozenset(student.wants), frozenset(student.avoids)))
+            frozenset(student.wants), frozenset(student.avoids),
+            frozenset(student.room_wants), frozenset(student.room_avoids)))
         seats_by_preference = {
             preference: seats_available(preference)
             for preference in students_by_preference.keys()
