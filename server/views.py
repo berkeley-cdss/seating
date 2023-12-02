@@ -147,7 +147,6 @@ def import_room_from_custom_sheet(exam):
     room = None
     if new_form.validate_on_submit():
         try:
-            print("form validated")
             room = parse_form_and_validate_room(exam, new_form)
         except Exception as e:
             flash(f"Failed to import room due to an unexpected error: {e}", 'error')

@@ -52,7 +52,6 @@ class Offering(db.Model):
 
     @property
     def start_at_date(self):
-        print("parse course start_at: ", self.start_at)
         return parse_ISO8601(self.start_at)
 
     def __repr__(self):
@@ -118,7 +117,6 @@ class Room(db.Model):
 
     @property
     def start_at_time(self):
-        print("parse room start_at: ", self.start_at)
         return parse_ISO8601(self.start_at)
 
     seats = db.relationship('Seat', uselist=True, cascade='all, delete-orphan',
