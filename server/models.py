@@ -136,8 +136,16 @@ class Room(db.Model):
     )
 
     @property
+    def fixed_seats(self):
+        return [seat for seat in self.seats if seat.fixed]
+
+    @property
+    def movable_seats(self):
+        return [seat for seat in self.seats if not seat.fixed]
+
+    @property
     def rows(self):
-        seats = natsorted(self.seats, key=lambda seat: seat.row)
+        seats = natsorted(self.fixed_seats, key=lambda seat: seat.row)
         return [
             natsorted(g, key=lambda seat: seat.x)
             for _, g in itertools.groupby(seats, lambda seat: seat.row)
@@ -151,18 +159,23 @@ class Seat(db.Model):
     __tablename__ = 'seats'
     id = db.Column(db.Integer, primary_key=True)
     room_id = db.Column(db.ForeignKey('rooms.id'), index=True, nullable=False)
-    name = db.Column(db.String(255), nullable=False)
-    row = db.Column(db.String(255), nullable=False)
-    seat = db.Column(db.String(255), nullable=False, index=True)
-    x = db.Column(db.Float, nullable=False)
-    y = db.Column(db.Float, nullable=False)
+    fixed = db.Column(db.Boolean, default=True, nullable=False)
+    name = db.Column(db.String(255))
+    row = db.Column(db.String(255))
+    seat = db.Column(db.String(255), index=True)
+    x = db.Column(db.Float)
+    y = db.Column(db.Float)
     attributes = db.Column(StringSet, nullable=False)
 
     assignment = db.relationship('SeatAssignment', uselist=False, cascade='all, delete-orphan',
                                  backref=backref('seat', uselist=False, single_parent=True))
 
+    @property
+    def display_name(self):
+        return self.name if self.name else "Movable Seat"
+
     def __repr__(self):
-        return '<Seat {}>'.format(self.name)
+        return '<Seat {}>'.format(self.name_display)
 
 
 class Student(db.Model):
