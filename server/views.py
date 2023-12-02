@@ -365,7 +365,7 @@ def edit_student(exam, canvas_id):
         exam_id=exam.id, canvas_id=canvas_id).first_or_404()
     if not student:
         abort(404, "Student not found.")
-    form = EditStudentForm()
+    form = EditStudentForm(room_list=exam.rooms)
     orig_wants_set = set(student.wants)
     orig_avoids_set = set(student.avoids)
     orig_room_wants_set = set(student.room_wants)
@@ -381,8 +381,9 @@ def edit_student(exam, canvas_id):
             return redirect(url_for('students', exam=exam))
         new_wants_set = set(re.split(r'\s|,', form.wants.data))
         new_avoids_set = set(re.split(r'\s|,', form.avoids.data))
-        new_room_wants_set = set(re.split(r'\s|,', form.room_wants.data))
-        new_room_avoids_set = set(re.split(r'\s|,', form.room_avoids.data))
+        new_room_wants_set = set(form.room_wants.data)
+        new_room_avoids_set = set(form.room_avoids.data)
+        print(f"new new_room_wants_set: {new_room_wants_set}")
         student.wants = new_wants_set
         student.avoids = new_avoids_set
         student.room_wants = new_room_wants_set
@@ -398,6 +399,9 @@ def edit_student(exam, canvas_id):
         student.email = form.email.data
         db.session.commit()
         return redirect(url_for('students', exam=exam))
+    for field, errors in form.errors.items():
+        for error in errors:
+            flash("{}: {}".format(field, error), 'error')
     return render_template('edit_student.html.j2', exam=exam, form=form, student=student)
 
 
