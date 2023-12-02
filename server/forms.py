@@ -57,8 +57,8 @@ class EditStudentForm(FlaskForm):
     def __init__(self, room_list=None, *args, **kwargs):
         super(EditStudentForm, self).__init__(*args, **kwargs)
         if room_list is not None:
-            self.room_wants.choices = [(str(item.id), item.name_and_start_at_time_display) for item in room_list]
-            self.room_avoids.choices = [(str(item.id), item.name_and_start_at_time_display) for item in room_list]
+            self.room_wants.choices = [(str(item.id), item.name_and_start_at_time_display()) for item in room_list]
+            self.room_avoids.choices = [(str(item.id), item.name_and_start_at_time_display()) for item in room_list]
 
 
 class EditRoomForm(FlaskForm):
