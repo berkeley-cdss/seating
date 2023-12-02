@@ -1,10 +1,9 @@
-from os import abort
 import re
 
 from flask_wtf import FlaskForm
 from wtforms import BooleanField, SelectMultipleField, StringField, SubmitField, \
-    TextAreaField, widgets
-from wtforms.validators import Email, InputRequired, URL
+    TextAreaField, DateTimeField, IntegerField, widgets
+from wtforms.validators import Email, InputRequired, URL, Optional
 
 from server.controllers import exam_regex
 
@@ -29,8 +28,10 @@ class MultiCheckboxField(SelectMultipleField):
 
 class RoomForm(FlaskForm):
     display_name = StringField('display_name', [InputRequired()])
-    sheet_url = StringField('sheet_url', [URL()])
+    sheet_url = StringField('sheet_url', [URL(), InputRequired()])
     sheet_range = StringField('sheet_range', [InputRequired()])
+    start_at = DateTimeField('start_at', [Optional()], format='%Y-%m-%dT%H:%M')
+    duration_minutes = IntegerField('duration_minutes', [Optional()])
     preview_room = SubmitField('preview')
     create_room = SubmitField('create')
 

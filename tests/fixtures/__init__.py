@@ -1,5 +1,5 @@
 from server import app
-from server.models import db
+from server.models import db, Offering, Room
 
 
 def seed_db():
@@ -18,3 +18,7 @@ def seed_db():
 
     for filename in seed_files_names:
         ff.load_fixtures_from_file(db, filename, seed_dir_paths)
+
+    ss = Room.query.first().start_at
+    print(ss)
+    print(type(ss))

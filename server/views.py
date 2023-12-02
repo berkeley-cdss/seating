@@ -147,18 +147,20 @@ def import_room_from_custom_sheet(exam):
     room = None
     if new_form.validate_on_submit():
         try:
+            print("form validated")
             room = parse_form_and_validate_room(exam, new_form)
         except Exception as e:
-            new_form.sheet_url.errors.append(str(e))
+            flash(f"Failed to import room due to an unexpected error: {e}", 'error')
         if new_form.create_room.data:
             try:
                 db.session.add(room)
                 db.session.commit()
-                # TODO: proper error handling
-            except:
-                new_form.sheet_url.errors.append(
-                    "Room name {} already exists for this exam.".format(room.name))
+            except Exception as e:
+                flash(f"Failed to import room due to an db error: {e}", 'error')
             return redirect(url_for('exam', exam=exam))
+    for field, errors in new_form.errors.items():
+        for error in errors:
+            flash("{}: {}".format(field, error), 'error')
     return render_template('new_room.html.j2',
                            exam=exam, new_form=new_form, choose_form=choose_form, room=room,
                            master_sheet_url=app.config.get('MASTER_ROOM_SHEET_URL'))
@@ -181,11 +183,17 @@ def import_room_from_master_sheet(exam):
                 room = parse_form_and_validate_room(exam, f)
                 # TODO: proper error handling
             except Exception as e:
-                choose_form.rooms.errors.append(str(e))
+                flash(f"Failed to import room due to an unexpected error: {e}", 'error')
             if room:
-                db.session.add(room)
-                db.session.commit()
+                try:
+                    db.session.add(room)
+                    db.session.commit()
+                except Exception as e:
+                    flash(f"Failed to import room due to an db error: {e}", 'error')
         return redirect(url_for('exam', exam=exam))
+    for field, errors in choose_form.errors.items():
+        for error in errors:
+            flash("{}: {}".format(field, error), 'error')
     return render_template('new_room.html.j2',
                            exam=exam, new_form=new_form, choose_form=choose_form,
                            master_sheet_url=app.config.get('MASTER_ROOM_SHEET_URL'))

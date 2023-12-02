@@ -11,6 +11,16 @@
         <a class="mdl-list__item-primary-content" href="{{ url_for('room', exam=exam, name=room.name) }}">
           {{ room.display_name }}
         </a>
+        {% if room.start_at %}
+          <span style="margin-right: 5px;"><small>
+            {{ room.start_at_time.strftime('%Y-%m-%d %H:%M') }}
+          </small></span>
+        {% endif %}
+        {% if room.duration_minutes %}
+          <span><small>
+            {{ '({} mins)'.format(room.duration_minutes) }}
+          </small></span>
+        {% endif %}
         <div class="material-icons std" onclick="location.href = '{{ url_for('delete_room', exam=exam, name=room.name) }}';" style="float: right;">clear</div>
       </li>
     {% endfor %}
