@@ -12,6 +12,7 @@ from sqlalchemy.ext.associationproxy import association_proxy
 
 from server import app
 from server.utils.date import parse_ISO8601
+from server.utils.misc import arr_to_dict
 
 db = SQLAlchemy(app=app)
 
@@ -142,6 +143,10 @@ class Room(db.Model):
     @property
     def movable_seats(self):
         return [seat for seat in self.seats if not seat.fixed]
+
+    @property
+    def movable_seats_by_attribute(self):
+        return arr_to_dict(self.movable_seats, key_getter=lambda seat: frozenset(seat.attributes))
 
     @property
     def rows(self):

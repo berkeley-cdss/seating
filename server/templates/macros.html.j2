@@ -31,12 +31,59 @@
         </small></span>
     {% endif %}
   </h4>
+
   {% if room.movable_seats %}
-    <h6>Movable Seats</h6>
-    <div>
-    There are {{ room.movable_seats|length }} movable seats in this room.
+    <h5>Movable Seats</h5>
+    {% set circle_size = 24 %}
+    <div style="width: 40%; margin: 0 auto; text-align: left;">
+    <div style="text-align: center;">There are {{ room.movable_seats|length }} movable seats in this room.</div>
+    <ul>
+    {% for attr in room.movable_seats_by_attribute %}
+      <li>{{ ','.join(attr) }}
+
+      {% for seat in room.movable_seats_by_attribute[attr] %}
+        {% if staff %}
+          {% if seat.assignment %}
+            <a id={{ seat.id }} style="font-size: {{ circle_size }}px;"
+              href="{{ url_for('student', exam=exam, canvas_id=seat.assignment.student.canvas_id) }}">
+              &#x25CF;
+            </a>
+          {% else %}
+            <span id={{ seat.id }} style="font-size: {{ circle_size }}px;">
+              &#x25CB;
+            </span>
+          {% endif %}
+        {% endif %}
+        <div class="seat-tooltip mdl-tooltip mdl-tooltip--large" for="{{ seat.id }}">
+        {{ seat.id }}
+          {% if show_attributes %}
+            {% for attribute in seat.attributes %}
+              <br>{{ attribute|upper }}
+            {% endfor %}
+          {% endif %}
+          {% if staff and seat.assignment %}
+            <br>{{ seat.assignment.student.name }}
+            <br>
+              <img class="photo" src="../../students/{{ seat.assignment.student.email }}/photo"/>
+            <br>{{ seat.assignment.student.sid }}
+          {% endif %}
+        </div>
+      {% endfor %}
+
+      {% for seat in room.movable_seats_by_attribute[attr] %}
+        {% if seat.id == highlight_seat_id %}
+          <span><strong>(YOUR WILL USE A SEAT FROM THIS CATEGORY)</strong></span>
+        {% endif %}
+      {% endfor %}
+
+      </li>
+    {% endfor %}
+    </ul>
     </div>
   {% endif %}
+
+  {% if room.fixed_seats %}
+  <h5>Fixed Seats</h5>
   <h6>Front</h6>
   {% set x_min = room.fixed_seats|map(attribute='x')|min %}
   {% set x_max = room.fixed_seats|map(attribute='x')|max %}
@@ -62,11 +109,11 @@
         {% else %}
           {% set class = 'seat' %}
         {% endif %}
-        <div id="{{ seat.name }}" class="{{ class }}" style="left:{{ x }}px;top:{{ y }}px"></div>
+        <div id="{{ seat.id }}" class="{{ class }}" style="left:{{ x }}px;top:{{ y }}px"></div>
       {% if staff and seat.assignment %}
       </a>
       {% endif %}
-      <div class="seat-tooltip mdl-tooltip mdl-tooltip--large" for="{{ seat.name }}">
+      <div class="seat-tooltip mdl-tooltip mdl-tooltip--large" for="{{ seat.id }}">
         {{ seat.name }}
         {% if show_attributes %}
         {% for attribute in seat.attributes %}
@@ -88,6 +135,7 @@
   </div>
   </div>
   <h6>Back</h6>
+  {% endif %}
 </div>
 {% endif %}
 {% endmacro %}
