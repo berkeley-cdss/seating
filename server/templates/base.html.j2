@@ -52,7 +52,7 @@
                   <span>Add rooms...</span>
                 </a>
               {% for room in exam.rooms %}
-              <a href="{{ url_for('room', exam=exam, name=room.name) }}">
+              <a href="{{ url_for('room', exam=exam, id=room.id) }}">
                 <li class="mdl-menu__item">
                     {{ room.display_name }}
                     {% if room.start_at %}

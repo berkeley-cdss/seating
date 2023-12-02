@@ -46,6 +46,14 @@ class ChooseRoomForm(FlaskForm):
             self.rooms.choices = [(item, item) for item in room_list]
 
 
+class EditRoomForm(FlaskForm):
+    display_name = StringField('display_name')
+    start_at = DateTimeField('start_at', [Optional()], format='%Y-%m-%dT%H:%M')
+    duration_minutes = IntegerField('duration_minutes', [Optional()])
+    submit = SubmitField('make edits')
+    cancel = SubmitField('cancel')
+
+
 class ImportStudentFromSheetForm(FlaskForm):
     sheet_url = StringField('sheet_url', [URL()])
     sheet_range = StringField('sheet_range', [InputRequired()])
