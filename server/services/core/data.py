@@ -145,6 +145,8 @@ def validate_students(exam, headers, rows):
         student.sid = row.pop('student id', None) or student.sid
         student.wants = {k for k, v in row.items() if v.lower() == 'true'}
         student.avoids = {k for k, v in row.items() if v.lower() == 'false'}
+        student.room_wants = {}
+        student.room_avoids = {}
         if is_new:
             new_students.append(student)
         else:

@@ -193,6 +193,8 @@ class Student(db.Model):
     sid = db.Column(db.String(255))
     wants = db.Column(StringSet, nullable=False)
     avoids = db.Column(StringSet, nullable=False)
+    room_wants = db.Column(StringSet, nullable=False)
+    room_avoids = db.Column(StringSet, nullable=False)
 
     assignment = db.relationship('SeatAssignment', uselist=False, cascade='all, delete-orphan',
                                  backref=backref('student', uselist=False, single_parent=True))

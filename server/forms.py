@@ -73,6 +73,8 @@ class EditStudentForm(FlaskForm):
     email = StringField('email', [Email()])
     wants = StringField('wants')
     avoids = StringField('avoids')
+    room_wants = StringField('room_wants')
+    room_avoids = StringField('room_avoids')
     submit = SubmitField('make edits')
     cancel = SubmitField('cancel')
 

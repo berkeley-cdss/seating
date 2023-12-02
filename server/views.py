@@ -368,20 +368,31 @@ def edit_student(exam, canvas_id):
     form = EditStudentForm()
     orig_wants_set = set(student.wants)
     orig_avoids_set = set(student.avoids)
+    orig_room_wants_set = set(student.room_wants)
+    orig_room_avoids_set = set(student.room_avoids)
     if request.method == 'GET':
         form.wants.data = ",".join(orig_wants_set)
         form.avoids.data = ",".join(orig_avoids_set)
+        form.room_wants.data = ",".join(orig_room_wants_set)
+        form.room_avoids.data = ",".join(orig_room_avoids_set)
         form.email.data = student.email
     if form.validate_on_submit():
         if 'cancel' in request.form:
             return redirect(url_for('students', exam=exam))
         new_wants_set = set(re.split(r'\s|,', form.wants.data))
         new_avoids_set = set(re.split(r'\s|,', form.avoids.data))
+        new_room_wants_set = set(re.split(r'\s|,', form.room_wants.data))
+        new_room_avoids_set = set(re.split(r'\s|,', form.room_avoids.data))
         student.wants = new_wants_set
         student.avoids = new_avoids_set
+        student.room_wants = new_room_wants_set
+        student.room_avoids = new_room_avoids_set
         # if wants or avoids changed, delete original assignment
-        if orig_wants_set != new_wants_set or orig_avoids_set != new_avoids_set:
-            SeatAssignment.query.filter_by(student_id=student.id).delete()
+        # we need to compare sets because order does not matter
+        if orig_wants_set != new_wants_set or orig_avoids_set != new_avoids_set\
+                or orig_room_wants_set != new_room_wants_set or orig_room_avoids_set != new_room_avoids_set:
+            if student.assignment:
+                db.session.delete(student.assignment)
         student.email = form.email.data
         db.session.commit()
         return redirect(url_for('students', exam=exam))
