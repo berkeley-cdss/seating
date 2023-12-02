@@ -70,9 +70,18 @@ def _prepare_seat(room_form):
                 raise DataValidationError(f'Fixed seat coordinates repeated: {coords}')
             seat_coords.add(coords)
             seat.x, seat.y = coords
-
-        seat.attributes = {k for k, v in row.items() if v.lower() == 'true'}
-        valid_seats.append(seat)
+            _ = row.pop('count', 1)  # discard count column if it exists
+            seat.attributes = {k for k, v in row.items() if v.lower() == 'true'}
+            valid_seats.append(seat)
+        else:
+            # allows count column so we can define multiple movable seats in one row
+            count = row.pop('count', 1)
+            attributes = {k for k, v in row.items() if v.lower() == 'true'}
+            for _ in range(int(count)):
+                seat = Seat()
+                seat.fixed = False
+                seat.attributes = attributes
+                valid_seats.append(seat)
     return valid_seats
 
 
