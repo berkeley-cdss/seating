@@ -109,7 +109,7 @@
                 {% for category, message in messages %}
                     <div class="alert alert-{{ category }}">
                         <span class="alert-icon">🔔</span>
-                        <span class="alert-message">{{ message }}</span>
+                        <span class="alert-message">{{ message.replace("\n", "<br>") }}</span>
                         <button type="button" class="close-alert" onclick="this.parentElement.style.display='none';">&times;</button>
                     </div>
                 {% endfor %}

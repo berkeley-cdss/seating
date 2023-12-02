@@ -13,6 +13,7 @@ from server.services.email import email_about_assignment
 from server.services.core.data import parse_form_and_validate_room, validate_students, \
     parse_student_sheet, parse_canvas_student_roster
 from server.services.core.assign import assign_students
+from server.typings.exception import SeatAssigningAlgorithmError
 from server.utils.date import to_ISO8601
 from server.typings.enum import EmailTemplate
 
@@ -423,13 +424,13 @@ def delete_student(exam, canvas_id):
 def assign(exam):
     form = AssignForm()
     if form.validate_on_submit():
-        success, payload = assign_students(exam)
-        if success:
-            db.session.add_all(payload)
+        try:
+            assignments = assign_students(exam)
+            db.session.add_all(assignments)
             db.session.commit()
             flash("Successfully assigned students.", 'success')
-        else:
-            flash("Failed to assign students. Everything rolled back.\n{}".format(payload), 'error')
+        except SeatAssigningAlgorithmError as e:
+            flash(str(e), 'error')
         return redirect(url_for('students', exam=exam))
     return render_template('assign.html.j2', exam=exam, form=form)
 

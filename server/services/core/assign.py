@@ -1,6 +1,7 @@
 import random
 
 from server.models import SeatAssignment
+from server.typings.exception import SeatAssigningAlgorithmError
 from server.utils.misc import arr_to_dict
 
 
@@ -45,8 +46,7 @@ def assign_students(exam):
         min_seats = seats_by_preference[min_preference]
 
         if not min_seats:
-            return (False,
-                    'Assignment failed! No more seats for preference {}'.format(min_preference))
+            raise SeatAssigningAlgorithmError(exam, min_students, min_preference)
 
         student = random.choice(min_students)
         seat = random.choice(min_seats)
@@ -55,4 +55,4 @@ def assign_students(exam):
         seats.remove(seat)
 
         assignments.append(SeatAssignment(student=student, seat=seat))
-    return (True, assignments)
+    return assignments
