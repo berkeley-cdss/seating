@@ -383,7 +383,11 @@ def edit_student(exam, canvas_id):
         new_avoids_set = set(re.split(r'\s|,', form.avoids.data))
         new_room_wants_set = set(form.room_wants.data)
         new_room_avoids_set = set(form.room_avoids.data)
-        print(f"new new_room_wants_set: {new_room_wants_set}")
+        # wants and avoids should not overlap
+        if (new_wants_set & new_avoids_set) \
+                or (new_room_wants_set & new_room_avoids_set):
+            flash("Wants and avoids should not overlap.", 'error')
+            return render_template('edit_student.html.j2', exam=exam, form=form, student=student)
         student.wants = new_wants_set
         student.avoids = new_avoids_set
         student.room_wants = new_room_wants_set
