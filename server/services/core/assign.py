@@ -19,13 +19,14 @@ def assign_students(exam):
     def seats_available(preference):
         """
         Return seats available for a given preference.
+        Comparison of attributes is case-insensitive.
         Remember: any([]) return False, all([]) return True
         """
         wants, avoids, room_wants, room_avoids = preference
         return [
             seat for seat in seats
-            if (all(a in seat.attributes for a in wants) and  # noqa
-                all(a not in seat.attributes for a in avoids) and  # noqa
+            if (all(want.lower() in {attr.lower() for attr in seat.attributes} for want in wants) and  # noqa
+                all(avoid.lower() not in {attr.lower() for attr in seat.attributes} for avoid in avoids) and  # noqa
                 (not room_wants or any(int(a) == seat.room.id for a in room_wants)) and  # noqa
                 all(int(a) != seat.room.id for a in room_avoids)
                 )
@@ -33,17 +34,22 @@ def assign_students(exam):
 
     assignments = []
     while students:
-        students_by_preference = arr_to_dict(students, key_getter=lambda student: (
-            frozenset(student.wants), frozenset(student.avoids),
-            frozenset(student.room_wants), frozenset(student.room_avoids)))
+        students_by_preference = \
+            arr_to_dict(students, key_getter=lambda student: (
+                frozenset(student.wants), frozenset(student.avoids),
+                frozenset(student.room_wants), frozenset(student.room_avoids)))
         seats_by_preference = {
             preference: seats_available(preference)
             for preference in students_by_preference.keys()
         }
+        print(f"seats_by_preference: {seats_by_preference}")
         min_preference = min(seats_by_preference,
                              key=lambda k: len(seats_by_preference[k]))
         min_students = students_by_preference[min_preference]
         min_seats = seats_by_preference[min_preference]
+        print(f"min_preference: {min_preference}")
+        print(f"min_students: {min_students}")
+        print(f"min_seats: {min_seats}")
 
         if not min_seats:
             raise SeatAssigningAlgorithmError(exam, min_students, min_preference)
