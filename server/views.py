@@ -388,7 +388,7 @@ def edit_student(exam, canvas_id):
         print(new_wants_set, new_avoids_set, new_room_wants_set, new_room_avoids_set)
         print(len(new_wants_set), len(new_avoids_set), len(new_room_wants_set), len(new_room_avoids_set))
         if not new_wants_set.isdisjoint(new_avoids_set) \
-                or new_room_wants_set.isdisjoint(new_room_avoids_set):
+                or not new_room_wants_set.isdisjoint(new_room_avoids_set):
             flash(
                 "Wants and avoids should not overlap.\n"
                 f"Want: {new_wants_set}\nAvoid: {new_avoids_set}\n"
