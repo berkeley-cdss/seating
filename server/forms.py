@@ -87,6 +87,8 @@ class DeleteStudentForm(FlaskForm):
 
 class AssignForm(FlaskForm):
     submit = SubmitField('assign')
+    delete_all = SubmitField('delete all assignments')
+    reassign_all = SubmitField('reassign all assignments')
 
 
 def validate_email_list(form, field):
@@ -94,7 +96,6 @@ def validate_email_list(form, field):
     for email in email_list:
         email = email.strip()
         if not Email()(form, field):
-            print(f'Invalid email address: {email}')
             raise ValidationError(f'Invalid email address: {email}')
 
 

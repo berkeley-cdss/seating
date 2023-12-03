@@ -1,3 +1,4 @@
+from multiprocessing import synchronize
 import re
 from flask import abort, redirect, render_template, request, send_file, url_for, flash
 from flask_login import current_user, login_required
@@ -427,11 +428,21 @@ def delete_student(exam, canvas_id):
 def assign(exam):
     form = AssignForm()
     if form.validate_on_submit():
+        def delete_all_assignments_no_sync(e):
+            seat_ids = {seat.id for room in e.rooms for seat in room.seats}
+            SeatAssignment.query.filter(SeatAssignment.seat_id.in_(seat_ids)).delete(synchronize_session=False)
+            db.session.commit()
+        if 'delete_all' in request.form:
+            delete_all_assignments_no_sync(exam)
+            flash("Successfully deleted all assignments.", 'success')
+            return redirect(url_for('students', exam=exam))
+        elif 'reassign_all' in request.form:
+            delete_all_assignments_no_sync(exam)
         try:
             assignments = assign_students(exam)
             db.session.add_all(assignments)
             db.session.commit()
-            flash("Successfully assigned students.", 'success')
+            flash(f"Successfully assigned {len(assignments)} students.", 'success')
         except SeatAssigningAlgorithmError as e:
             flash(str(e), 'error')
         return redirect(url_for('students', exam=exam))
