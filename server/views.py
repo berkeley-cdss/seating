@@ -11,8 +11,8 @@ from server.services.email.templates import get_email
 from server.services.google import get_spreadsheet_tabs
 import server.services.canvas as canvas_client
 from server.services.email import email_about_assignment
-from server.services.core.data import parse_form_and_validate_room, validate_students, \
-    parse_student_sheet, parse_canvas_student_roster
+from server.services.core.data import get_room_from_google_spreadsheet, get_students_from_canvas, \
+    get_students_from_google_spreadsheet
 from server.services.core.assign import assign_students
 from server.typings.exception import SeatAssigningAlgorithmError
 from server.utils.date import to_ISO8601
@@ -150,7 +150,7 @@ def import_room_from_custom_sheet(exam):
     room = None
     if new_form.validate_on_submit():
         try:
-            room = parse_form_and_validate_room(exam, new_form)
+            room = get_room_from_google_spreadsheet(exam, new_form)
         except Exception as e:
             flash(f"Failed to import room due to an unexpected error: {e}", 'error')
         if new_form.create_room.data:
@@ -183,8 +183,7 @@ def import_room_from_master_sheet(exam):
                 sheet_range=r)
             room = None
             try:
-                room = parse_form_and_validate_room(exam, f)
-                # TODO: proper error handling
+                room = get_room_from_google_spreadsheet(exam, f)
             except Exception as e:
                 flash(f"Failed to import room due to an unexpected error: {e}", 'error')
             if room:
@@ -274,8 +273,7 @@ def import_students_from_custom_sheet(exam):
     from_canvas_form = ImportStudentFromCanvasRosterForm()
     if from_sheet_form.validate_on_submit():
         try:
-            headers, rows = parse_student_sheet(from_sheet_form)
-            new_students, updated_students, invalid_students = validate_students(exam, headers, rows)
+            new_students, updated_students, invalid_students = get_students_from_google_spreadsheet(exam, from_sheet_form)
             to_commit = new_students + updated_students
             if to_commit:
                 db.session.add_all(to_commit)
@@ -302,10 +300,7 @@ def import_students_from_canvas_roster(exam):
     from_canvas_form = ImportStudentFromCanvasRosterForm()
     if from_canvas_form.validate_on_submit():
         try:
-            course = canvas_client.get_course(exam.offering_canvas_id)
-            students = course.get_users(enrollment_type='student')
-            headers, rows = parse_canvas_student_roster(students)
-            new_students, updated_students, invalid_students = validate_students(exam, headers, rows)
+            new_students, updated_students, invalid_students = get_students_from_canvas(exam)
             to_commit = new_students + updated_students
             if to_commit:
                 db.session.add_all(to_commit)
