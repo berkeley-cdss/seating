@@ -1,24 +1,22 @@
-from distutils.command import upload
-from multiprocessing import synchronize
 import re
-from turtle import up
 from flask import abort, redirect, render_template, request, send_file, url_for, flash
 from flask_login import current_user, login_required
 
 from server import app
 from server.models import SeatAssignment, db, Exam, Room, Seat, Student
-from server.forms import EditRoomForm, ExamForm, ImportStudentFromCsvUploadForm, RoomForm, ChooseRoomForm, ImportStudentFromSheetForm, \
-    ImportStudentFromCanvasRosterForm, DeleteStudentForm, AssignForm, EmailForm, EditStudentForm, UploadRoomForm
+from server.forms import EditRoomForm, ExamForm, ImportStudentFromCsvUploadForm, RoomForm, ChooseRoomForm, \
+    ImportStudentFromSheetForm, ImportStudentFromCanvasRosterForm, DeleteStudentForm, AssignForm, EmailForm, \
+    EditStudentForm, UploadRoomForm
 from server.services.email.templates import get_email
 from server.services.google import get_spreadsheet_tabs
 import server.services.canvas as canvas_client
 from server.services.email import email_about_assignment
-from server.services.core.data import get_room_from_csv, get_room_from_google_spreadsheet, get_students_from_canvas, get_students_from_csv, \
-    get_students_from_google_spreadsheet
+from server.services.core.data import get_room_from_csv, get_room_from_google_spreadsheet, \
+    get_students_from_canvas, get_students_from_csv, get_students_from_google_spreadsheet
 from server.services.core.assign import assign_students
 from server.typings.exception import SeatAssigningAlgorithmError
-from server.utils.date import to_ISO8601
 from server.typings.enum import EmailTemplate
+from server.utils.date import to_ISO8601
 
 # region Offering CRUDI
 
