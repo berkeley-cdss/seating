@@ -385,8 +385,6 @@ def edit_student(exam, canvas_id):
         new_room_wants_set = set(form.room_wants.data)
         new_room_avoids_set = set(form.room_avoids.data)
         # wants and avoids should not overlap
-        print(new_wants_set, new_avoids_set, new_room_wants_set, new_room_avoids_set)
-        print(len(new_wants_set), len(new_avoids_set), len(new_room_wants_set), len(new_room_avoids_set))
         if not new_wants_set.isdisjoint(new_avoids_set) \
                 or not new_room_wants_set.isdisjoint(new_room_avoids_set):
             flash(

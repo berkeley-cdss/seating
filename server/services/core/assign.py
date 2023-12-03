@@ -42,14 +42,10 @@ def assign_students(exam):
             preference: seats_available(preference)
             for preference in students_by_preference.keys()
         }
-        print(f"seats_by_preference: {seats_by_preference}")
         min_preference = min(seats_by_preference,
                              key=lambda k: len(seats_by_preference[k]))
         min_students = students_by_preference[min_preference]
         min_seats = seats_by_preference[min_preference]
-        print(f"min_preference: {min_preference}")
-        print(f"min_students: {min_students}")
-        print(f"min_seats: {min_seats}")
 
         if not min_seats:
             raise SeatAssigningAlgorithmError(exam, min_students, min_preference)
