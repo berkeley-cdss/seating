@@ -380,14 +380,19 @@ def edit_student(exam, canvas_id):
     if form.validate_on_submit():
         if 'cancel' in request.form:
             return redirect(url_for('students', exam=exam))
-        new_wants_set = set(re.split(r'\s|,', form.wants.data))
-        new_avoids_set = set(re.split(r'\s|,', form.avoids.data))
+        new_wants_set = set(re.split(r'\s|,', form.wants.data)) if form.wants.data else set()
+        new_avoids_set = set(re.split(r'\s|,', form.avoids.data)) if form.avoids.data else set()
         new_room_wants_set = set(form.room_wants.data)
         new_room_avoids_set = set(form.room_avoids.data)
         # wants and avoids should not overlap
-        if (new_wants_set & new_avoids_set) \
-                or (new_room_wants_set & new_room_avoids_set):
-            flash("Wants and avoids should not overlap.", 'error')
+        print(new_wants_set, new_avoids_set, new_room_wants_set, new_room_avoids_set)
+        print(len(new_wants_set), len(new_avoids_set), len(new_room_wants_set), len(new_room_avoids_set))
+        if not new_wants_set.isdisjoint(new_avoids_set) \
+                or new_room_wants_set.isdisjoint(new_room_avoids_set):
+            flash(
+                "Wants and avoids should not overlap.\n"
+                f"Want: {new_wants_set}\nAvoid: {new_avoids_set}\n"
+                f"Room Want: {new_room_wants_set}\nRoom Avoid: {new_room_avoids_set}", 'error')
             return render_template('edit_student.html.j2', exam=exam, form=form, student=student)
         student.wants = new_wants_set
         student.avoids = new_avoids_set

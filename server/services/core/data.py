@@ -148,8 +148,8 @@ def validate_students(exam, headers, rows):
         student.room_wants = set()
         student.room_avoids = set()
         # wants and avoids should be mutually exclusive
-        if (student.wants & student.avoids) \
-                or (student.room_wants & student.room_avoids):
+        if not student.wants.isdisjoint(student.avoids) \
+                or not student.room_wants.isdisjoint(student.room_avoids):
             invalid_students.append(row)
             continue
         if is_new:
