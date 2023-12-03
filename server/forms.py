@@ -1,8 +1,9 @@
 import re
 
 from flask_wtf import FlaskForm
-from wtforms import BooleanField, SelectMultipleField, StringField, SubmitField, \
+from wtforms import BooleanField, FileField, SelectMultipleField, StringField, SubmitField, \
     TextAreaField, DateTimeField, IntegerField, ValidationError, widgets
+from flask_wtf.file import FileRequired, FileAllowed
 from wtforms.validators import Email, InputRequired, URL, Optional
 from server.controllers import exam_regex
 
@@ -45,6 +46,17 @@ class ChooseRoomForm(FlaskForm):
         super(ChooseRoomForm, self).__init__(*args, **kwargs)
         if room_list is not None:
             self.rooms.choices = [(item, item) for item in room_list]
+
+
+class UploadRoomForm(FlaskForm):
+    submit = SubmitField('upload')
+    file = FileField('Choose File', validators=[
+        FileRequired(),
+        FileAllowed(['csv'], 'CSV files only!')
+    ])
+    display_name = StringField('display_name', [InputRequired()])
+    start_at = DateTimeField('start_at', [Optional()], format='%Y-%m-%dT%H:%M')
+    duration_minutes = IntegerField('duration_minutes', [Optional()])
 
 
 class EditStudentForm(FlaskForm):

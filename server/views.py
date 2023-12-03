@@ -1,17 +1,19 @@
+from distutils.command import upload
 from multiprocessing import synchronize
 import re
+from turtle import up
 from flask import abort, redirect, render_template, request, send_file, url_for, flash
 from flask_login import current_user, login_required
 
 from server import app
 from server.models import SeatAssignment, db, Exam, Room, Seat, Student
 from server.forms import EditRoomForm, ExamForm, RoomForm, ChooseRoomForm, ImportStudentFromSheetForm, \
-    ImportStudentFromCanvasRosterForm, DeleteStudentForm, AssignForm, EmailForm, EditStudentForm
+    ImportStudentFromCanvasRosterForm, DeleteStudentForm, AssignForm, EmailForm, EditStudentForm, UploadRoomForm
 from server.services.email.templates import get_email
 from server.services.google import get_spreadsheet_tabs
 import server.services.canvas as canvas_client
 from server.services.email import email_about_assignment
-from server.services.core.data import get_room_from_google_spreadsheet, get_students_from_canvas, \
+from server.services.core.data import get_room_from_csv, get_room_from_google_spreadsheet, get_students_from_canvas, \
     get_students_from_google_spreadsheet
 from server.services.core.assign import assign_students
 from server.typings.exception import SeatAssigningAlgorithmError
@@ -135,8 +137,9 @@ def import_room(exam):
     """
     new_form = RoomForm()
     choose_form = ChooseRoomForm(room_list=get_spreadsheet_tabs(app.config.get('MASTER_ROOM_SHEET_URL')))
+    upload_form = UploadRoomForm()
     return render_template('new_room.html.j2',
-                           exam=exam, new_form=new_form, choose_form=choose_form,
+                           exam=exam, new_form=new_form, choose_form=choose_form, upload_form=upload_form,
                            master_sheet_url=app.config.get('MASTER_ROOM_SHEET_URL'))
 
 
@@ -147,6 +150,7 @@ def import_room_from_custom_sheet(exam):
     """
     new_form = RoomForm()
     choose_form = ChooseRoomForm()
+    upload_form = UploadRoomForm()
     room = None
     if new_form.validate_on_submit():
         try:
@@ -164,7 +168,9 @@ def import_room_from_custom_sheet(exam):
         for error in errors:
             flash("{}: {}".format(field, error), 'error')
     return render_template('new_room.html.j2',
-                           exam=exam, new_form=new_form, choose_form=choose_form, room=room,
+                           exam=exam,
+                           new_form=new_form, choose_form=choose_form, upload_form=upload_form,
+                           room=room,
                            master_sheet_url=app.config.get('MASTER_ROOM_SHEET_URL'))
 
 
@@ -175,6 +181,7 @@ def import_room_from_master_sheet(exam):
     """
     new_form = RoomForm()
     choose_form = ChooseRoomForm(room_list=get_spreadsheet_tabs(app.config.get('MASTER_ROOM_SHEET_URL')))
+    upload_form = UploadRoomForm()
     if choose_form.validate_on_submit():
         for r in choose_form.rooms.data:
             f = RoomForm(
@@ -197,7 +204,38 @@ def import_room_from_master_sheet(exam):
         for error in errors:
             flash("{}: {}".format(field, error), 'error')
     return render_template('new_room.html.j2',
-                           exam=exam, new_form=new_form, choose_form=choose_form,
+                           exam=exam,
+                           new_form=new_form, choose_form=choose_form, upload_form=upload_form,
+                           master_sheet_url=app.config.get('MASTER_ROOM_SHEET_URL'))
+
+
+@app.route('/<exam:exam>/rooms/import/from_csv_upload/', methods=['GET', 'POST'])
+def import_room_from_csv_upload(exam):
+    new_form = RoomForm()
+    choose_form = ChooseRoomForm()
+    upload_form = UploadRoomForm()
+    if upload_form.validate_on_submit():
+        room = None
+        if upload_form.file.data:
+            try:
+                room = get_room_from_csv(exam, upload_form)
+            except Exception as e:
+                flash(f"Failed to import room due to an unexpected error: {e}", 'error')
+        else:
+            flash("No file uploaded!", 'error')
+        if room:
+            try:
+                db.session.add(room)
+                db.session.commit()
+            except Exception as e:
+                flash(f"Failed to import room due to a db error: {e}", 'error')
+        return redirect(url_for('exam', exam=exam))
+    for field, errors in upload_form.errors.items():
+        for error in errors:
+            flash("{}: {}".format(field, error), 'error')
+    return render_template('new_room.html.j2',
+                           exam=exam,
+                           new_form=new_form, choose_form=choose_form, upload_form=upload_form,
                            master_sheet_url=app.config.get('MASTER_ROOM_SHEET_URL'))
 
 

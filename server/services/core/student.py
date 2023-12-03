@@ -35,8 +35,8 @@ def prepare_students(exam, headers, rows):
             invalid_students.append(row)
             continue
         student.sid = row.pop('student id', None) or student.sid
-        student.wants = {k for k, v in row.items() if v.lower() == 'true'}
-        student.avoids = {k for k, v in row.items() if v.lower() == 'false'}
+        student.wants = {k.lower() for k, v in row.items() if v.lower() == 'true'}
+        student.avoids = {k.lower() for k, v in row.items() if v.lower() == 'false'}
         student.room_wants = set()
         student.room_avoids = set()
         # wants and avoids should be mutually exclusive

@@ -33,7 +33,7 @@ def prepare_room(exam, room_form):
     return room
 
 
-def prepare_seat(headers, rows):
+def prepare_seat(headers, rows):  # noqa: C901
     """
     Prepare a list of seats from the spreadsheet data.
     This spreadsheet data may come from a Google Sheet or a CSV file.
@@ -75,12 +75,12 @@ def prepare_seat(headers, rows):
             seat_coords.add(coords)
             seat.x, seat.y = coords
             _ = row.pop('count', 1)  # discard count column if it exists
-            seat.attributes = {k for k, v in row.items() if v.lower() == 'true'}
+            seat.attributes = {k.lower() for k, v in row.items() if v.lower() == 'true'}
             valid_seats.append(seat)
         else:
             # allows count column so we can define multiple movable seats in one row
             count = row.pop('count', 1)
-            attributes = {k for k, v in row.items() if v.lower() == 'true'}
+            attributes = {k.lower() for k, v in row.items() if v.lower() == 'true'}
             for _ in range(int(count)):
                 seat = Seat()
                 seat.fixed = False
