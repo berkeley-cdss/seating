@@ -38,6 +38,8 @@ class RoomForm(FlaskForm):
 class ChooseRoomForm(FlaskForm):
     submit = SubmitField('import')
     rooms = MultiCheckboxField('select_rooms')
+    start_at = DateTimeField('start_at', [Optional()], format='%Y-%m-%dT%H:%M')
+    duration_minutes = IntegerField('duration_minutes', [Optional()])
 
     def __init__(self, room_list=None, *args, **kwargs):
         super(ChooseRoomForm, self).__init__(*args, **kwargs)

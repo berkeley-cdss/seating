@@ -179,7 +179,8 @@ def import_room_from_master_sheet(exam):
         for r in choose_form.rooms.data:
             f = RoomForm(
                 display_name=r,
-                sheet_url=app.config.get("MASTER_ROOM_SHEET_URL"), sheet_range=r)
+                sheet_url=app.config.get("MASTER_ROOM_SHEET_URL"),
+                sheet_range=r)
             room = None
             try:
                 room = parse_form_and_validate_room(exam, f)
