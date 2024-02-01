@@ -32,8 +32,10 @@ def get_user(canvas_id, key=None) -> FakeUser | User:
 def get_course(canvas_id, key=None) -> FakeCourse | Course:
     return _get_client(key).get_course(canvas_id)
 
+
 def is_staff_enrollment(enrollment_type: str):
     return enrollment_type.lower() in ('ta', 'teacher')
+
 
 def is_course_valid(c) -> bool:
     # A valid course has a name and id
@@ -43,17 +45,19 @@ def is_course_valid(c) -> bool:
         hasattr(c, 'name') and \
         hasattr(c, 'course_code')
 
+
 def noramlize_course_start_date(course: FakeCourse | Course) -> None:
     # Ensure a valid start_at date for a course.
     # return the term start_at_date if present
-    if course['term'] and course['term']['start_at']:
-        start_at = course['term']['start_at']
-        start_at_date = course['term']['start_at_date']
+    # created_at is assumed to be at least always present
+    if hasattr(course, 'term') and course.term and course.term['start_at']:
+        start_at = course.term['start_at']
+        start_at_date = course.term['start_at_date']
     else:
-        start_at_date = course['start_at_date'] or course['created_at_date']
-        start_at = course['start_at'] or course['created_at']
-    course['start_at_date'] = start_at_date
-    course['start_at'] = start_at
+        start_at = course.start_at if (hasattr(course, 'start_at') and course.start_at) else course.created_at
+        start_at_date = course.start_at_date if (hasattr(course, 'start_at_date') and course.start_at_date) else course.created_at_date
+    course.start_at = start_at
+    course.start_at_date = start_at_date
 
 
 def get_user_courses_categorized(user: FakeUser | User) \

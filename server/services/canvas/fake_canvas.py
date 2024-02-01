@@ -24,7 +24,7 @@ class FakeUser:
         self.sis_user_id = FAKE_USERS[str(canvas_id)]['sis_user_id']
         self.login_id = FAKE_USERS[str(canvas_id)]['login_id']
 
-    def get_courses(self, *, enrollment_status="active") -> list[FakeCourse]:
+    def get_courses(self, *, enrollment_status="active", include=[], per_page=100) -> list[FakeCourse]:
         dic = FAKE_ENROLLMENTS[str(self.id)]
         return [FakeCourse(course_id, course["enrollments"]) for course_id, course in dic.items() if (
             not enrollment_status or any(
@@ -54,3 +54,4 @@ class FakeCourse:
                         users.append(FakeUser(user))
                         break
         return users
+    
