@@ -58,7 +58,7 @@ def email_about_assignment(exam, form, to_addrs):
             bcc_addr=form.bcc_addr.data)
         if success:
             success_addrs.add(to_addr)
-            assignment.emailed = True
+            student.assignment.emailed = True
         else:
             failure_addrs.add(to_addr)
     db.session.commit()
