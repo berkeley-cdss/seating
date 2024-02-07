@@ -11,7 +11,7 @@ from server.services.core.export import export_exam_student_info
 from server.services.email.templates import get_email
 from server.services.google import get_spreadsheet_tabs
 import server.services.canvas as canvas_client
-from server.services.email import email_about_assignment
+from server.services.email import email_about_assignment, substitute_about_assignment
 from server.services.core.data import get_room_from_csv, get_room_from_google_spreadsheet, \
     get_students_from_canvas, get_students_from_csv, get_students_from_google_spreadsheet
 from server.services.core.assign import assign_students
@@ -579,10 +579,14 @@ def email_single_student(exam, student_id):
             flash("No email sent.", 'warning')
         return redirect(url_for('students', exam=exam))
     else:
+        student = Student.query.get_or_404(student_id)
         email_prefill = get_email(EmailTemplate.ASSIGNMENT_INFORM_EMAIL)
         form.subject.data = email_prefill.subject
         form.body.data = email_prefill.body
-        form.to_addr.data = Student.query.get(student_id).email
+        subject, body = substitute_about_assignment(exam, form, student)
+        form.subject.data = subject
+        form.body.data = body
+        form.to_addr.data = student.email
     return render_template('email.html.j2', exam=exam, form=form)
 
 # endregion
