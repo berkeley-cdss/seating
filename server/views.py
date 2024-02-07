@@ -4,7 +4,7 @@ from flask_login import current_user, login_required
 
 from server import app
 from server.models import SeatAssignment, db, Exam, Room, Seat, Student
-from server.forms import EditRoomForm, ExamForm, ImportStudentFromCsvUploadForm, RoomForm, ChooseRoomForm, \
+from server.forms import EditAllStudentsForm, EditRoomForm, ExamForm, ImportStudentFromCsvUploadForm, RoomForm, ChooseRoomForm, \
     ImportStudentFromSheetForm, ImportStudentFromCanvasRosterForm, DeleteStudentForm, AssignForm, EmailForm, \
     EditStudentForm, UploadRoomForm
 from server.services.core.export import export_exam_student_info
@@ -510,7 +510,7 @@ def edit_student(exam, canvas_id):
 
 @app.route('/<exam:exam>/students/edit', methods=['GET', 'POST'])
 def edit_students(exam):
-    form = EditStudentForm(room_list=exam.rooms)
+    form = EditAllStudentsForm(room_list=exam.rooms)
     if form.validate_on_submit():
         if 'cancel' in request.form:
             return redirect(url_for('students', exam=exam))

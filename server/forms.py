@@ -83,9 +83,7 @@ class ImportStudentFromCsvUploadForm(FlaskForm):
         FileAllowed(['csv'], 'CSV files only!')
     ])
 
-
-class EditStudentForm(FlaskForm):
-    email = StringField('email', [Email()])
+class EditAllStudentsForm(FlaskForm):
     wants = StringField('wants')
     avoids = StringField('avoids')
     room_wants = MultiCheckboxField('room_wants')
@@ -94,11 +92,16 @@ class EditStudentForm(FlaskForm):
     cancel = SubmitField('cancel')
 
     def __init__(self, room_list=None, *args, **kwargs):
-        super(EditStudentForm, self).__init__(*args, **kwargs)
+        super(EditAllStudentsForm, self).__init__(*args, **kwargs)
         if room_list is not None:
             self.room_wants.choices = [(str(item.id), item.name_and_start_at_time_display()) for item in room_list]
             self.room_avoids.choices = [(str(item.id), item.name_and_start_at_time_display()) for item in room_list]
 
+class EditStudentForm(EditAllStudentsForm):
+    email = StringField('email', [Email()])
+    def __init__(self, room_list=None, *args, **kwargs):
+        super(EditStudentForm, self).__init__(room_list=room_list, *args, **kwargs)
+        
 
 class DeleteStudentForm(FlaskForm):
     emails = TextAreaField('emails')
