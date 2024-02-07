@@ -4,7 +4,7 @@ from flask_login import current_user, login_required
 
 from server import app
 from server.models import SeatAssignment, db, Exam, Room, Seat, Student
-from server.forms import EditAllStudentsForm, EditRoomForm, ExamForm, ImportStudentFromCsvUploadForm, RoomForm, ChooseRoomForm, \
+from server.forms import EditRoomForm, EditStudentsForm, ExamForm, ImportStudentFromCsvUploadForm, RoomForm, ChooseRoomForm, \
     ImportStudentFromSheetForm, ImportStudentFromCanvasRosterForm, DeleteStudentForm, AssignForm, EmailForm, \
     EditStudentForm, UploadRoomForm
 from server.services.core.export import export_exam_student_info
@@ -463,6 +463,7 @@ def edit_student(exam, canvas_id):
     student = Student.query.filter_by(
         exam_id=exam.id, canvas_id=canvas_id).first_or_404()
     form = EditStudentForm(room_list=exam.rooms)
+    edited, did_not_exist = set(), set()
     orig_wants_set = set(student.wants)
     orig_avoids_set = set(student.avoids)
     orig_room_wants_set = set(student.room_wants)
@@ -472,7 +473,7 @@ def edit_student(exam, canvas_id):
         form.avoids.data = ",".join(orig_avoids_set)
         form.room_wants.data = ",".join(orig_room_wants_set)
         form.room_avoids.data = ",".join(orig_room_avoids_set)
-        form.email.data = student.email
+        form.new_email.data = student.email
     if form.validate_on_submit():
         if 'cancel' in request.form:
             return redirect(url_for('students', exam=exam))
@@ -500,21 +501,35 @@ def edit_student(exam, canvas_id):
                 or orig_room_avoids_set != new_room_avoids_set:
             if student.assignment:
                 db.session.delete(student.assignment)
-        student.email = form.email.data
+        student.email = form.new_email.data
         db.session.commit()
         return redirect(url_for('students', exam=exam))
     for field, errors in form.errors.items():
         for error in errors:
             flash("{}: {}".format(field, error), 'error')
-    return render_template('edit_students.html.j2', exam=exam, form=form, students=[student])
+    return render_template('edit_students.html.j2', exam=exam, form=form, edited=edited,
+                            did_not_exist=did_not_exist, student=student)
 
 @app.route('/<exam:exam>/students/edit', methods=['GET', 'POST'])
 def edit_students(exam):
-    form = EditAllStudentsForm(room_list=exam.rooms)
+    form = EditStudentsForm(room_list=exam.rooms)
+    edited, did_not_exist = set(), set()
     if form.validate_on_submit():
         if 'cancel' in request.form:
             return redirect(url_for('students', exam=exam))
-        for student in exam.students:
+        if not form.use_all_emails.data:
+            emails = [x for x in re.split(r'\s|,', form.emails.data) if x]
+            students = Student.query.filter(
+                Student.email.in_(emails) & Student.exam_id == exam.id)
+        else:
+            students = Student.query.filter_by(exam_id=exam.id)
+        edited = {student.email for student in students}
+        did_not_exist = set()
+        if not form.use_all_emails.data:
+            did_not_exist = set(emails) - edited
+        if not edited and not did_not_exist:
+            abort(404, "No change has been made.")
+        for student in students:
             new_wants_set = set(re.split(r'\s|,', form.wants.data)) if form.wants.data else set()
             new_avoids_set = set(re.split(r'\s|,', form.avoids.data)) if form.avoids.data else set()
             new_room_wants_set = set(form.room_wants.data)
@@ -544,11 +559,12 @@ def edit_students(exam):
                 if student.assignment:
                     db.session.delete(student.assignment)
         db.session.commit()
-        return redirect(url_for('students', exam=exam))
+        # return redirect(url_for('students', exam=exam))
     for field, errors in form.errors.items():
         for error in errors:
             flash("{}: {}".format(field, error), 'error')
-    return render_template('edit_students.html.j2', exam=exam, form=form, students=exam.students)
+    return render_template('edit_students.html.j2', exam=exam, form=form, edited=edited,
+                            did_not_exist=did_not_exist, student=None)
 
 @app.route('/<exam:exam>/students/<string:canvas_id>/delete', methods=['GET', 'DELETE'])
 def delete_student(exam, canvas_id):

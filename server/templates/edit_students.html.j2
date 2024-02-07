@@ -3,16 +3,36 @@
 
 {% block body %}
 <div class="mdl-grid">
-    {% set edit_multiple = students|length > 1 %}
-    <div class="mdl-cell mdl-cell--12-col"></div>
+    {% set edit_multiple = false if student else true %}
+    <div class="mdl-cell mdl-cell--12-col">
       {% if edit_multiple %}
         <h5>Update Profile for Multiple Students</h5>
       {% else %}
-        <h5>Update Profile for {{ students[0].name }}</h5>
+        <h5>Update Profile for {{ student.name }}</h5>
       {% endif %}
     </div>
 
     {% call macros.form(form) %}
+      {% if edit_multiple %}
+      <div class="mdl-cell mdl-cell--10-col delist">
+        <div class="mdl-textfield mdl-js-textfield ">
+          {{ form.emails(class="mdl-textfield__input", type="text", rows="10", id="editemails") }}
+          <label class="mdl-textfield__label" for="editemails">Emails...</label>
+        </div>
+        <div class="mdl-cell mdl-cell--10-col delist">
+          <div class="checkbox" id="use_all_emails">{{ form.use_all_emails }}
+            <label class="" for="use_all_emails">Edit All</label>
+          </div>
+        </div>
+      </div>
+      {% else %}
+        <div class="mdl-cell mdl-cell--10-col delist">
+          <div class="mdl-textfield mdl-js-textfield mdl-textfield--floating-label">
+            {{ form.new_email(class="mdl-textfield__input", type="Email", id="email") }}
+            <label class="mdl-textfield__label" for="email">New Email</label>
+          </div>
+        </div>
+      {% endif %}
       <div class="mdl-cell mdl-cell--10-col delist">
         <div class="mdl-textfield mdl-js-textfield mdl-textfield--floating-label">
           {{ form.wants(class="mdl-textfield__input", type="text", id="wants") }}
@@ -37,14 +57,6 @@
           <div class="checkbox" id="room_avoids">{{ form.room_avoids }}</div>
         </div>
       </div>
-      {% if not edit_multiple %}
-        <div class="mdl-cell mdl-cell--10-col delist">
-          <div class="mdl-textfield mdl-js-textfield mdl-textfield--floating-label">
-            {{ form.email(class="mdl-textfield__input", type="Email", id="email") }}
-            <label class="mdl-textfield__label" for="email">New Email</label>
-          </div>
-        </div>
-      {% endif %}
       <div class="form-buttons">
         {{ form.submit(class="mdl-button mdl-js-button mdl-button--raised") }}
       </div>
@@ -52,6 +64,32 @@
         {{ form.cancel(class="mdl-button mdl-js-button mdl-button--raised") }}
       </div>
     {% endcall %}
-  </div>
+
+    {% if edit_multiple %}
+    <div class="mdl-cell mdl-cell--4-col delist"> 
+      <h5>Updated:</h5>
+      <ul class="mdl-list">
+        {% for student in edited|sort %}
+        <li class="mdl-list__item delitem">
+          <span class="mdl-list__item-primary-content">
+            {{ student }}
+          </span>
+        </li>
+        {% endfor %}
+      </ul>
+    </div>
+    <div class="mdl-cell mdl-cell--4-col delist">
+      <h5>Did not exist:</h5>
+      <ul class="mdl-list">
+        {% for student in did_not_exist|sort %}
+        <li class="mdl-list__item delitem">
+          <span class="mdl-list__item-primary-content">
+            {{ student }}
+          </span>
+        </li>
+        {% endfor %}
+      </ul>
+    </div>
+    {% endif %}
 </div>
 {% endblock %}

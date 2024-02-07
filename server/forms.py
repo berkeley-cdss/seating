@@ -83,7 +83,7 @@ class ImportStudentFromCsvUploadForm(FlaskForm):
         FileAllowed(['csv'], 'CSV files only!')
     ])
 
-class EditAllStudentsForm(FlaskForm):
+class EditStudentsFormBase(FlaskForm):
     wants = StringField('wants')
     avoids = StringField('avoids')
     room_wants = MultiCheckboxField('room_wants')
@@ -92,15 +92,23 @@ class EditAllStudentsForm(FlaskForm):
     cancel = SubmitField('cancel')
 
     def __init__(self, room_list=None, *args, **kwargs):
-        super(EditAllStudentsForm, self).__init__(*args, **kwargs)
+        super(EditStudentsFormBase, self).__init__(*args, **kwargs)
         if room_list is not None:
             self.room_wants.choices = [(str(item.id), item.name_and_start_at_time_display()) for item in room_list]
             self.room_avoids.choices = [(str(item.id), item.name_and_start_at_time_display()) for item in room_list]
 
-class EditStudentForm(EditAllStudentsForm):
-    email = StringField('email', [Email()])
+class EditStudentForm(EditStudentsFormBase):
+    new_email = StringField('email', [Email()])
+    
     def __init__(self, room_list=None, *args, **kwargs):
         super(EditStudentForm, self).__init__(room_list=room_list, *args, **kwargs)
+
+class EditStudentsForm(EditStudentsFormBase):
+    emails = TextAreaField('emails')
+    use_all_emails = BooleanField('use_all_emails')
+
+    def __init__(self, room_list=None, *args, **kwargs):
+        super(EditStudentsForm, self).__init__(room_list=room_list, *args, **kwargs)
         
 
 class DeleteStudentForm(FlaskForm):
