@@ -3,8 +3,13 @@
 
 {% block body %}
 <div class="mdl-grid">
-    <div class="mdl-cell mdl-cell--12-col">
-        <h5>Update Profile for {{ student.name }} </h5>
+    {% set edit_multiple = students|length > 1 %}
+    <div class="mdl-cell mdl-cell--12-col"></div>
+      {% if edit_multiple %}
+        <h5>Update Profile for Multiple Students</h5>
+      {% else %}
+        <h5>Update Profile for {{ students[0].name }}</h5>
+      {% endif %}
     </div>
 
     {% call macros.form(form) %}
@@ -32,12 +37,14 @@
           <div class="checkbox" id="room_avoids">{{ form.room_avoids }}</div>
         </div>
       </div>
-      <div class="mdl-cell mdl-cell--10-col delist">
-        <div class="mdl-textfield mdl-js-textfield mdl-textfield--floating-label">
-          {{ form.email(class="mdl-textfield__input", type="Email", id="email") }}
-          <label class="mdl-textfield__label" for="email">New Email</label>
+      {% if not edit_multiple %}
+        <div class="mdl-cell mdl-cell--10-col delist">
+          <div class="mdl-textfield mdl-js-textfield mdl-textfield--floating-label">
+            {{ form.email(class="mdl-textfield__input", type="Email", id="email") }}
+            <label class="mdl-textfield__label" for="email">New Email</label>
+          </div>
         </div>
-      </div>
+      {% endif %}
       <div class="form-buttons">
         {{ form.submit(class="mdl-button mdl-js-button mdl-button--raised") }}
       </div>

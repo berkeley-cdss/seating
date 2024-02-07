@@ -462,8 +462,6 @@ def student(exam, canvas_id):
 def edit_student(exam, canvas_id):
     student = Student.query.filter_by(
         exam_id=exam.id, canvas_id=canvas_id).first_or_404()
-    if not student:
-        abort(404, "Student not found.")
     form = EditStudentForm(room_list=exam.rooms)
     orig_wants_set = set(student.wants)
     orig_avoids_set = set(student.avoids)
@@ -508,8 +506,49 @@ def edit_student(exam, canvas_id):
     for field, errors in form.errors.items():
         for error in errors:
             flash("{}: {}".format(field, error), 'error')
-    return render_template('edit_student.html.j2', exam=exam, form=form, student=student)
+    return render_template('edit_students.html.j2', exam=exam, form=form, students=[student])
 
+@app.route('/<exam:exam>/students/edit', methods=['GET', 'POST'])
+def edit_students(exam):
+    form = EditStudentForm(room_list=exam.rooms)
+    if form.validate_on_submit():
+        if 'cancel' in request.form:
+            return redirect(url_for('students', exam=exam))
+        for student in exam.students:
+            new_wants_set = set(re.split(r'\s|,', form.wants.data)) if form.wants.data else set()
+            new_avoids_set = set(re.split(r'\s|,', form.avoids.data)) if form.avoids.data else set()
+            new_room_wants_set = set(form.room_wants.data)
+            new_room_avoids_set = set(form.room_avoids.data)
+            # wants and avoids should not overlap
+            if not new_wants_set.isdisjoint(new_avoids_set) \
+                    or not new_room_wants_set.isdisjoint(new_room_avoids_set):
+                flash(
+                    "Wants and avoids should not overlap.\n"
+                    f"Want: {new_wants_set}\nAvoid: {new_avoids_set}\n"
+                    f"Room Want: {new_room_wants_set}\nRoom Avoid: {new_room_avoids_set}", 'error')
+                return render_template('edit_students.html.j2', exam=exam, form=form)
+            orig_wants_set = set(student.wants)
+            orig_avoids_set = set(student.avoids)
+            orig_room_wants_set = set(student.room_wants)
+            orig_room_avoids_set = set(student.room_avoids)
+            student.wants = new_wants_set
+            student.avoids = new_avoids_set
+            student.room_wants = new_room_wants_set
+            student.room_avoids = new_room_avoids_set
+            # if wants or avoids changed, delete original assignment
+            # we need to compare sets because order does not matter
+            if orig_wants_set != new_wants_set \
+                    or orig_avoids_set != new_avoids_set \
+                    or orig_room_wants_set != new_room_wants_set \
+                    or orig_room_avoids_set != new_room_avoids_set:
+                if student.assignment:
+                    db.session.delete(student.assignment)
+        db.session.commit()
+        return redirect(url_for('students', exam=exam))
+    for field, errors in form.errors.items():
+        for error in errors:
+            flash("{}: {}".format(field, error), 'error')
+    return render_template('edit_students.html.j2', exam=exam, form=form, students=exam.students)
 
 @app.route('/<exam:exam>/students/<string:canvas_id>/delete', methods=['GET', 'DELETE'])
 def delete_student(exam, canvas_id):
