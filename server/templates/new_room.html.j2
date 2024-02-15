@@ -58,7 +58,7 @@
       <div class="mdl-layout-spacer"></div>
       <div class="mdl-cell mdl-cell--10-col">
         <div>
-        Master Sheet URL: <a href="{{ master_sheet_url }}">{{ master_sheet_url }}</a>
+        Master Sheet URL: <a href="{{ master_sheet_url }}" target="_blank">{{ master_sheet_url }}</a>
         </div>
         <form action="{{ url_for('import_room_from_master_sheet', exam=exam) }}" method="post">
           {{ choose_form.hidden_tag() }}
