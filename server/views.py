@@ -19,14 +19,26 @@ from server.typings.exception import SeatAssigningAlgorithmError
 from server.typings.enum import EmailTemplate
 from server.utils.date import to_ISO8601
 
-# region Offering CRUDI
-
-
 @app.route('/')
-@login_required
 def index():
     """
     Path: /
+    Home page, which is the login page.
+    """
+    # if already logged in, redirect to offerings page
+    if current_user and current_user.is_authenticated:
+        return redirect(url_for('offerings'))
+    return render_template("index.html.j2")
+
+
+# region Offering CRUDI
+
+
+@app.route('/offerings')
+@login_required
+def offerings():
+    """
+    Path: /offerings
     Home page, which needs to be logged in to access.
     After logging in, fetch and present a list of course offerings.
     """
@@ -590,11 +602,9 @@ def email_single_student(exam, student_id):
 # region Misc
 
 
-@app.route('/help/')
-@login_required
-def help():
-    return render_template('help.html.j2', title="Help")
-
+@app.context_processor
+def inject_env_vars():
+    return dict(wiki_base_url=app.config.get('WIKI_BASE_URL'))
 
 @app.route('/favicon.ico')
 def favicon():
@@ -615,6 +625,8 @@ def student_single_seat(seat_id):
     return render_template('seat.html.j2', room=seat.room, seat=seat)
 # endregion
 
+# region TBD! photo feature
+
 
 @app.route('/<exam:exam>/students/photos/', methods=['GET', 'POST'])
 def new_photos(exam):
@@ -628,3 +640,5 @@ def photo(exam, email):
     photo_path = '{}/{}/{}.jpeg'.format(app.config['PHOTO_DIRECTORY'],
                                         exam.offering_canvas_id, student.canvas_id)
     return send_file(photo_path, mimetype='image/jpeg')
+# endregion
+

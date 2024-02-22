@@ -81,7 +81,7 @@ def get_authed_driver(driver):
     from selenium.webdriver.common.by import By
 
     def _get_authed_driver(some_user_id):
-        driver.get('http://localhost:5000/')
+        driver.get('http://localhost:5000/login')
         assert 'Login' in driver.title
         user_id_input = driver.find_element(By.CSS_SELECTOR, '#user_id')
         assert user_id_input is not None
