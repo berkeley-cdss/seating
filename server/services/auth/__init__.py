@@ -3,6 +3,7 @@ from flask import redirect, request, session, url_for
 import server.services.canvas as canvas_client
 from flask_login import LoginManager
 from flask_oauthlib.client import OAuth
+from .scope import scopes
 
 from server import app
 
@@ -27,6 +28,7 @@ if not canvas_client.is_mock_canvas():
         access_token_method='POST',
         access_token_url=canvas_server_url + 'login/oauth2/token',
         authorize_url=canvas_server_url + 'login/oauth2/auth',
+        request_token_params={'scope': ' '.join(scopes)},
     )
 else:
     # dev login uses HTTP so we need to allow that for OAuth2
