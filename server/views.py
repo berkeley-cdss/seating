@@ -625,7 +625,6 @@ def student_single_seat(seat_id):
     return render_template('seat.html.j2', room=seat.room, seat=seat)
 # endregion
 
-
 # region TBD! photo feature
 
 
