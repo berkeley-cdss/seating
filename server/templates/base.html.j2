@@ -72,18 +72,18 @@
               </ul>
               <a class="mdl-navigation__link" href="{{ url_for('students', exam=exam) }}">Students</a>
               <a class="mdl-navigation__link" href="{{ url_for('offering', offering=exam.offering) }}">All Exams</a>
-              <a class="mdl-navigation__link" href="{{ url_for('index') }}">All Offerings</a>
-              <a class="mdl-navigation__link" href="{{ url_for('help') }}">Help</a>
+              <a class="mdl-navigation__link" href="{{ url_for('index') }}">Home</a>
+              <a class="mdl-navigation__link" href="{{ wiki_base_url }}" target="_blank">Wiki</a>
             </nav>
-          {% elif offering %}
+          {% elif offering %} 
             <nav class="mdl-navigation">
-                <a class="mdl-navigation__link" href="{{ url_for('index') }}">All Offerings</a>
-                <a class="mdl-navigation__link" href="{{ url_for('help') }}">Help</a>
+                <a class="mdl-navigation__link" href="{{ url_for('index') }}">Home</a>
+                <a class="mdl-navigation__link" href="{{ wiki_base_url }}" target="_blank">Wiki</a>
             </nav>
           {% else %}
             <nav class="mdl-navigation">
-                <a class="mdl-navigation__link" href="{{ url_for('index') }}">All Offerings</a>
-                <a class="mdl-navigation__link" href="{{ url_for('help') }}">Help</a>
+                <a class="mdl-navigation__link" href="{{ url_for('index') }}">Home</a>
+                <a class="mdl-navigation__link" href="{{ wiki_base_url }}" target="_blank">Wiki</a>
             </nav>
           {% endif %}
           {% if current_user.is_authenticated %}

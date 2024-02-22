@@ -1,0 +1,24 @@
+{% extends 'base.html.j2' %}
+
+{% block title %}Exam Seating Landing{% endblock %}
+
+{% block body %}
+<main class="mdl-grid" style="justify-content: center;">
+  <h2 class="mdl-cell mdl-cell--10-col" style="text-align:center;margin: 20px;">Welcome to the Exam Seating Tool!</h2>
+  <p class="mdl-cell mdl-cell--10-col" style="margin-bottom: 20px; font-size: 20px;">
+    One stop solution to manage and access exam seating assignments of all your Berkeley courses, for course staff and students.
+  </p>
+  <p class="mdl-cell mdl-cell--10-col">
+    The app allows you to manage all your course exams. As a course staff, you will be able to create, edit and delete exams, room, seats and student rosters, manage seating assignment, and email students about their assignments. As a student, you will be able to see your available assignments.
+  </p>
+  <p class="mdl-cell mdl-cell--10-col">
+    For detailed guidance on how to use the tool, please refer to the <a href="{{ wiki_base_url }}" target="_blank">Wiki</a>. Otherwise, please login to get started.
+  </p>
+  <div class="mdl-cell mdl-cell--10-col" style="display: flex; justify-content: center; align-items: center;">
+    <a href="{{ url_for('auth.login') }}"
+      class="mdl-button mdl-js-button mdl-button--raised mdl-js-ripple-effect mdl-button--accent">
+      Login
+    </a>
+  </div>
+</main>
+{% endblock %}
