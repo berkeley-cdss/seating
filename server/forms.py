@@ -8,6 +8,21 @@ from wtforms.validators import Email, InputRequired, URL, Optional
 from server.controllers import exam_regex
 
 
+class MultiCheckboxField(SelectMultipleField):
+    widget = widgets.ListWidget(prefix_label=False)
+    option_widget = widgets.CheckboxInput()
+
+
+class ChooseCourseOfferingForm(FlaskForm):
+    submit = SubmitField('import')
+    offerings = MultiCheckboxField('select_offerings')
+
+    def __init__(self, offering_list=None, *args, **kwargs):
+        super(ChooseCourseOfferingForm, self).__init__(*args, **kwargs)
+        if offering_list is not None:
+            self.offerings.choices = [(o.canvas_id, str(o)) for o in offering_list]
+
+
 class ExamForm(FlaskForm):
     display_name = StringField('display_name', [InputRequired()], render_kw={
                                "placeholder": "Midterm 1"})
@@ -18,11 +33,6 @@ class ExamForm(FlaskForm):
         pattern = '^{}$'.format(exam_regex)
         if not re.match(pattern, field.data):
             raise ValidationError('Exam name must be match pattern {}'.format(pattern))
-
-
-class MultiCheckboxField(SelectMultipleField):
-    widget = widgets.ListWidget(prefix_label=False)
-    option_widget = widgets.CheckboxInput()
 
 
 class RoomForm(FlaskForm):
@@ -44,7 +54,7 @@ class ChooseRoomForm(FlaskForm):
     def __init__(self, room_list=None, *args, **kwargs):
         super(ChooseRoomForm, self).__init__(*args, **kwargs)
         if room_list is not None:
-            self.rooms.choices = [(item, item) for item in room_list]
+            self.rooms.choices = [(item, item) for item in room_list]  # (value, label)
 
 
 class UploadRoomForm(FlaskForm):

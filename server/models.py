@@ -55,6 +55,9 @@ class Offering(db.Model):
     def start_at_date(self):
         return parse_ISO8601(self.start_at)
 
+    def __str__(self):
+        return f"{self.start_at_date.strftime('%Y-%m')} | {self.code} | {self.name}"
+
     def __repr__(self):
         return '<Offering {}>'.format(self.name)
 

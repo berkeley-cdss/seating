@@ -6,7 +6,7 @@ from server import app
 from server.models import SeatAssignment, db, Exam, Room, Seat, Student
 from server.forms import EditRoomForm, ExamForm, ImportStudentFromCsvUploadForm, RoomForm, ChooseRoomForm, \
     ImportStudentFromSheetForm, ImportStudentFromCanvasRosterForm, DeleteStudentForm, AssignForm, EmailForm, \
-    EditStudentForm, UploadRoomForm
+    EditStudentForm, UploadRoomForm, ChooseCourseOfferingForm
 from server.services.core.export import export_exam_student_info
 from server.services.email.templates import get_email
 from server.services.google import get_spreadsheet_tabs
@@ -18,6 +18,7 @@ from server.services.core.assign import assign_students
 from server.typings.exception import SeatAssigningAlgorithmError
 from server.typings.enum import EmailTemplate
 from server.utils.date import to_ISO8601
+
 
 @app.route('/')
 def index():
@@ -37,21 +38,76 @@ def index():
 @app.route('/offerings')
 @login_required
 def offerings():
+    from server.models import Offering
     """
     Path: /offerings
     Home page, which needs to be logged in to access.
     After logging in, fetch and present a list of course offerings.
     """
+    # Fetch all user course offerings from canvas
     user = canvas_client.get_user(current_user.canvas_id)
     staff_course_dics, student_course_dics, others = canvas_client.get_user_courses_categorized(
         user)
+    # All fetched courses are converted to models
     staff_offerings = [canvas_client.api_course_to_model(c) for c in staff_course_dics]
     student_offerings = [canvas_client.api_course_to_model(c) for c in student_course_dics]
+    other_offerings = [canvas_client.api_course_to_model(c) for c in others]
+    # Check which offerings are already in the database
+    staff_offering_canvas_ids = set([o.canvas_id for o in staff_offerings])
+    student_offering_canvas_ids = set([o.canvas_id for o in student_offerings])
+    other_offering_canvas_ids = set([o.canvas_id for o in other_offerings])
+    wanted_offering_canvas_ids = staff_offering_canvas_ids | student_offering_canvas_ids | other_offering_canvas_ids
+    existing_offerings = Offering.query.filter(
+        Offering.canvas_id.in_(wanted_offering_canvas_ids)).all()
+    # Now split existing_offerings back to 3 lists
+    staff_offerings_existing = []
+    student_offerings_existing = []
+    other_offerings_existing = []
+    for o in existing_offerings:
+        if o.canvas_id in staff_offering_canvas_ids:
+            staff_offerings_existing.append(o)
+        elif o.canvas_id in student_offering_canvas_ids:
+            student_offerings_existing.append(o)
+        elif o.canvas_id in other_offering_canvas_ids:
+            other_offerings_existing.append(o)
+
     return render_template("select_offering.html.j2",
                            title="Select a Course Offering",
-                           staff_offerings=staff_offerings,
-                           student_offerings=student_offerings,
-                           other_offerings=others)
+                           staff_offerings_existing=staff_offerings_existing,
+                           student_offerings_existing=student_offerings_existing,
+                           other_offerings_existing=other_offerings_existing)
+
+
+@app.route('/offerings/import', methods=['GET', 'POST'])
+@login_required
+def add_offerings():
+    from server.models import Offering
+    """
+    Path: /offerings/import
+    Add new course offerings to the database.
+    """
+    user = canvas_client.get_user(current_user.canvas_id)
+    staff_course_dics, _, _ = canvas_client.get_user_courses_categorized(user)
+    staff_offerings_id_to_model = {o.id: canvas_client.api_course_to_model(o) for o in staff_course_dics}
+    staff_offering_ids_wanted = list(staff_offerings_id_to_model.keys())
+    staff_offering_ids_existing = set([x[0] for x in Offering.query.filter(
+        Offering.canvas_id.in_(staff_offering_ids_wanted)).with_entities(Offering.canvas_id)])
+    staff_offering_ids_not_existing = set(staff_offering_ids_wanted) - staff_offering_ids_existing
+    staff_offerings_not_existing = [staff_offerings_id_to_model[canvas_id] for canvas_id in staff_offering_ids_not_existing]
+    form = ChooseCourseOfferingForm(offering_list=staff_offerings_not_existing)
+    if form.validate_on_submit():
+        try:
+            to_be_saved = [staff_offerings_id_to_model[canvas_id] for canvas_id in form.offerings.data]
+            db.session.bulk_save_objects(to_be_saved)
+            db.session.commit()
+            return redirect(url_for('offerings'))
+        except Exception as e:
+            db.session.rollback()
+            print("error", str(e))
+            flash("An error occurred when inserting offering: " + str(e), 'error')
+    return render_template("new_offerings.html.j2",
+                           title="Add New Course Offerings",
+                           form=form)
 
 
 @app.route('/<offering:offering>/')
@@ -606,6 +662,7 @@ def email_single_student(exam, student_id):
 def inject_env_vars():
     return dict(wiki_base_url=app.config.get('WIKI_BASE_URL'))
 
+
 @app.route('/favicon.ico')
 def favicon():
     return send_file('static/img/favicon.ico')
@@ -641,4 +698,3 @@ def photo(exam, email):
                                         exam.offering_canvas_id, student.canvas_id)
     return send_file(photo_path, mimetype='image/jpeg')
 # endregion
-

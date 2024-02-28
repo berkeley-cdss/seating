@@ -5,8 +5,18 @@
 <section class="rooms mdl-grid">
   <div class="mdl-cell mdl-cell--12-col">
     <h4>Staff Offerings</h4>
+    <div>
+      <p>The following course offerings that you are a staff member of already have exams set up. You can now manage their exams. You can add manage exams for more courses you are a staff member of by clicking on the "Add course offering" button.
+      </p>
+    </div>
     <ul class="mdl-list">
-    {% for offering in staff_offerings %}
+    {% if staff_offerings_existing == [] %}
+      <li class="mdl-list__item">
+        You are not a staff member in any course offerings with exams set up.
+      </li>
+      
+    {% endif %}
+    {% for offering in staff_offerings_existing %}  
       <li class="mdl-list__item">
         <span style="margin-right: 10px; color: #424242; font-weight: bold;"><small>{{ offering.start_at_date.strftime('%Y-%m') }}</small></span>
         <a class="mdl-list__item-primary-content" href="{{ url_for('offering', offering=offering) }}">
@@ -15,9 +25,20 @@
       </li>
     {% endfor %}
     </ul>
+    <a class="mdl-button mdl-js-button mdl-button--raised mdl-button--colored" href="{{ url_for('add_offerings') }}">Add course offering</a>
+
     <h4>Student Offerings</h4>
+    <div>
+      <p>The following course offerings that you are a student of already have exams set up. You can now view your own seat assignments and exam schedule. If you expect to see a course here but it is not here, your course staff have not yet set up exams for the course yet in this system. Contact your course staff.
+      </p>
+    </div>
     <ul class="mdl-list">
-    {% for offering in student_offerings %}
+    {% if student_offerings_existing == [] %}
+      <li class="mdl-list__item">
+        You are not a student in any course offerings with exams set up.
+      </li>
+    {% endif %}
+    {% for offering in student_offerings_existing %}
       <li class="mdl-list__item">
         <span style="margin-right: 10px; color: #424242; font-weight: bold;"><small>{{ offering.start_at_date.strftime('%Y-%m') }}</small></span>
          <a class="mdl-list__item-primary-content" href="{{ url_for('offering', offering=offering) }}">
@@ -27,8 +48,17 @@
     {% endfor %}
     </ul>
     <h4>Other Offerings</h4>
+    <div>
+    <p>In the following course offerings you are neither a staff member nor a student, but exams have been set up. You cannot do anything with these offerings.
+    </p>
+    </div>
     <ul class="mdl-list">
-    {% for offering in other_offerings %}
+    {% if other_offerings_existing == [] %}
+      <li class="mdl-list__item">
+        There are no other course offerings with exams set up.
+      </li>
+    {% endif %}
+    {% for offering in other_offerings_existing %}
       <li class="mdl-list__item">
         <span style="margin-right: 10px; color: #424242; font-weight: bold;"><small>{{ offering.start_at_date.strftime('%Y-%m') }}</small></span>
         {{ offering.name }}

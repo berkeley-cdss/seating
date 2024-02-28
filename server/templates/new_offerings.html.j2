@@ -1,0 +1,17 @@
+{% extends 'base.html.j2' %}
+{% import 'macros.html.j2' as macros with context %}
+
+{% block body %}
+
+<div class="mdl-grid">
+  <div class="mdl-cell mdl-cell--12-col">
+    <h5>Choose courses to set up exams with:</h5>
+  </div>
+  {% call macros.form(form) %}
+    <div class="checkbox">{{ form.offerings }}</div>
+    <div class="form-buttons">{{ form.submit(class="mdl-button mdl-js-button mdl-button--raised") }}</div>
+  {% endcall %}
+</div>
+
+{% endblock %}
+
