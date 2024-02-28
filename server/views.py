@@ -4,20 +4,21 @@ from flask_login import current_user, login_required
 
 from server import app
 from server.models import SeatAssignment, db, Exam, Room, Seat, Student
-from server.forms import CreateMovableSeatsForm, EditRoomForm, ExamForm, ImportStudentFromCsvUploadForm, RoomForm, ChooseRoomForm, \
-    ImportStudentFromSheetForm, ImportStudentFromCanvasRosterForm, DeleteStudentForm, AssignForm, EmailForm, \
+from server.forms import CreateMovableSeatsForm, EditRoomForm, ExamForm, ImportStudentFromCsvUploadForm, RoomForm,  \
+    ChooseRoomForm, ImportStudentFromSheetForm, ImportStudentFromCanvasRosterForm, DeleteStudentForm, AssignForm, EmailForm, \
     EditStudentForm, UploadRoomForm
 from server.services.core.export import export_exam_student_info
 from server.services.email.templates import get_email
 from server.services.google import get_spreadsheet_tabs
 import server.services.canvas as canvas_client
 from server.services.email import email_about_assignment
-from server.services.core.data import get_room_from_csv, get_room_from_google_spreadsheet, \
+from server.services.core.data import get_room_from_csv, get_room_from_google_spreadsheet, get_room_from_manual_input, \
     get_students_from_canvas, get_students_from_csv, get_students_from_google_spreadsheet
 from server.services.core.assign import assign_students
 from server.typings.exception import SeatAssigningAlgorithmError
 from server.typings.enum import EmailTemplate
 from server.utils.date import to_ISO8601
+from server.utils.misc import set_to_str_set, str_set_to_set
 
 
 @app.route('/')
@@ -265,15 +266,31 @@ def import_room_manually(exam):
     choose_form = ChooseRoomForm()
     upload_form = UploadRoomForm()
     manual_form = CreateMovableSeatsForm()
-    print("hit manual form")
     if manual_form.validate_on_submit():
-        print("manual form data")
+        from collections import defaultdict
+        seats_to_add = defaultdict(int)
         for seat_form in manual_form.movable_seats.data:
-            print(seat_form)
-    else:
-        print("manual form errors")
-        print(manual_form.errors)
-    return 'Not implemented yet.'
+            seats_to_add[frozenset(str_set_to_set(seat_form['attributes']))] += seat_form['count']
+        room = None
+        try:
+            room = get_room_from_manual_input(exam, new_form, seats_to_add)
+        except Exception as e:
+            flash(f"Failed to import room due to an unexpected error: {e}", 'error')
+        if room:
+            try:
+                db.session.add(room)
+                db.session.commit()
+            except Exception as e:
+                flash(f"Failed to import room due to a db error: {e}", 'error')
+        return redirect(url_for('exam', exam=exam))
+    for field, errors in manual_form.errors.items():
+        for error in errors:
+            flash("{}: {}".format(field, error), 'error')
+    return render_template('new_room.html.j2',
+                           exam=exam,
+                           new_form=new_form, choose_form=choose_form,
+                           upload_form=upload_form, manual_form=manual_form,
+                           master_sheet_url=app.config.get('MASTER_ROOM_SHEET_URL'))
 
 
 @app.route('/<exam:exam>/rooms/<int:id>/delete', methods=['GET', 'DELETE'])
@@ -362,7 +379,7 @@ def import_students_from_custom_sheet(exam):
                 f" {len(invalid_students)} invalid students.", 'success')
             if updated_students:
                 flash(
-                    f"Updated students: {','.join([s.name for s in updated_students])}", 'warning')
+                    f"Updated students: {set_to_str_set([s.name for s in updated_students])}", 'warning')
             if invalid_students:
                 flash(
                     f"Invalid students: {invalid_students}", 'error')
@@ -395,7 +412,7 @@ def import_students_from_canvas_roster(exam):
                 f" {len(invalid_students)} invalid students.", 'success')
             if updated_students:
                 flash(
-                    f"Updated students: {','.join([s.name for s in updated_students])}", 'warning')
+                    f"Updated students: {set_to_str_set([s.name for s in updated_students])}", 'warning')
             if invalid_students:
                 flash(
                     f"Invalid students: {invalid_students}", 'error')
@@ -429,7 +446,7 @@ def import_students_from_csv_upload(exam):
                     f" {len(invalid_students)} invalid students.", 'success')
                 if updated_students:
                     flash(
-                        f"Updated students: {','.join([s.name for s in updated_students])}", 'warning')
+                        f"Updated students: {set_to_str_set([s.name for s in updated_students])}", 'warning')
                 if invalid_students:
                     flash(
                         f"Invalid students: {invalid_students}", 'error')
@@ -453,7 +470,7 @@ def delete_students(exam):
     deleted, did_not_exist = set(), set()
     if form.validate_on_submit():
         if not form.use_all_emails.data:
-            emails = [x for x in re.split(r'\s|,', form.emails.data) if x]
+            emails = [x for x in str_set_to_set(form.emails.data) if x]
             students = Student.query.filter(
                 Student.email.in_(emails) & Student.exam_id == exam.id)
         else:
@@ -508,16 +525,16 @@ def edit_student(exam, canvas_id):
     orig_room_wants_set = set(student.room_wants)
     orig_room_avoids_set = set(student.room_avoids)
     if request.method == 'GET':
-        form.wants.data = ",".join(orig_wants_set)
-        form.avoids.data = ",".join(orig_avoids_set)
-        form.room_wants.data = ",".join(orig_room_wants_set)
-        form.room_avoids.data = ",".join(orig_room_avoids_set)
+        form.wants.data = set_to_str_set(orig_wants_set)
+        form.avoids.data = set_to_str_set(orig_avoids_set)
+        form.room_wants.data = set_to_str_set(orig_room_wants_set)
+        form.room_avoids.data = set_to_str_set(orig_room_avoids_set)
         form.email.data = student.email
     if form.validate_on_submit():
         if 'cancel' in request.form:
             return redirect(url_for('students', exam=exam))
-        new_wants_set = set(re.split(r'\s|,', form.wants.data)) if form.wants.data else set()
-        new_avoids_set = set(re.split(r'\s|,', form.avoids.data)) if form.avoids.data else set()
+        new_wants_set = str_set_to_set(form.wants.data)
+        new_avoids_set = str_set_to_set(form.avoids.data)
         new_room_wants_set = set(form.room_wants.data)
         new_room_avoids_set = set(form.room_avoids.data)
         # wants and avoids should not overlap
@@ -592,7 +609,7 @@ def email_all_students(exam):
         if successful_emails:
             flash(f"Successfully emailed {len(successful_emails)} students.", 'success')
         if failed_emails:
-            flash(f"Failed to email students: {', '.join(failed_emails)}", 'error')
+            flash(f"Failed to email students: {set_to_str_set(failed_emails)}", 'error')
         if not successful_emails and not failed_emails:
             flash("No email sent.", 'warning')
         return redirect(url_for('students', exam=exam))
@@ -600,7 +617,7 @@ def email_all_students(exam):
         email_prefill = get_email(EmailTemplate.ASSIGNMENT_INFORM_EMAIL)
         form.subject.data = email_prefill.subject
         form.body.data = email_prefill.body
-        form.to_addr.data = ','.join([s.email for s in exam.students])
+        form.to_addr.data = set_to_str_set([s.email for s in exam.students])
     return render_template('email.html.j2', exam=exam, form=form)
 
 
@@ -612,7 +629,7 @@ def email_single_student(exam, student_id):
         if successful_emails:
             flash(f"Successfully emailed {len(successful_emails)} students.", 'success')
         if failed_emails:
-            flash(f"Failed to email students: {', '.join(failed_emails)}", 'error')
+            flash(f"Failed to email students: {set_to_str_set(failed_emails)}", 'error')
         if not successful_emails and not failed_emails:
             flash("No email sent.", 'warning')
         return redirect(url_for('students', exam=exam))
