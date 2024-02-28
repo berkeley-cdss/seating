@@ -36,11 +36,11 @@
       <div id="manual_form_movable_seat_list" class="mdl-cell mdl-cell--12-col">
         {% for movable_seat_form in form.movable_seats %}
           <fieldset class="mdl-cell mdl-cell--12-col">
-            <div class="mdl-textfield mdl-js-textfield mdl-textfield--floating-label mdl-cell--7-col">
+            <div class="mdl-textfield mdl-js-textfield mdl-textfield--floating-label mdl-cell--8-col">
               {{ movable_seat_form.attributes(class="mdl-textfield__input") }}
               <label class="mdl-textfield__label">Seat Attributes</label>
             </div>
-            <div class="mdl-textfield mdl-js-textfield mdl-textfield--floating-label mdl-cell--4-col">
+            <div class="mdl-textfield mdl-js-textfield mdl-textfield--floating-label mdl-cell--3-col">
               {{ movable_seat_form.count(class="mdl-textfield__input", type="number") }}
               <label class="mdl-textfield__label">Seat Count</label>
             </div>

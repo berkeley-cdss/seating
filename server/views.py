@@ -279,7 +279,7 @@ def import_room_manually(exam):
     for field, errors in form.errors.items():
         for error in errors:
             flash("{}: {}".format(field, error), 'error')
-    return render_template('edit_room.html.j2', exam=exam, form=form, room=None)
+    return render_template('upsert_room.html.j2', exam=exam, form=form, room=None)
 
 
 @app.route('/<exam:exam>/rooms/<int:id>/delete', methods=['GET', 'DELETE'])
@@ -343,7 +343,7 @@ def edit_room(exam, id):
         except Exception as e:
             flash(f"Failed to edit room due to a db error: {e}", 'error')
         return redirect(url_for('exam', exam=exam))
-    return render_template('edit_room.html.j2', exam=exam, form=form, room=room)
+    return render_template('upsert_room.html.j2', exam=exam, form=form, room=room)
 
 
 @app.route('/<exam:exam>/rooms/<int:id>/')
