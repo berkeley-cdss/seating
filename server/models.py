@@ -163,6 +163,9 @@ class Room(db.Model):
             for _, g in itertools.groupby(seats, lambda seat: seat.row)
         ]
 
+    def update_movable_seats(self, new_movable_seats):
+        self.seats = self.fixed_seats + new_movable_seats
+
     def __repr__(self):
         return '<Room {}>'.format(self.name)
 

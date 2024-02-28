@@ -58,21 +58,16 @@ class UploadRoomForm(RoomFormBase):
     display_name = StringField('display_name', [InputRequired()])
 
 
-class EditRoomForm(RoomFormBase):
-    display_name = StringField('display_name', [InputRequired()])
-    submit = SubmitField('make edits')
-    cancel = SubmitField('cancel')
-
-
 class MovableSeatSubForm(NoCsrfForm):
     attributes = StringField('attributes', default='', render_kw={"placeholder": "Righty, Aisle"})
     count = IntegerField('count', [InputRequired()], default=1, render_kw={"placeholder": "1"})
 
 
-class CreateMovableSeatsForm(RoomFormBase):
+class EditRoomForm(RoomFormBase):
     display_name = StringField('display_name', [InputRequired()])
-    movable_seats = FieldList(FormField(MovableSeatSubForm), min_entries=1)
-    submit = SubmitField('create')
+    movable_seats = FieldList(FormField(MovableSeatSubForm), min_entries=0)
+    submit = SubmitField('make edits')
+    cancel = SubmitField('cancel')
 
 
 class ImportStudentFromSheetForm(FlaskForm):

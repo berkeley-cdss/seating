@@ -31,6 +31,12 @@ def get_room_from_manual_input(exam, room_form, manual_input_dict):
     return room
 
 
+def update_room_from_manual_input(room, manual_input_dict):
+    headers, rows = _get_seats_from_manual_input(manual_input_dict)
+    seats = prepare_seat(headers, rows)
+    room.update_movable_seats(seats)  # manual input only handles movable seats
+
+
 def _get_seats_from_manual_input(manual_input_dict):
     headers = set(['row', 'seat', 'x', 'y'])
     for attr_set in manual_input_dict:
