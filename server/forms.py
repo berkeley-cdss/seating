@@ -20,7 +20,7 @@ class ChooseCourseOfferingForm(FlaskForm):
     def __init__(self, offering_list=None, *args, **kwargs):
         super(ChooseCourseOfferingForm, self).__init__(*args, **kwargs)
         if offering_list is not None:
-            self.offerings.choices = [(o.canvas_id, str(o)) for o in offering_list]
+            self.offerings.choices = [(o.canvas_id, str(o)) for o in offering_list]  # (value, label)
 
 
 class ExamForm(FlaskForm):

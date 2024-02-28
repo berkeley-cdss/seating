@@ -6,6 +6,11 @@
   <div class="mdl-cell mdl-cell--12-col">
     <h4>Exams</h4>
     <ul class="mdl-list">
+    {% if exams|length == 0 %}
+      <li class="mdl-list__item">
+        <span>No exams created yet.</span>
+      </li>
+    {% endif %}
     {% for exam in exams %}
       <li class="mdl-list__item">
         {% if is_staff %}
@@ -19,6 +24,11 @@
         {% endif %}
       </li>
     {% endfor %}
+    {% if not is_staff %}
+      <li class="mdl-list__item">
+        <span>If you expect to see an exam but it is not here, contact your course staff.</span>
+      </li>
+    {% endif %}
     </ul>
   {% if is_staff %}
   </div>

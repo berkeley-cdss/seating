@@ -78,12 +78,12 @@ def offerings():
                            other_offerings_existing=other_offerings_existing)
 
 
-@app.route('/offerings/import', methods=['GET', 'POST'])
+@app.route('/offerings/new', methods=['GET', 'POST'])
 @login_required
 def add_offerings():
     from server.models import Offering
     """
-    Path: /offerings/import
+    Path: /offerings/new
     Add new course offerings to the database.
     """
     user = canvas_client.get_user(current_user.canvas_id)
@@ -94,6 +94,9 @@ def add_offerings():
     staff_offering_ids_existing = set([x[0] for x in Offering.query.filter(
         Offering.canvas_id.in_(staff_offering_ids_wanted)).with_entities(Offering.canvas_id)])
     staff_offering_ids_not_existing = set(staff_offering_ids_wanted) - staff_offering_ids_existing
+    if not staff_offering_ids_not_existing:
+        flash("No more new courses to import.", 'info')
+        return redirect(url_for('offerings'))
     staff_offerings_not_existing = [staff_offerings_id_to_model[canvas_id] for canvas_id in staff_offering_ids_not_existing]
     form = ChooseCourseOfferingForm(offering_list=staff_offerings_not_existing)
     if form.validate_on_submit():
@@ -126,6 +129,27 @@ def offering(offering):
                            title="Select an Exam for {}".format(offering.name),
                            exams=offering.exams, offering=offering, is_staff=is_staff)
 
+
+@app.route('/<offering:offering>/delete/', methods=['GET', 'DELETE'])
+def delete_offering(offering):
+    """
+    Path: /offerings/<canvas_id>/delete
+    Deletes a course offering.
+    """
+    # offering urls convertor only checks login but does not check staff status
+    # we need to do it here
+    if str(offering.canvas_id) not in current_user.staff_offerings:
+        abort(403, "You are not a staff member in this offering.")
+    try:
+        db.session.delete(offering)
+        db.session.commit()
+        flash("Deleted offering.", 'success')
+    except Exception as e:
+        db.session.rollback()
+        flash(f"Failed to delete offering {offering.name} (Canvas ID: {offering.canvas_id}) due to an error:\n{e}", 'error')
+    return redirect(url_for('offerings'))
+
+
 # endregion
 
 # region Exam CRUDI
@@ -137,9 +161,8 @@ def new_exam(offering):
     Path: /offerings/<canvas_id>/exams/new
     Creates a new exam for a course offering.
     """
-    # offering urls only checks login but does not check staff status
-    # this is exam creation route but still handled by offering converter
-    # it does need to check staff status, so we do it here
+    # offering urls convertor only checks login but does not check staff status
+    # we need to do it here
     if str(offering.canvas_id) not in current_user.staff_offerings:
         abort(403, "You are not a staff member in this offering.")
     form = ExamForm()
@@ -169,8 +192,13 @@ def delete_exam(exam):
     Path: /offerings/<canvas_id>/exams/<exam_name>/delete
     Deletes an exam for a course offering.
     """
-    db.session.delete(exam)
-    db.session.commit()
+    try:
+        db.session.delete(exam)
+        db.session.commit()
+        flash("Deleted exam.", 'success')
+    except Exception as e:
+        db.session.rollback()
+        flash(f"Failed to delete exam {exam.display_name} (ID: {exam.id}) due to an error:\n{e}", 'error')
     return redirect(url_for('offering', offering=exam.offering))
 
 
@@ -319,8 +347,13 @@ def delete_room(exam, id):
     """
     room = Room.query.filter_by(exam_id=exam.id, id=id).first_or_404()
     if room:
-        db.session.delete(room)
-        db.session.commit()
+        try:
+            db.session.delete(room)
+            db.session.commit()
+            flash("Deleted room.", 'success')
+        except Exception as e:
+            db.session.rollback()
+            flash(f"Failed to delete room {room.display_name} (ID: {room.id}) due to an error:\n{e}", 'error')
     return render_template('exam.html.j2', exam=exam)
 
 
@@ -589,8 +622,14 @@ def delete_student(exam, canvas_id):
     student = Student.query.filter_by(
         exam_id=exam.id, canvas_id=canvas_id).first_or_404()
     if student:
-        db.session.delete(student)
-        db.session.commit()
+        try:
+            db.session.delete(student)
+            db.session.commit()
+            flash("Deleted student.", 'success')
+        except Exception as e:
+            db.session.rollback()
+            flash(f"Failed to delete student {student.name}"
+                  f"(Canvas id: {student.canvas_id}) due to an error:\n{str(e)}", 'error')
     return redirect(url_for('students', exam=exam))
 
 
