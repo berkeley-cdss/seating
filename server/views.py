@@ -88,7 +88,8 @@ def add_offerings():
     """
     user = canvas_client.get_user(current_user.canvas_id)
     staff_course_dics, _, _ = canvas_client.get_user_courses_categorized(user)
-    staff_offerings_id_to_model = {o.id: canvas_client.api_course_to_model(o) for o in staff_course_dics}
+    staff_offerings = [canvas_client.api_course_to_model(o) for o in staff_course_dics]
+    staff_offerings_id_to_model = {o.canvas_id: o for o in staff_offerings}
     staff_offering_ids_wanted = list(staff_offerings_id_to_model.keys())
     staff_offering_ids_existing = set([x[0] for x in Offering.query.filter(
         Offering.canvas_id.in_(staff_offering_ids_wanted)).with_entities(Offering.canvas_id)])
