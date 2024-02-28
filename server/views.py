@@ -4,7 +4,7 @@ from flask_login import current_user, login_required
 
 from server import app
 from server.models import SeatAssignment, db, Exam, Room, Seat, Student
-from server.forms import EditRoomForm, ExamForm, ImportStudentFromCsvUploadForm, RoomForm, ChooseRoomForm, \
+from server.forms import CreateMovableSeatsForm, EditRoomForm, ExamForm, ImportStudentFromCsvUploadForm, RoomForm, ChooseRoomForm, \
     ImportStudentFromSheetForm, ImportStudentFromCanvasRosterForm, DeleteStudentForm, AssignForm, EmailForm, \
     EditStudentForm, UploadRoomForm
 from server.services.core.export import export_exam_student_info
@@ -18,6 +18,7 @@ from server.services.core.assign import assign_students
 from server.typings.exception import SeatAssigningAlgorithmError
 from server.typings.enum import EmailTemplate
 from server.utils.date import to_ISO8601
+
 
 @app.route('/')
 def index():
@@ -149,8 +150,10 @@ def import_room(exam):
     new_form = RoomForm()
     choose_form = ChooseRoomForm(room_list=get_spreadsheet_tabs(app.config.get('MASTER_ROOM_SHEET_URL')))
     upload_form = UploadRoomForm()
+    manual_form = CreateMovableSeatsForm()
     return render_template('new_room.html.j2',
-                           exam=exam, new_form=new_form, choose_form=choose_form, upload_form=upload_form,
+                           exam=exam, new_form=new_form, choose_form=choose_form,
+                           upload_form=upload_form, manual_form=manual_form,
                            master_sheet_url=app.config.get('MASTER_ROOM_SHEET_URL'))
 
 
@@ -162,6 +165,7 @@ def import_room_from_custom_sheet(exam):
     new_form = RoomForm()
     choose_form = ChooseRoomForm()
     upload_form = UploadRoomForm()
+    manual_form = CreateMovableSeatsForm()
     room = None
     if new_form.validate_on_submit():
         try:
@@ -180,7 +184,8 @@ def import_room_from_custom_sheet(exam):
             flash("{}: {}".format(field, error), 'error')
     return render_template('new_room.html.j2',
                            exam=exam,
-                           new_form=new_form, choose_form=choose_form, upload_form=upload_form,
+                           new_form=new_form, choose_form=choose_form,
+                           upload_form=upload_form, manual_form=manual_form,
                            room=room,
                            master_sheet_url=app.config.get('MASTER_ROOM_SHEET_URL'))
 
@@ -193,6 +198,7 @@ def import_room_from_master_sheet(exam):
     new_form = RoomForm()
     choose_form = ChooseRoomForm(room_list=get_spreadsheet_tabs(app.config.get('MASTER_ROOM_SHEET_URL')))
     upload_form = UploadRoomForm()
+    manual_form = CreateMovableSeatsForm()
     if choose_form.validate_on_submit():
         for r in choose_form.rooms.data:
             f = RoomForm(
@@ -216,7 +222,8 @@ def import_room_from_master_sheet(exam):
             flash("{}: {}".format(field, error), 'error')
     return render_template('new_room.html.j2',
                            exam=exam,
-                           new_form=new_form, choose_form=choose_form, upload_form=upload_form,
+                           new_form=new_form, choose_form=choose_form,
+                           upload_form=upload_form, manual_form=manual_form,
                            master_sheet_url=app.config.get('MASTER_ROOM_SHEET_URL'))
 
 
@@ -225,6 +232,7 @@ def import_room_from_csv_upload(exam):
     new_form = RoomForm()
     choose_form = ChooseRoomForm()
     upload_form = UploadRoomForm()
+    manual_form = CreateMovableSeatsForm()
     if upload_form.validate_on_submit():
         room = None
         if upload_form.file.data:
@@ -246,8 +254,26 @@ def import_room_from_csv_upload(exam):
             flash("{}: {}".format(field, error), 'error')
     return render_template('new_room.html.j2',
                            exam=exam,
-                           new_form=new_form, choose_form=choose_form, upload_form=upload_form,
+                           new_form=new_form, choose_form=choose_form,
+                           upload_form=upload_form, manual_form=manual_form,
                            master_sheet_url=app.config.get('MASTER_ROOM_SHEET_URL'))
+
+
+@app.route('/<exam:exam>/rooms/import/from_manual/', methods=['GET', 'POST'])
+def import_room_manually(exam):
+    new_form = RoomForm()
+    choose_form = ChooseRoomForm()
+    upload_form = UploadRoomForm()
+    manual_form = CreateMovableSeatsForm()
+    print("hit manual form")
+    if manual_form.validate_on_submit():
+        print("manual form data")
+        for seat_form in manual_form.movable_seats.data:
+            print(seat_form)
+    else:
+        print("manual form errors")
+        print(manual_form.errors)
+    return 'Not implemented yet.'
 
 
 @app.route('/<exam:exam>/rooms/<int:id>/delete', methods=['GET', 'DELETE'])
@@ -606,6 +632,7 @@ def email_single_student(exam, student_id):
 def inject_env_vars():
     return dict(wiki_base_url=app.config.get('WIKI_BASE_URL'))
 
+
 @app.route('/favicon.ico')
 def favicon():
     return send_file('static/img/favicon.ico')
@@ -641,4 +668,3 @@ def photo(exam, email):
                                         exam.offering_canvas_id, student.canvas_id)
     return send_file(photo_path, mimetype='image/jpeg')
 # endregion
-
