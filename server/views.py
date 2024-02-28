@@ -97,10 +97,14 @@ def add_offerings():
     staff_offerings_not_existing = [staff_offerings_id_to_model[canvas_id] for canvas_id in staff_offering_ids_not_existing]
     form = ChooseCourseOfferingForm(offering_list=staff_offerings_not_existing)
     if form.validate_on_submit():
+        to_be_saved = [staff_offerings_id_to_model[canvas_id] for canvas_id in form.offerings.data]
+        if not to_be_saved:
+            flash("No course offering imported.", 'info')
+            return redirect(url_for('offerings'))
         try:
-            to_be_saved = [staff_offerings_id_to_model[canvas_id] for canvas_id in form.offerings.data]
             db.session.bulk_save_objects(to_be_saved)
             db.session.commit()
+            flash(f"Imported {len(to_be_saved)} course offerings.", 'success')
             return redirect(url_for('offerings'))
         except Exception as e:
             db.session.rollback()
