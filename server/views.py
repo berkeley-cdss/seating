@@ -73,7 +73,7 @@ def offerings():
             other_offerings_existing.append(o)
 
     if skipped:
-        flash("Skipped invalid courses from Canvas: " + set_to_str_set([c.name for c in skipped]), 'warning')
+        flash("Skipped invalid courses from Canvas: " + str([s.__dict__ for s in skipped]), 'warning')
 
     return render_template("select_offering.html.j2",
                            title="Select a Course Offering",
@@ -99,7 +99,7 @@ def add_offerings():
         Offering.canvas_id.in_(staff_offering_ids_wanted)).with_entities(Offering.canvas_id)])
     staff_offering_ids_not_existing = set(staff_offering_ids_wanted) - staff_offering_ids_existing
     if skipped:
-        flash("Skipped invalid courses from Canvas: " + set_to_str_set([c.name for c in skipped]), 'warning')
+        flash("Skipped invalid courses from Canvas: " + str([s.__dict__ for s in skipped]), 'warning')
     if not staff_offering_ids_not_existing:
         flash("No more new courses to import.", 'info')
         return redirect(url_for('offerings'))
