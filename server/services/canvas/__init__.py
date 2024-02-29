@@ -38,15 +38,15 @@ def is_staff_enrollment(enrollment_type: str):
 
 
 def is_course_valid(c) -> bool:
-    # A valid course has a name and id
-    # TBD if we should filter on published
+    # A valid course has a name, id and course code
+    # TODO:TBD if we should filter on published
     return not (not c) and \
         hasattr(c, 'id') and \
         hasattr(c, 'name') and \
         hasattr(c, 'course_code')
 
 
-def noramlize_course_start_date(course: FakeCourse | Course) -> None:
+def normalize_course_start_date(course: FakeCourse | Course) -> None:
     # Ensure a valid start_at date for a course.
     # return the term start_at_date if present
     # created_at is assumed to be at least always present
@@ -55,7 +55,8 @@ def noramlize_course_start_date(course: FakeCourse | Course) -> None:
         start_at_date = course.term['start_at_date']
     else:
         start_at = course.start_at if (hasattr(course, 'start_at') and course.start_at) else course.created_at
-        start_at_date = course.start_at_date if (hasattr(course, 'start_at_date') and course.start_at_date) else course.created_at_date
+        start_at_date = course.start_at_date if (hasattr(course, 'start_at_date')
+                                                 and course.start_at_date) else course.created_at_date
     course.start_at = start_at
     course.start_at_date = start_at_date
 
@@ -69,7 +70,7 @@ def get_user_courses_categorized(user: FakeUser | User) \
         if not is_course_valid(c):
             # TODO: Log that we are skipping a course.
             continue
-        noramlize_course_start_date(c)
+        normalize_course_start_date(c)
         # TODO: refactor to function `find_course_enrollment_type`
         for e in c.enrollments:
             if is_staff_enrollment(e["type"]):

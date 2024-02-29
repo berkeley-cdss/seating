@@ -10,8 +10,10 @@ class DataValidationError(Exception):
 class GcpError (Exception):
     pass
 
+
 class SeatAssignmentError(Exception):
     pass
+
 
 class NotEnoughSeatError(SeatAssignmentError):
     def __init__(self, exam, students, preference):
@@ -35,6 +37,7 @@ class NotEnoughSeatError(SeatAssignmentError):
 
     def __str__(self):
         return self.args[1]
+
 
 class SeatOverrideError(SeatAssignmentError):
     def __init__(self, student, seat, reason):

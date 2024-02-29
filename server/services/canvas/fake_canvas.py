@@ -54,4 +54,3 @@ class FakeCourse:
                         users.append(FakeUser(user))
                         break
         return users
-    
