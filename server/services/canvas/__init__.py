@@ -101,7 +101,7 @@ def get_student_roster_for_offering(offering_canvas_id, key=None):
 
 def api_course_to_model(course: Course | FakeCourse) -> Offering:
     return Offering(
-        canvas_id=course.id,
+        canvas_id=str(course.id),
         name=course.name,
         code=course.course_code,
         start_at=course.start_at,

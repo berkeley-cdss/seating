@@ -4,42 +4,119 @@ from flask_login import current_user, login_required
 
 from server import app
 from server.models import SeatAssignment, db, Exam, Room, Seat, Student
-from server.forms import EditRoomForm, EditStudentsForm, ExamForm, ImportStudentFromCsvUploadForm, RoomForm, ChooseRoomForm, \
-    ImportStudentFromSheetForm, ImportStudentFromCanvasRosterForm, DeleteStudentForm, AssignForm, EmailForm, \
-    EditStudentForm, UploadRoomForm
+from server.forms import AssignSingleForm, EditExamForm, EditRoomForm, ExamForm, ImportStudentFromCsvUploadForm, \
+    RoomForm, ChooseRoomForm, ImportStudentFromSheetForm, ImportStudentFromCanvasRosterForm, DeleteStudentForm, \
+    AssignForm, EmailForm, EditStudentForm, UploadRoomForm, ChooseCourseOfferingForm, EditStudentsForm
 from server.services.core.export import export_exam_student_info
 from server.services.email.templates import get_email
 from server.services.google import get_spreadsheet_tabs
 import server.services.canvas as canvas_client
-from server.services.email import email_about_assignment
-from server.services.core.data import get_room_from_csv, get_room_from_google_spreadsheet, \
-    get_students_from_canvas, get_students_from_csv, get_students_from_google_spreadsheet
-from server.services.core.assign import assign_students
-from server.typings.exception import SeatAssigningAlgorithmError
+from server.services.email import email_about_assignment, substitute_about_assignment
+from server.services.core.data import get_room_from_csv, get_room_from_google_spreadsheet, get_room_from_manual_input, \
+    get_students_from_canvas, get_students_from_csv, get_students_from_google_spreadsheet, update_room_from_manual_input
+from server.services.core.assign import assign_single_student, assign_students
+from server.typings.exception import NotEnoughSeatError, SeatAssignmentError
 from server.typings.enum import EmailTemplate
 from server.utils.date import to_ISO8601
+from server.utils.misc import set_to_str_set, str_set_to_set
+
+
+@app.route('/')
+def index():
+    """
+    Path: /
+    Home page, which is the login page.
+    """
+    # if already logged in, redirect to offerings page
+    if current_user and current_user.is_authenticated:
+        return redirect(url_for('offerings'))
+    return render_template("index.html.j2")
+
 
 # region Offering CRUDI
 
 
-@app.route('/')
+@app.route('/offerings')
 @login_required
-def index():
+def offerings():
+    from server.models import Offering
     """
-    Path: /
+    Path: /offerings
     Home page, which needs to be logged in to access.
     After logging in, fetch and present a list of course offerings.
     """
+    # Fetch all user course offerings from canvas
     user = canvas_client.get_user(current_user.canvas_id)
     staff_course_dics, student_course_dics, others = canvas_client.get_user_courses_categorized(
         user)
+    # All fetched courses are converted to models
     staff_offerings = [canvas_client.api_course_to_model(c) for c in staff_course_dics]
     student_offerings = [canvas_client.api_course_to_model(c) for c in student_course_dics]
+    other_offerings = [canvas_client.api_course_to_model(c) for c in others]
+    # Check which offerings are already in the database
+    staff_offering_canvas_ids = set([o.canvas_id for o in staff_offerings])
+    student_offering_canvas_ids = set([o.canvas_id for o in student_offerings])
+    other_offering_canvas_ids = set([o.canvas_id for o in other_offerings])
+    wanted_offering_canvas_ids = staff_offering_canvas_ids | student_offering_canvas_ids | other_offering_canvas_ids
+    existing_offerings = Offering.query.filter(
+        Offering.canvas_id.in_(wanted_offering_canvas_ids)).all()
+    # Now split existing_offerings back to 3 lists
+    staff_offerings_existing = []
+    student_offerings_existing = []
+    other_offerings_existing = []
+    for o in existing_offerings:
+        if o.canvas_id in staff_offering_canvas_ids:
+            staff_offerings_existing.append(o)
+        elif o.canvas_id in student_offering_canvas_ids:
+            student_offerings_existing.append(o)
+        elif o.canvas_id in other_offering_canvas_ids:
+            other_offerings_existing.append(o)
+
     return render_template("select_offering.html.j2",
                            title="Select a Course Offering",
-                           staff_offerings=staff_offerings,
-                           student_offerings=student_offerings,
-                           other_offerings=others)
+                           staff_offerings_existing=staff_offerings_existing,
+                           student_offerings_existing=student_offerings_existing,
+                           other_offerings_existing=other_offerings_existing)
+
+
+@app.route('/offerings/new', methods=['GET', 'POST'])
+@login_required
+def add_offerings():
+    from server.models import Offering
+    """
+    Path: /offerings/new
+    Add new course offerings to the database.
+    """
+    user = canvas_client.get_user(current_user.canvas_id)
+    staff_course_dics, _, _ = canvas_client.get_user_courses_categorized(user)
+    staff_offerings = [canvas_client.api_course_to_model(o) for o in staff_course_dics]
+    staff_offerings_id_to_model = {o.canvas_id: o for o in staff_offerings}
+    staff_offering_ids_wanted = list(staff_offerings_id_to_model.keys())
+    staff_offering_ids_existing = set([x[0] for x in Offering.query.filter(
+        Offering.canvas_id.in_(staff_offering_ids_wanted)).with_entities(Offering.canvas_id)])
+    staff_offering_ids_not_existing = set(staff_offering_ids_wanted) - staff_offering_ids_existing
+    if not staff_offering_ids_not_existing:
+        flash("No more new courses to import.", 'info')
+        return redirect(url_for('offerings'))
+    staff_offerings_not_existing = [staff_offerings_id_to_model[canvas_id] for canvas_id in staff_offering_ids_not_existing]
+    form = ChooseCourseOfferingForm(offering_list=staff_offerings_not_existing)
+    if form.validate_on_submit():
+        to_be_saved = [staff_offerings_id_to_model[canvas_id] for canvas_id in form.offerings.data]
+        if not to_be_saved:
+            flash("No course offering imported.", 'info')
+            return redirect(url_for('offerings'))
+        try:
+            db.session.bulk_save_objects(to_be_saved)
+            db.session.commit()
+            flash(f"Imported {len(to_be_saved)} course offerings.", 'success')
+            return redirect(url_for('offerings'))
+        except Exception as e:
+            db.session.rollback()
+            print("error", str(e))
+            flash("An error occurred when inserting offering: " + str(e), 'error')
+    return render_template("new_offerings.html.j2",
+                           title="Add New Course Offerings",
+                           form=form)
 
 
 @app.route('/<offering:offering>/')
@@ -49,9 +126,37 @@ def offering(offering):
     Shows all exams created for a course offering.
     """
     is_staff = str(offering.canvas_id) in current_user.staff_offerings
+    all_exams = offering.exams
+    active_exams = [e for e in all_exams if e.is_active]
+    inactive_exams = [e for e in all_exams if not e.is_active]
     return render_template("select_exam.html.j2",
                            title="Select an Exam for {}".format(offering.name),
-                           exams=offering.exams, offering=offering, is_staff=is_staff)
+                           active_exams=active_exams,
+                           inactive_exams=inactive_exams,
+                           all_exams=all_exams,
+                           offering=offering,
+                           is_staff=is_staff)
+
+
+@app.route('/<offering:offering>/delete/', methods=['GET', 'DELETE'])
+def delete_offering(offering):
+    """
+    Path: /offerings/<canvas_id>/delete
+    Deletes a course offering.
+    """
+    # offering urls convertor only checks login but does not check staff status
+    # we need to do it here
+    if str(offering.canvas_id) not in current_user.staff_offerings:
+        abort(403, "You are not a staff member in this offering.")
+    try:
+        db.session.delete(offering)
+        db.session.commit()
+        flash("Deleted offering.", 'success')
+    except Exception as e:
+        db.session.rollback()
+        flash(f"Failed to delete offering {offering.name} (Canvas ID: {offering.canvas_id}) due to an error:\n{e}", 'error')
+    return redirect(url_for('offerings'))
+
 
 # endregion
 
@@ -64,9 +169,8 @@ def new_exam(offering):
     Path: /offerings/<canvas_id>/exams/new
     Creates a new exam for a course offering.
     """
-    # offering urls only checks login but does not check staff status
-    # this is exam creation route but still handled by offering converter
-    # it does need to check staff status, so we do it here
+    # offering urls convertor only checks login but does not check staff status
+    # we need to do it here
     if str(offering.canvas_id) not in current_user.staff_offerings:
         abort(403, "You are not a staff member in this offering.")
     form = ExamForm()
@@ -82,12 +186,11 @@ def new_exam(offering):
             return redirect(url_for('offering', offering=offering))
         except Exception as e:
             db.session.rollback()
-            abort(400, "An error occurred when inserting exam of name={}\n{}".format(
-                form.name.data, str(e)))
+            flash(f"An error occurred when inserting exam of name={form.name.data}\n{str(e)}", 'error')
             return redirect(url_for('offering', offering=offering))
-    return render_template("new_exam.html.j2",
+    return render_template("upsert_exam.html.j2",
                            title="Create an Exam for {}".format(offering.name),
-                           form=form)
+                           form=form, exam=None)
 
 
 @app.route("/<exam:exam>/delete/", methods=["GET", "DELETE"])
@@ -96,9 +199,47 @@ def delete_exam(exam):
     Path: /offerings/<canvas_id>/exams/<exam_name>/delete
     Deletes an exam for a course offering.
     """
-    db.session.delete(exam)
-    db.session.commit()
+    try:
+        db.session.delete(exam)
+        db.session.commit()
+        flash("Deleted exam.", 'success')
+    except Exception as e:
+        db.session.rollback()
+        flash(f"Failed to delete exam {exam.display_name} (ID: {exam.id}) due to an error:\n{e}", 'error')
     return redirect(url_for('offering', offering=exam.offering))
+
+
+@app.route("/<exam:exam>/edit/", methods=["GET", "POST"])
+def edit_exam(exam):
+    """
+    Path: /offerings/<canvas_id>/exams/<exam_name>/edit
+    Edits an exam for a course offering.
+    """
+    form = EditExamForm()
+    if request.method == 'GET':
+        form.display_name.data = exam.display_name
+        form.active.data = exam.is_active
+    if form.validate_on_submit():
+        if 'cancel' in request.form:
+            return redirect(url_for('offering', offering=exam.offering))
+        exam.display_name = form.display_name.data
+        if form.active.data:
+            exam.offering.mark_all_exams_as_inactive()
+            exam.is_active = True
+        else:
+            exam.is_active = False
+            if exam.offering.ensure_one_exam_is_active():
+                flash("No active exam left. The first exam is activated by default.", 'info')
+        try:
+            db.session.commit()
+            return redirect(url_for('offering', offering=exam.offering))
+        except Exception as e:
+            db.session.rollback()
+            flash(f"Failed to edit exam name={exam.display_name} due to a db error: \n{e}", 'error')
+            return redirect(url_for('offering', offering=exam.offering))
+    return render_template("upsert_exam.html.j2",
+                           title="Edit Exam: {}".format(exam.display_name),
+                           form=form, exam=exam)
 
 
 @app.route("/<exam:exam>/toggle/", methods=["GET", "PATCH"])
@@ -109,11 +250,17 @@ def toggle_exam(exam):
     """
     if exam.is_active:
         exam.is_active = False
+        if exam.offering.ensure_one_exam_is_active():
+            flash("No active exam left. The first exam is activated by default.", 'info')
     else:
         # only one exam can be active at a time, so deactivate all others first
         exam.offering.mark_all_exams_as_inactive()
         exam.is_active = True
-    db.session.commit()
+    try:
+        db.session.commit()
+    except Exception as e:
+        db.session.rollback()
+        flash(f"Failed to toggle exam name={exam.display_name} due to a db error: \n{e}", 'error')
     return redirect(url_for('offering', offering=exam.offering))
 
 
@@ -138,7 +285,8 @@ def import_room(exam):
     choose_form = ChooseRoomForm(room_list=get_spreadsheet_tabs(app.config.get('MASTER_ROOM_SHEET_URL')))
     upload_form = UploadRoomForm()
     return render_template('new_room.html.j2',
-                           exam=exam, new_form=new_form, choose_form=choose_form, upload_form=upload_form,
+                           exam=exam, new_form=new_form, choose_form=choose_form,
+                           upload_form=upload_form,
                            master_sheet_url=app.config.get('MASTER_ROOM_SHEET_URL'))
 
 
@@ -168,7 +316,8 @@ def import_room_from_custom_sheet(exam):
             flash("{}: {}".format(field, error), 'error')
     return render_template('new_room.html.j2',
                            exam=exam,
-                           new_form=new_form, choose_form=choose_form, upload_form=upload_form,
+                           new_form=new_form, choose_form=choose_form,
+                           upload_form=upload_form,
                            room=room,
                            master_sheet_url=app.config.get('MASTER_ROOM_SHEET_URL'))
 
@@ -204,7 +353,8 @@ def import_room_from_master_sheet(exam):
             flash("{}: {}".format(field, error), 'error')
     return render_template('new_room.html.j2',
                            exam=exam,
-                           new_form=new_form, choose_form=choose_form, upload_form=upload_form,
+                           new_form=new_form, choose_form=choose_form,
+                           upload_form=upload_form,
                            master_sheet_url=app.config.get('MASTER_ROOM_SHEET_URL'))
 
 
@@ -234,8 +384,41 @@ def import_room_from_csv_upload(exam):
             flash("{}: {}".format(field, error), 'error')
     return render_template('new_room.html.j2',
                            exam=exam,
-                           new_form=new_form, choose_form=choose_form, upload_form=upload_form,
+                           new_form=new_form, choose_form=choose_form,
+                           upload_form=upload_form,
                            master_sheet_url=app.config.get('MASTER_ROOM_SHEET_URL'))
+
+
+@app.route('/<exam:exam>/rooms/import/from_manual/', methods=['GET', 'POST'])
+def import_room_manually(exam):
+    form = EditRoomForm()
+    if request.method == 'GET':
+        if not form.movable_seats.entries:
+            form.movable_seats.append_entry({
+                'attributes': '',
+                'count': 1
+            })
+    if form.validate_on_submit():
+        from collections import defaultdict
+        seats_to_add = defaultdict(int)
+        for seat_form in form.movable_seats.data:
+            seats_to_add[frozenset(str_set_to_set(seat_form['attributes']))] += max(0, seat_form['count'])
+        room = None
+        try:
+            room = get_room_from_manual_input(exam, form, seats_to_add)
+        except Exception as e:
+            flash(f"Failed to import room due to an unexpected error: {e}", 'error')
+        if room:
+            try:
+                db.session.add(room)
+                db.session.commit()
+            except Exception as e:
+                flash(f"Failed to import room due to a db error: {e}", 'error')
+        return redirect(url_for('exam', exam=exam))
+    for field, errors in form.errors.items():
+        for error in errors:
+            flash("{}: {}".format(field, error), 'error')
+    return render_template('upsert_room.html.j2', exam=exam, form=form, room=None)
 
 
 @app.route('/<exam:exam>/rooms/<int:id>/delete', methods=['GET', 'DELETE'])
@@ -246,8 +429,13 @@ def delete_room(exam, id):
     """
     room = Room.query.filter_by(exam_id=exam.id, id=id).first_or_404()
     if room:
-        db.session.delete(room)
-        db.session.commit()
+        try:
+            db.session.delete(room)
+            db.session.commit()
+            flash("Deleted room.", 'success')
+        except Exception as e:
+            db.session.rollback()
+            flash(f"Failed to delete room {room.display_name} (ID: {room.id}) due to an error:\n{e}", 'error')
     return render_template('exam.html.j2', exam=exam)
 
 
@@ -265,21 +453,41 @@ def edit_room(exam, id):
             form.start_at.data = room.start_at_time
         if room.duration_minutes:
             form.duration_minutes.data = room.duration_minutes
+        for attr in room.movable_seats_by_attribute:
+            form.movable_seats.append_entry({
+                'attributes': set_to_str_set(attr),
+                'count': len(room.movable_seats_by_attribute[attr])
+            })
+        if not form.movable_seats.entries:
+            form.movable_seats.append_entry({
+                'attributes': '',
+                'count': 0
+            })
     if form.validate_on_submit():
         if 'cancel' in request.form:
             return redirect(url_for('exam', exam=exam))
+        # update other stuff
         room.display_name = form.display_name.data
         start_at_iso = None
         if form.start_at.data:
             start_at_iso = to_ISO8601(form.start_at.data)
         room.start_at = start_at_iso
         room.duration_minutes = form.duration_minutes.data
+        # update movable seats
+        from collections import defaultdict
+        seats_to_add = defaultdict(int)
+        for seat_form in form.movable_seats.data:
+            seats_to_add[frozenset(str_set_to_set(seat_form['attributes']))] += max(0, seat_form['count'])
+        try:
+            update_room_from_manual_input(room, seats_to_add)
+        except Exception as e:
+            flash(f"Failed to edit room seats due to an unexpected error: {e}", 'error')
         try:
             db.session.commit()
         except Exception as e:
             flash(f"Failed to edit room due to a db error: {e}", 'error')
         return redirect(url_for('exam', exam=exam))
-    return render_template('edit_room.html.j2', exam=exam, form=form, room=room)
+    return render_template('upsert_room.html.j2', exam=exam, form=form, room=room)
 
 
 @app.route('/<exam:exam>/rooms/<int:id>/')
@@ -324,7 +532,7 @@ def import_students_from_custom_sheet(exam):
                 f" {len(invalid_students)} invalid students.", 'success')
             if updated_students:
                 flash(
-                    f"Updated students: {','.join([s.name for s in updated_students])}", 'warning')
+                    f"Updated students: {set_to_str_set([s.name for s in updated_students])}", 'warning')
             if invalid_students:
                 flash(
                     f"Invalid students: {invalid_students}", 'error')
@@ -357,7 +565,7 @@ def import_students_from_canvas_roster(exam):
                 f" {len(invalid_students)} invalid students.", 'success')
             if updated_students:
                 flash(
-                    f"Updated students: {','.join([s.name for s in updated_students])}", 'warning')
+                    f"Updated students: {set_to_str_set([s.name for s in updated_students])}", 'warning')
             if invalid_students:
                 flash(
                     f"Invalid students: {invalid_students}", 'error')
@@ -391,7 +599,7 @@ def import_students_from_csv_upload(exam):
                     f" {len(invalid_students)} invalid students.", 'success')
                 if updated_students:
                     flash(
-                        f"Updated students: {','.join([s.name for s in updated_students])}", 'warning')
+                        f"Updated students: {set_to_str_set([s.name for s in updated_students])}", 'warning')
                 if invalid_students:
                     flash(
                         f"Invalid students: {invalid_students}", 'error')
@@ -415,7 +623,7 @@ def delete_students(exam):
     deleted, did_not_exist = set(), set()
     if form.validate_on_submit():
         if not form.use_all_emails.data:
-            emails = [x for x in re.split(r'\s|,', form.emails.data) if x]
+            emails = [x for x in str_set_to_set(form.emails.data) if x]
             students = Student.query.filter(
                 Student.email.in_(emails) & Student.exam_id == exam.id)
         else:
@@ -469,16 +677,16 @@ def edit_student(exam, canvas_id):
     orig_room_wants_set = set(student.room_wants)
     orig_room_avoids_set = set(student.room_avoids)
     if request.method == 'GET':
-        form.wants.data = ",".join(orig_wants_set)
-        form.avoids.data = ",".join(orig_avoids_set)
-        form.room_wants.data = ",".join(orig_room_wants_set)
-        form.room_avoids.data = ",".join(orig_room_avoids_set)
-        form.new_email.data = student.email
+        form.wants.data = set_to_str_set(orig_wants_set)
+        form.avoids.data = set_to_str_set(orig_avoids_set)
+        form.room_wants.data = set_to_str_set(orig_room_wants_set)
+        form.room_avoids.data = set_to_str_set(orig_room_avoids_set)
+        form.email.data = student.email
     if form.validate_on_submit():
         if 'cancel' in request.form:
             return redirect(url_for('students', exam=exam))
-        new_wants_set = set(re.split(r'\s|,', form.wants.data)) if form.wants.data else set()
-        new_avoids_set = set(re.split(r'\s|,', form.avoids.data)) if form.avoids.data else set()
+        new_wants_set = str_set_to_set(form.wants.data)
+        new_avoids_set = str_set_to_set(form.avoids.data)
         new_room_wants_set = set(form.room_wants.data)
         new_room_avoids_set = set(form.room_avoids.data)
         # wants and avoids should not overlap
@@ -508,7 +716,8 @@ def edit_student(exam, canvas_id):
         for error in errors:
             flash("{}: {}".format(field, error), 'error')
     return render_template('edit_students.html.j2', exam=exam, form=form, edited=edited,
-                            did_not_exist=did_not_exist, student=student)
+                           did_not_exist=did_not_exist, student=student)
+
 
 @app.route('/<exam:exam>/students/edit', methods=['GET', 'POST'])
 def edit_students(exam):
@@ -564,15 +773,22 @@ def edit_students(exam):
         for error in errors:
             flash("{}: {}".format(field, error), 'error')
     return render_template('edit_students.html.j2', exam=exam, form=form, edited=edited,
-                            did_not_exist=did_not_exist, student=None)
+                           did_not_exist=did_not_exist, student=None)
+
 
 @app.route('/<exam:exam>/students/<string:canvas_id>/delete', methods=['GET', 'DELETE'])
 def delete_student(exam, canvas_id):
     student = Student.query.filter_by(
         exam_id=exam.id, canvas_id=canvas_id).first_or_404()
     if student:
-        db.session.delete(student)
-        db.session.commit()
+        try:
+            db.session.delete(student)
+            db.session.commit()
+            flash("Deleted student.", 'success')
+        except Exception as e:
+            db.session.rollback()
+            flash(f"Failed to delete student {student.name}"
+                  f"(Canvas id: {student.canvas_id}) due to an error:\n{str(e)}", 'error')
     return redirect(url_for('students', exam=exam))
 
 
@@ -595,10 +811,40 @@ def assign(exam):
             db.session.add_all(assignments)
             db.session.commit()
             flash(f"Successfully assigned {len(assignments)} students.", 'success')
-        except SeatAssigningAlgorithmError as e:
+        except SeatAssignmentError as e:
             flash(str(e), 'error')
         return redirect(url_for('students', exam=exam))
     return render_template('assign.html.j2', exam=exam, form=form)
+
+
+@app.route('/<exam:exam>/students/<string:canvas_id>/assign/', methods=['GET', 'POST'])
+def assign_student(exam, canvas_id):
+    form = AssignSingleForm()
+    if form.validate_on_submit():
+        student = Student.query.filter_by(exam_id=exam.id, canvas_id=canvas_id).first_or_404()
+        try:
+            if 'just_delete' in request.form:
+                if student.assignment:
+                    db.session.delete(student.assignment)
+                    db.session.commit()
+                    flash(f"Successfully deleted assignment for {student.name}.", 'success')
+                else:
+                    flash(f"No assignment to delete for {student.name}.", 'warning')
+                return redirect(url_for('students', exam=exam))
+            chosen_seat = Seat.query.filter_by(id=form.seat_id.data).first_or_404() if form.seat_id.data != "" else None
+            old_assignment = None
+            if student.assignment:
+                old_assignment = student.assignment
+            assignment = assign_single_student(exam, student, chosen_seat, ignore_restrictions=form.ignore_restrictions.data)
+            if old_assignment:
+                db.session.delete(old_assignment)
+            db.session.add(assignment)
+            db.session.commit()
+            flash(f"Successfully assigned {student.name}.", 'success')
+        except SeatAssignmentError as e:
+            flash(str(e), 'error')
+        return redirect(url_for('students', exam=exam))
+    return render_template('assign_single.html.j2', exam=exam, form=form)
 
 
 @app.route('/<exam:exam>/students/email/', methods=['GET', 'POST'])
@@ -609,7 +855,7 @@ def email_all_students(exam):
         if successful_emails:
             flash(f"Successfully emailed {len(successful_emails)} students.", 'success')
         if failed_emails:
-            flash(f"Failed to email students: {', '.join(failed_emails)}", 'error')
+            flash(f"Failed to email students: {set_to_str_set(failed_emails)}", 'error')
         if not successful_emails and not failed_emails:
             flash("No email sent.", 'warning')
         return redirect(url_for('students', exam=exam))
@@ -617,7 +863,7 @@ def email_all_students(exam):
         email_prefill = get_email(EmailTemplate.ASSIGNMENT_INFORM_EMAIL)
         form.subject.data = email_prefill.subject
         form.body.data = email_prefill.body
-        form.to_addr.data = ','.join([s.email for s in exam.students])
+        form.to_addr.data = set_to_str_set([s.email for s in exam.students])
     return render_template('email.html.j2', exam=exam, form=form)
 
 
@@ -629,15 +875,19 @@ def email_single_student(exam, student_id):
         if successful_emails:
             flash(f"Successfully emailed {len(successful_emails)} students.", 'success')
         if failed_emails:
-            flash(f"Failed to email students: {', '.join(failed_emails)}", 'error')
+            flash(f"Failed to email students: {set_to_str_set(failed_emails)}", 'error')
         if not successful_emails and not failed_emails:
             flash("No email sent.", 'warning')
         return redirect(url_for('students', exam=exam))
     else:
+        student = Student.query.get_or_404(student_id)
         email_prefill = get_email(EmailTemplate.ASSIGNMENT_INFORM_EMAIL)
         form.subject.data = email_prefill.subject
         form.body.data = email_prefill.body
-        form.to_addr.data = Student.query.get(student_id).email
+        subject, body = substitute_about_assignment(exam, form, student)
+        form.subject.data = subject
+        form.body.data = body
+        form.to_addr.data = student.email
     return render_template('email.html.j2', exam=exam, form=form)
 
 # endregion
@@ -645,10 +895,9 @@ def email_single_student(exam, student_id):
 # region Misc
 
 
-@app.route('/help/')
-@login_required
-def help():
-    return render_template('help.html.j2', title="Help")
+@app.context_processor
+def inject_env_vars():
+    return dict(wiki_base_url=app.config.get('WIKI_BASE_URL'))
 
 
 @app.route('/favicon.ico')
@@ -670,6 +919,8 @@ def student_single_seat(seat_id):
     return render_template('seat.html.j2', room=seat.room, seat=seat)
 # endregion
 
+# region TBD! photo feature
+
 
 @app.route('/<exam:exam>/students/photos/', methods=['GET', 'POST'])
 def new_photos(exam):
@@ -683,3 +934,4 @@ def photo(exam, email):
     photo_path = '{}/{}/{}.jpeg'.format(app.config['PHOTO_DIRECTORY'],
                                         exam.offering_canvas_id, student.canvas_id)
     return send_file(photo_path, mimetype='image/jpeg')
+# endregion
