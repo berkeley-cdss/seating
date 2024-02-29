@@ -24,9 +24,15 @@ class ChooseCourseOfferingForm(FlaskForm):
             self.offerings.choices = [(o.canvas_id, str(o)) for o in offering_list]  # (value, label)
 
 
-class ExamForm(FlaskForm):
+class ExamFormBase(FlaskForm):
     display_name = StringField('display_name', [InputRequired()], render_kw={
                                "placeholder": "Midterm 1"})
+    active = BooleanField('active', default=True)
+
+    cancel = SubmitField('cancel')
+
+
+class ExamForm(ExamFormBase):
     name = StringField('name', [InputRequired()], render_kw={"placeholder": "midterm1"})
     submit = SubmitField('create')
 
@@ -34,6 +40,10 @@ class ExamForm(FlaskForm):
         pattern = '^{}$'.format(exam_regex)
         if not re.match(pattern, field.data):
             raise ValidationError('Exam name must be match pattern {}'.format(pattern))
+
+
+class EditExamForm(ExamFormBase):
+    submit = SubmitField('make edits')
 
 
 class RoomFormBase(FlaskForm):

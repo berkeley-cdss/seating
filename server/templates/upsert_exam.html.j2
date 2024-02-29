@@ -1,0 +1,43 @@
+{% extends 'base.html.j2' %}
+{% import 'macros.html.j2' as macros with context %}
+
+{% block body %}
+<div class="rooms mdl-grid">
+  <div class="mdl-cell mdl-cell--12-col">
+    {% if exam %}
+      <h4>Update Information for: {{ exam.display_name }}</h4>
+    {% else %}
+      <h4>Create New Exam</h4>
+    {% endif %}
+  </div>
+  <div class="mdl-cell mdl-cell--12-col">
+    {% call macros.form(form) %}
+      <div class="mdl-cell mdl-cell--12-col">
+        {% if not exam %}
+          <div class="mdl-textfield mdl-js-textfield mdl-textfield--floating-label">
+            {{ form.name(class="mdl-textfield__input", type="Exam Name", id="idname") }}
+            <label class="mdl-textfield__label" for="idname">Exam Internal Name</label>
+          </div>
+        {% else %}
+          <label>Exam Internal Name: {{ exam.name }}</label>
+        {% endif %}
+      </div>
+      <div class="mdl-cell mdl-cell--12-col">
+        <div class="mdl-textfield mdl-js-textfield mdl-textfield--floating-label">
+          {{ form.display_name(class="mdl-textfield__input", type="Exam Display Name", id="displayname") }}
+          <label class="mdl-textfield__label" for="displayname">Exam Display Name</label>
+        </div>
+      </div>
+      <div class="mdl-cell mdl-cell--12-col">
+        <div class="checkbox" id="setactive">
+          {{ form.active }}
+          <label class="" for="setactive">Set Active?</label>
+        </div>
+      </div>
+      <div class="form-buttons">
+        {{ form.submit(class="mdl-button mdl-js-button mdl-button--raised") }}
+      </div>
+    {% endcall %}
+  </div>
+</div>
+{% endblock %}

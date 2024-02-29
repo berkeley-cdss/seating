@@ -3,15 +3,14 @@
 
 {% block body %}
 <div class="rooms mdl-grid">
-    <div class="mdl-cell mdl-cell--12-col">
-      {% if room %}
-        <h4>Update Information for: {{ room.display_name }}</h4>
-      {% else %}
-        <h4>Manually Create New Room</h4>
-      {% endif %}
-    </div>
-
-    <div class="mdl-cell mdl-cell--12-col">
+  <div class="mdl-cell mdl-cell--12-col">
+    {% if room %}
+      <h4>Update Information for: {{ room.display_name }}</h4>
+    {% else %}
+      <h4>Manually Create New Room</h4>
+    {% endif %}
+  </div>
+  <div class="mdl-cell mdl-cell--12-col">
     {% call macros.form(form) %}
       <h5>Basic Information</h5>
       <div class="mdl-cell mdl-cell--12-col">
@@ -57,9 +56,9 @@
         {{ form.cancel(class="mdl-button mdl-js-button mdl-button--raised") }}
       </div>
     {% endcall %}
-    </div>
   </div>
 </div>
+
 
 <script>
   document.getElementById("movable-seat-list-add-button").addEventListener("click", function() {
