@@ -37,14 +37,17 @@
         <label class="mdl-textfield__label" for="search-expandable">Search</label>
       </div>
     </div>
-      <div id="tt6" class="material-icons std" onclick="location.href = '{{ url_for('export_students_as_csv', exam=exam) }}';" style="float: right;">file_download</div>
-      <div class="mdl-tooltip" data-mdl-for="tt6">Export</div>
+      <div id="tt7" class="material-icons std" onclick="location.href = '{{ url_for('export_students_as_csv', exam=exam) }}';" style="float: right;">file_download</div>
+      <div class="mdl-tooltip" data-mdl-for="tt7">Export</div>
       
-      <div id="tt5" class="material-icons std" onclick="location.href = '{{ url_for('email_all_students', exam=exam) }}';" style="float: right;">email</div>
-      <div class="mdl-tooltip" data-mdl-for="tt5">Email</div>
+      <div id="tt6" class="material-icons std" onclick="location.href = '{{ url_for('email_all_students', exam=exam) }}';" style="float: right;">email</div>
+      <div class="mdl-tooltip" data-mdl-for="tt6">Email</div>
 
-      <div id="tt4" class="material-icons std" onclick="location.href = '{{ url_for('delete_students', exam=exam) }}';" style="float: right;">delete</div>
-      <div class="mdl-tooltip" data-mdl-for="tt4">Delete Students</div>
+      <div id="tt5" class="material-icons std" onclick="location.href = '{{ url_for('delete_students', exam=exam) }}';" style="float: right;">delete</div>
+      <div class="mdl-tooltip" data-mdl-for="tt5">Delete Students</div>
+
+      <div id="tt4" class="material-icons std" onclick="location.href = '{{ url_for('edit_students', exam=exam) }}';" style="float: right;">edit</div>
+      <div class="mdl-tooltip" data-mdl-for="tt4">Edit All Students</div>
 
       <div id="tt3" class="material-icons std" onclick="location.href = '{{ url_for('assign', exam=exam) }}';" style="float: right;">assignment</div>
       <div class="mdl-tooltip" data-mdl-for="tt3">Assign</div>
