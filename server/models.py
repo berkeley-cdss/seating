@@ -55,11 +55,26 @@ class Offering(db.Model):
     def start_at_date(self):
         return parse_ISO8601(self.start_at)
 
+    @property
+    def active_exam(self):
+        return next((exam for exam in self.exams if exam.is_active), None)
+
+    def __str__(self):
+        return f"{self.start_at_date.strftime('%Y-%m')} | {self.code} | {self.name}"
+
     def __repr__(self):
         return '<Offering {}>'.format(self.name)
 
     def mark_all_exams_as_inactive(self):
         Exam.query.filter_by(offering_canvas_id=self.canvas_id).update({"is_active": False})
+
+    def ensure_one_exam_is_active(self):
+        if not self.exams:
+            return
+        if not any(exam.is_active for exam in self.exams):
+            self.exams[0].is_active = True
+            return True
+        return False
 
 
 class Exam(db.Model):
@@ -162,6 +177,9 @@ class Room(db.Model):
             natsorted(g, key=lambda seat: seat.x)
             for _, g in itertools.groupby(seats, lambda seat: seat.row)
         ]
+
+    def update_movable_seats(self, new_movable_seats):
+        self.seats = self.fixed_seats + new_movable_seats
 
     def __repr__(self):
         return '<Room {}>'.format(self.name)

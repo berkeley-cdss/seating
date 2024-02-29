@@ -13,6 +13,13 @@ header a {
   font-weight: inherit;
 }
 
+.main-container {
+  /* margin: 0 auto;
+  padding: 20px 0; */
+  max-width: 960px;
+  /* justify-content: center; */
+}
+
 .add-item {
   /* Dropdown menu: creating new items */
   border-bottom: 1px solid #e8e8e8;
