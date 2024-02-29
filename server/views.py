@@ -216,9 +216,13 @@ def edit_exam(exam):
         if 'cancel' in request.form:
             return redirect(url_for('offering', offering=exam.offering))
         exam.display_name = form.display_name.data
-        exam.is_active = form.active.data
         if form.active.data:
             exam.offering.mark_all_exams_as_inactive()
+            exam.is_active = True
+        else:
+            exam.is_active = False
+            if exam.offering.ensure_one_exam_is_active():
+                flash("No active exam left. The first exam is activated by default.", 'info')
         try:
             db.session.commit()
             return redirect(url_for('offering', offering=exam.offering))
@@ -239,6 +243,8 @@ def toggle_exam(exam):
     """
     if exam.is_active:
         exam.is_active = False
+        if exam.offering.ensure_one_exam_is_active():
+            flash("No active exam left. The first exam is activated by default.", 'info')
     else:
         # only one exam can be active at a time, so deactivate all others first
         exam.offering.mark_all_exams_as_inactive()

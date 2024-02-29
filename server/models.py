@@ -64,6 +64,14 @@ class Offering(db.Model):
     def mark_all_exams_as_inactive(self):
         Exam.query.filter_by(offering_canvas_id=self.canvas_id).update({"is_active": False})
 
+    def ensure_one_exam_is_active(self):
+        if not self.exams:
+            return
+        if not any(exam.is_active for exam in self.exams):
+            self.exams[0].is_active = True
+            return True
+        return False
+
 
 class Exam(db.Model):
     __tablename__ = 'exams'
