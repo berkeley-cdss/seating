@@ -68,7 +68,9 @@ class StagingConfig(ConfigBase):
 
     @property
     def SQLALCHEMY_DATABASE_URI(self):
-        return ConfigBase.getenv('DATABASE_URL').replace('postgresql://', 'postgresql+psycopg2://')
+        import re
+        # replace postgresql:// or postgres:// with postgresql+psycopg2://
+        return re.sub(r'postgres(ql)?://', 'postgresql+psycopg2://', ConfigBase.getenv('DATABASE_URL'))
 
 
 class DevelopmentConfig(ConfigBase):
