@@ -4,7 +4,7 @@ from flask_login import current_user, login_required
 
 from server import app
 from server.models import SeatAssignment, db, Exam, Room, Seat, Student
-from server.forms import EditRoomForm, ExamForm, ImportStudentFromCsvUploadForm, RoomForm, ChooseRoomForm, \
+from server.forms import EditExamForm, EditRoomForm, ExamForm, ImportStudentFromCsvUploadForm, RoomForm, ChooseRoomForm, \
     ImportStudentFromSheetForm, ImportStudentFromCanvasRosterForm, DeleteStudentForm, AssignForm, EmailForm, \
     EditStudentForm, UploadRoomForm, ChooseCourseOfferingForm
 from server.services.core.export import export_exam_student_info
@@ -179,12 +179,11 @@ def new_exam(offering):
             return redirect(url_for('offering', offering=offering))
         except Exception as e:
             db.session.rollback()
-            abort(400, "An error occurred when inserting exam of name={}\n{}".format(
-                form.name.data, str(e)))
+            flash(f"An error occurred when inserting exam of name={form.name.data}\n{str(e)}", 'error')
             return redirect(url_for('offering', offering=offering))
-    return render_template("new_exam.html.j2",
+    return render_template("upsert_exam.html.j2",
                            title="Create an Exam for {}".format(offering.name),
-                           form=form)
+                           form=form, exam=None)
 
 
 @app.route("/<exam:exam>/delete/", methods=["GET", "DELETE"])
@@ -203,6 +202,35 @@ def delete_exam(exam):
     return redirect(url_for('offering', offering=exam.offering))
 
 
+@app.route("/<exam:exam>/edit/", methods=["GET", "POST"])
+def edit_exam(exam):
+    """
+    Path: /offerings/<canvas_id>/exams/<exam_name>/edit
+    Edits an exam for a course offering.
+    """
+    form = EditExamForm()
+    if request.method == 'GET':
+        form.display_name.data = exam.display_name
+        form.active.data = exam.is_active
+    if form.validate_on_submit():
+        if 'cancel' in request.form:
+            return redirect(url_for('offering', offering=exam.offering))
+        exam.display_name = form.display_name.data
+        exam.is_active = form.active.data
+        if form.active.data:
+            exam.offering.mark_all_exams_as_inactive()
+        try:
+            db.session.commit()
+            return redirect(url_for('offering', offering=exam.offering))
+        except Exception as e:
+            db.session.rollback()
+            flash(f"Failed to edit exam name={exam.display_name} due to a db error: \n{e}", 'error')
+            return redirect(url_for('offering', offering=exam.offering))
+    return render_template("upsert_exam.html.j2",
+                           title="Edit Exam: {}".format(exam.display_name),
+                           form=form, exam=exam)
+
+
 @app.route("/<exam:exam>/toggle/", methods=["GET", "PATCH"])
 def toggle_exam(exam):
     """
@@ -215,7 +243,11 @@ def toggle_exam(exam):
         # only one exam can be active at a time, so deactivate all others first
         exam.offering.mark_all_exams_as_inactive()
         exam.is_active = True
-    db.session.commit()
+    try:
+        db.session.commit()
+    except Exception as e:
+        db.session.rollback()
+        flash(f"Failed to toggle exam name={exam.display_name} due to a db error: \n{e}", 'error')
     return redirect(url_for('offering', offering=exam.offering))
 
 
