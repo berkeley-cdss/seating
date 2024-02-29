@@ -392,6 +392,12 @@ def import_room_from_csv_upload(exam):
 @app.route('/<exam:exam>/rooms/import/from_manual/', methods=['GET', 'POST'])
 def import_room_manually(exam):
     form = EditRoomForm()
+    if request.method == 'GET':
+        if not form.movable_seats.entries:
+            form.movable_seats.append_entry({
+                'attributes': '',
+                'count': 1
+            })
     if form.validate_on_submit():
         from collections import defaultdict
         seats_to_add = defaultdict(int)
