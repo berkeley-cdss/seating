@@ -1,0 +1,104 @@
+{% extends 'base.html.j2' %}
+{% import 'macros.html.j2' as macros with context %}
+
+{% block body %}
+<div class="rooms mdl-grid">
+    <div class="mdl-cell mdl-cell--12-col">
+      {% if room %}
+        <h4>Update Information for: {{ room.display_name }}</h4>
+      {% else %}
+        <h4>Manually Create New Room</h4>
+      {% endif %}
+    </div>
+
+    <div class="mdl-cell mdl-cell--12-col">
+    {% call macros.form(form) %}
+      <h5>Basic Information</h5>
+      <div class="mdl-cell mdl-cell--12-col">
+        <div class="mdl-textfield mdl-js-textfield mdl-textfield--floating-label mdl-cell--12-col">
+          {{ form.display_name(class="mdl-textfield__input", type="Room Name", id="roomname") }}
+          <label class="mdl-textfield__label" for="roomname">Room Name</label>
+        </div>
+      </div>
+      <div class="mdl-cell mdl-cell--12-col">
+        <div class="mdl-textfield mdl-js-textfield mdl-textfield--floating-label mdl-cell--12-col">
+          {{ form.start_at(class="mdl-textfield__input", type="datetime-local", id="start_at") }}
+          <label class="mdl-textfield__label" for="start_at">Start At</label>
+        </div>
+      </div>
+      <div class="mdl-cell mdl-cell--12-col">
+        <div class="mdl-textfield mdl-js-textfield mdl-textfield--floating-label mdl-cell--12-col">
+          {{ form.duration_minutes(class="mdl-textfield__input", type="number", id="duration_minutes") }}
+          <label class="mdl-textfield__label" for="duration_minutes">Duration (Minutes)</label>
+        </div>
+      </div>
+      <h5>Movable Seats</h5>
+      <div id="manual_form_movable_seat_list" class="mdl-cell mdl-cell--12-col">
+        {% for movable_seat_form in form.movable_seats %}
+          <fieldset class="mdl-cell mdl-cell--12-col">
+            <div class="mdl-textfield mdl-js-textfield mdl-textfield--floating-label mdl-cell--8-col">
+              {{ movable_seat_form.attributes(class="mdl-textfield__input") }}
+              <label class="mdl-textfield__label">Seat Attributes</label>
+            </div>
+            <div class="mdl-textfield mdl-js-textfield mdl-textfield--floating-label mdl-cell--3-col">
+              {{ movable_seat_form.count(class="mdl-textfield__input", type="number") }}
+              <label class="mdl-textfield__label">Seat Count</label>
+            </div>
+            <div class="material-icons mdl-cell--1-col" style="text-align: center; margin: 0; cursor: pointer; display:none;" id="seat-delete-0" style="float: right;"
+              onclick="deleteSeat(this.id);">
+              clear
+            </div>
+          </fieldset>
+        {% endfor %}
+      </div>
+      <div class="form-buttons">
+        <button class="mdl-button mdl-js-button mdl-button--raised" type="button" id="movable-seat-list-add-button">Add Seat Type</button>
+        {{ form.submit(class="mdl-button mdl-js-button mdl-button--raised") }}
+        {{ form.cancel(class="mdl-button mdl-js-button mdl-button--raised") }}
+      </div>
+    {% endcall %}
+    </div>
+  </div>
+</div>
+
+<script>
+  document.getElementById("movable-seat-list-add-button").addEventListener("click", function() {
+      var container = document.getElementById("manual_form_movable_seat_list");
+      var newSeat = container.children[0].cloneNode(true);
+      container.appendChild(newSeat);
+      recalculateIndices(container.children.length-1);
+  });
+
+  function deleteSeat(id) {
+    var index = id.split("-")[2];
+    if (index == 0) {
+      return; // do not delete the index-0 seat
+    }
+    var container = document.getElementById("manual_form_movable_seat_list");
+    container.removeChild(container.children[index]);
+    recalculateIndices(index);
+  }
+
+
+  function recalculateIndices(startIndex=0) {
+    var container = document.getElementById("manual_form_movable_seat_list");
+    for (var i = startIndex; i < container.children.length; i++) {
+      var seat = container.children[i];
+      var attribute_input = seat.children[0].children[0];
+      var count_input = seat.children[1].children[0];
+      var delete_button = seat.children[2];
+      new_name = attribute_input.name.replace(/\d+/g, i);
+      attribute_input.name = new_name;
+      count_input.name = count_input.name.replace(/\d+/g, i);
+      delete_button.id = delete_button.id.replace(/\d+/g, i);
+      
+      if (i == 0) {
+        delete_button.style.display = "none";
+      } else {
+        delete_button.style.display = "";
+      }
+      
+    }
+  }
+</script>
+{% endblock %}

@@ -1,8 +1,9 @@
 import re
 
 from flask_wtf import FlaskForm
-from wtforms import ValidationError, BooleanField, FileField, SelectMultipleField, StringField, SubmitField, \
-    TextAreaField, DateTimeField, IntegerField, widgets
+from wtforms import FieldList, FormField, ValidationError, BooleanField, FileField, SelectMultipleField, StringField, \
+    SubmitField, TextAreaField, DateTimeField, IntegerField, widgets
+from wtforms import Form as NoCsrfForm
 from flask_wtf.file import FileRequired, FileAllowed
 from wtforms.validators import Email, InputRequired, URL, Optional
 from server.controllers import exam_regex
@@ -35,21 +36,22 @@ class ExamForm(FlaskForm):
             raise ValidationError('Exam name must be match pattern {}'.format(pattern))
 
 
-class RoomForm(FlaskForm):
+class RoomFormBase(FlaskForm):
+    start_at = DateTimeField('start_at', [Optional()], format='%Y-%m-%dT%H:%M')
+    duration_minutes = IntegerField('duration_minutes', [Optional()])
+
+
+class RoomForm(RoomFormBase):
     display_name = StringField('display_name', [InputRequired()])
     sheet_url = StringField('sheet_url', [URL(), InputRequired()])
     sheet_range = StringField('sheet_range', [InputRequired()])
-    start_at = DateTimeField('start_at', [Optional()], format='%Y-%m-%dT%H:%M')
-    duration_minutes = IntegerField('duration_minutes', [Optional()])
     preview_room = SubmitField('preview')
     create_room = SubmitField('create')
 
 
-class ChooseRoomForm(FlaskForm):
+class ChooseRoomForm(RoomFormBase):
     submit = SubmitField('import')
     rooms = MultiCheckboxField('select_rooms')
-    start_at = DateTimeField('start_at', [Optional()], format='%Y-%m-%dT%H:%M')
-    duration_minutes = IntegerField('duration_minutes', [Optional()])
 
     def __init__(self, room_list=None, *args, **kwargs):
         super(ChooseRoomForm, self).__init__(*args, **kwargs)
@@ -57,21 +59,23 @@ class ChooseRoomForm(FlaskForm):
             self.rooms.choices = [(item, item) for item in room_list]  # (value, label)
 
 
-class UploadRoomForm(FlaskForm):
+class UploadRoomForm(RoomFormBase):
     submit = SubmitField('upload')
     file = FileField('Choose File', validators=[
         FileRequired(),
         FileAllowed(['csv'], 'CSV files only!')
     ])
     display_name = StringField('display_name', [InputRequired()])
-    start_at = DateTimeField('start_at', [Optional()], format='%Y-%m-%dT%H:%M')
-    duration_minutes = IntegerField('duration_minutes', [Optional()])
 
 
-class EditRoomForm(FlaskForm):
-    display_name = StringField('display_name')
-    start_at = DateTimeField('start_at', [Optional()], format='%Y-%m-%dT%H:%M')
-    duration_minutes = IntegerField('duration_minutes', [Optional()])
+class MovableSeatSubForm(NoCsrfForm):
+    attributes = StringField('attributes', default='', render_kw={"placeholder": "Righty, Aisle"})
+    count = IntegerField('count', [InputRequired()], default=1, render_kw={"placeholder": "1"})
+
+
+class EditRoomForm(RoomFormBase):
+    display_name = StringField('display_name', [InputRequired()])
+    movable_seats = FieldList(FormField(MovableSeatSubForm), min_entries=0)
     submit = SubmitField('make edits')
     cancel = SubmitField('cancel')
 
