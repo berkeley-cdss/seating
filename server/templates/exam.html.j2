@@ -6,6 +6,11 @@
   <div class="mdl-cell mdl-cell--12-col">
     <h4>Rooms</h4>
     <ul class="mdl-list">
+    {% if exam.rooms|length == 0 %}
+      <li class="mdl-list__item">
+        <span>No room set up yet.</span>
+      </li>
+    {% endif %}
     {% for room in exam.rooms %}
       <li class="mdl-list__item">
         <a class="mdl-list__item-primary-content" href="{{ url_for('room', exam=exam, id=room.id) }}">
@@ -22,7 +27,9 @@
           </small></span>
         {% endif %}
         <div class="material-icons std" onclick="location.href = '{{ url_for('edit_room', exam=exam, id=room.id) }}';" style="float: right;">edit</div>
-        <div class="material-icons std" onclick="location.href = '{{ url_for('delete_room', exam=exam, id=room.id) }}';" style="float: right;">clear</div>
+        <div class="material-icons std" style="float: right;"
+          onclick="confirmAction('Are you sure you want to delete this room?', '{{ url_for('delete_room', exam=exam, id=room.id) }}');"
+        >clear</div>
       </li>
     {% endfor %}
     </ul>

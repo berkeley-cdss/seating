@@ -1,0 +1,18 @@
+{% extends 'base.html.j2' %}
+{% import 'macros.html.j2' as macros with context %}
+
+{% block body %}
+
+<div class="mdl-grid main-container">
+  <div class="mdl-cell mdl-cell--12-col">
+    <h5>Choose courses to set up exams with:</h5>
+    <p>If you expect to see an offering but it is not listed, please make sure its corresponding Canvas course exists and is active.</p>
+  </div>
+  {% call macros.form(form) %}
+    <div class="checkbox">{{ form.offerings }}</div>
+    <div class="form-buttons">{{ form.submit(class="mdl-button mdl-js-button mdl-button--raised") }}</div>
+  {% endcall %}
+</div>
+
+{% endblock %}
+

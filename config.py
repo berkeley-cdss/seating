@@ -18,6 +18,7 @@ class ConfigBase(object):
     BASE_DIR = os.path.abspath(os.path.dirname(__file__))
     FIXTURES_DIRS = [os.path.join('tests', 'fixtures')]
     SERVER_BASE_URL = getenv('SERVER_BASE_URL', "http://localhost:5000/")
+    WIKI_BASE_URL = getenv('WIKI_BASE_URL', "https://github.com/berkeley-eecs/seating/wiki/")
 
     SQLALCHEMY_TRACK_MODIFICATIONS = False
     LOCAL_TIMEZONE = getenv('TIMEZONE', 'US/Pacific')

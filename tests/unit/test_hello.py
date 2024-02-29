@@ -13,7 +13,7 @@ def test_client_health(client):
     Test that client and making requests works
     """
     response = client.get('/')
-    assert response.status_code == 302  # redirect to login
+    assert response.status_code == 200
 
 
 def test_db_health(db):

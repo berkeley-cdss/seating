@@ -13,6 +13,26 @@ _email_config = SMTPConfig(
     app.config.get('EMAIL_PASSWORD')
 )
 
+def substitute_about_assignment(exam, form, student):
+    if not student or not student.assignment:
+        return None, None
+    assignment = student.assignment
+    subject = templates.make_substitutions(form.subject.data, {"EXAM": exam.display_name})
+    body = templates.make_substitutions(form.body.data,
+                                    {"NAME": assignment.student.first_name,
+                                    "COURSE": exam.offering.name,
+                                    "EXAM": exam.display_name,
+                                    "ROOM": assignment.seat.room.display_name,
+                                    "SEAT": assignment.seat.display_name,
+                                    "START_TIME": assignment.seat.room.start_at_time_display(),
+                                    "DURATION": assignment.seat.room.duration_display,
+                                    "URL": urljoin(
+                                        app.config.get('SERVER_BASE_URL'),
+                                        url_for('student_single_seat',
+                                                seat_id=assignment.seat.id)),
+                                    })
+    return subject, body
+
 
 def email_about_assignment(exam, form, to_addrs):
     if isinstance(to_addrs, str):
@@ -23,24 +43,10 @@ def email_about_assignment(exam, form, to_addrs):
     all_students = {s.email: s for s in exam.students}
     for to_addr in to_addrs:
         student = all_students.get(to_addr, None)
-        if not student or not student.assignment:
+        subject, body = substitute_about_assignment(exam, form, student)
+        if not subject or not body:
             failure_addrs.add(to_addr)
             continue
-        assignment = student.assignment
-        subject = templates.make_substitutions(form.subject.data, {"EXAM": exam.display_name})
-        body = templates.make_substitutions(form.body.data,
-                                            {"NAME": assignment.student.first_name,
-                                             "COURSE": exam.offering.name,
-                                             "EXAM": exam.display_name,
-                                             "ROOM": assignment.seat.room.display_name,
-                                             "SEAT": assignment.seat.display_name,
-                                             "START_TIME": assignment.seat.room.start_at_time_display(),
-                                             "DURATION": assignment.seat.room.duration_display,
-                                             "URL": urljoin(
-                                                 app.config.get('SERVER_BASE_URL'),
-                                                 url_for('student_single_seat',
-                                                         seat_id=assignment.seat.id)),
-                                             })
         success, payload = send_email(
             smtp=_email_config,
             from_addr=form.from_addr.data,
@@ -52,7 +58,7 @@ def email_about_assignment(exam, form, to_addrs):
             bcc_addr=form.bcc_addr.data)
         if success:
             success_addrs.add(to_addr)
-            assignment.emailed = True
+            student.assignment.emailed = True
         else:
             failure_addrs.add(to_addr)
     db.session.commit()
