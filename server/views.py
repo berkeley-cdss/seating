@@ -126,9 +126,16 @@ def offering(offering):
     Shows all exams created for a course offering.
     """
     is_staff = str(offering.canvas_id) in current_user.staff_offerings
+    all_exams = offering.exams
+    active_exams = [e for e in all_exams if e.is_active]
+    inactive_exams = [e for e in all_exams if not e.is_active]
     return render_template("select_exam.html.j2",
                            title="Select an Exam for {}".format(offering.name),
-                           exams=offering.exams, offering=offering, is_staff=is_staff)
+                           active_exams=active_exams,
+                           inactive_exams=inactive_exams,
+                           all_exams=all_exams,
+                           offering=offering,
+                           is_staff=is_staff)
 
 
 @app.route('/<offering:offering>/delete/', methods=['GET', 'DELETE'])
