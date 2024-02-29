@@ -4,7 +4,7 @@ from flask_login import current_user, login_required
 
 from server import app
 from server.models import SeatAssignment, db, Exam, Room, Seat, Student
-from server.forms import EditExamForm, EditRoomForm, ExamForm, ImportStudentFromCsvUploadForm, RoomForm, ChooseRoomForm, \
+from server.forms import AssignSingleForm, EditExamForm, EditRoomForm, ExamForm, ImportStudentFromCsvUploadForm, RoomForm, ChooseRoomForm, \
     ImportStudentFromSheetForm, ImportStudentFromCanvasRosterForm, DeleteStudentForm, AssignForm, EmailForm, \
     EditStudentForm, UploadRoomForm, ChooseCourseOfferingForm
 from server.services.core.export import export_exam_student_info
@@ -14,8 +14,8 @@ import server.services.canvas as canvas_client
 from server.services.email import email_about_assignment, substitute_about_assignment
 from server.services.core.data import get_room_from_csv, get_room_from_google_spreadsheet, get_room_from_manual_input, \
     get_students_from_canvas, get_students_from_csv, get_students_from_google_spreadsheet, update_room_from_manual_input
-from server.services.core.assign import assign_students
-from server.typings.exception import SeatAssigningAlgorithmError
+from server.services.core.assign import assign_single_student, assign_students
+from server.typings.exception import NotEnoughSeatError, SeatAssignmentError
 from server.typings.enum import EmailTemplate
 from server.utils.date import to_ISO8601
 from server.utils.misc import set_to_str_set, str_set_to_set
@@ -754,10 +754,39 @@ def assign(exam):
             db.session.add_all(assignments)
             db.session.commit()
             flash(f"Successfully assigned {len(assignments)} students.", 'success')
-        except SeatAssigningAlgorithmError as e:
+        except SeatAssignmentError as e:
             flash(str(e), 'error')
         return redirect(url_for('students', exam=exam))
     return render_template('assign.html.j2', exam=exam, form=form)
+
+@app.route('/<exam:exam>/students/<string:canvas_id>/assign/', methods=['GET', 'POST'])
+def assign_student(exam, canvas_id):
+    form = AssignSingleForm()
+    if form.validate_on_submit():
+        student = Student.query.filter_by(exam_id=exam.id, canvas_id=canvas_id).first_or_404()
+        try:
+            if 'just_delete' in request.form:
+                if student.assignment:
+                    db.session.delete(student.assignment)
+                    db.session.commit()
+                    flash(f"Successfully deleted assignment for {student.name}.", 'success')
+                else:
+                    flash(f"No assignment to delete for {student.name}.", 'warning')
+                return redirect(url_for('students', exam=exam))
+            chosen_seat = Seat.query.filter_by(id=form.seat_id.data).first_or_404() if form.seat_id.data != "" else None
+            old_assignment = None
+            if student.assignment:
+                old_assignment = student.assignment
+            assignment = assign_single_student(exam, student, chosen_seat, ignore_restrictions=form.ignore_restrictions.data)
+            if old_assignment:
+                db.session.delete(old_assignment)
+            db.session.add(assignment)
+            db.session.commit() 
+            flash(f"Successfully assigned {student.name}.", 'success')
+        except SeatAssignmentError as e:
+            flash(str(e), 'error')
+        return redirect(url_for('students', exam=exam))
+    return render_template('assign_single.html.j2', exam=exam, form=form)
 
 
 @app.route('/<exam:exam>/students/email/', methods=['GET', 'POST'])
