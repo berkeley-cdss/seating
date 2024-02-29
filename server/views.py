@@ -47,7 +47,7 @@ def offerings():
     """
     # Fetch all user course offerings from canvas
     user = canvas_client.get_user(current_user.canvas_id)
-    staff_course_dics, student_course_dics, others = canvas_client.get_user_courses_categorized(
+    staff_course_dics, student_course_dics, others, skipped = canvas_client.get_user_courses_categorized(
         user)
     # All fetched courses are converted to models
     staff_offerings = [canvas_client.api_course_to_model(c) for c in staff_course_dics]
@@ -72,6 +72,9 @@ def offerings():
         elif o.canvas_id in other_offering_canvas_ids:
             other_offerings_existing.append(o)
 
+    if skipped:
+        flash("Skipped invalid courses from Canvas: " + set_to_str_set([c.name for c in skipped]), 'warning')
+
     return render_template("select_offering.html.j2",
                            title="Select a Course Offering",
                            staff_offerings_existing=staff_offerings_existing,
@@ -88,13 +91,15 @@ def add_offerings():
     Add new course offerings to the database.
     """
     user = canvas_client.get_user(current_user.canvas_id)
-    staff_course_dics, _, _ = canvas_client.get_user_courses_categorized(user)
+    staff_course_dics, _, _, skipped = canvas_client.get_user_courses_categorized(user)
     staff_offerings = [canvas_client.api_course_to_model(o) for o in staff_course_dics]
     staff_offerings_id_to_model = {o.canvas_id: o for o in staff_offerings}
     staff_offering_ids_wanted = list(staff_offerings_id_to_model.keys())
     staff_offering_ids_existing = set([x[0] for x in Offering.query.filter(
         Offering.canvas_id.in_(staff_offering_ids_wanted)).with_entities(Offering.canvas_id)])
     staff_offering_ids_not_existing = set(staff_offering_ids_wanted) - staff_offering_ids_existing
+    if skipped:
+        flash("Skipped invalid courses from Canvas: " + set_to_str_set([c.name for c in skipped]), 'warning')
     if not staff_offering_ids_not_existing:
         flash("No more new courses to import.", 'info')
         return redirect(url_for('offerings'))

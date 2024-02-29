@@ -68,12 +68,10 @@ def get_user_courses_categorized(user: FakeUser | User) \
         -> tuple[list[FakeCourse | Course], list[FakeCourse | Course], list[FakeCourse | Course]]:
     courses_raw = user.get_courses(enrollment_status='active', include=['term'], per_page=100)
     # TODO: Refactor to a dict { staff:, student:, other: }
-    staff_courses, student_courses, other = set(), set(), set()
+    staff_courses, student_courses, other, skipped = set(), set(), set(), set()
     for c in courses_raw:
-        if not is_course_valid(c):
-            # TODO: Log that we are skipping a course.
-            continue
-        if not normalize_course_start_date(c):
+        if not is_course_valid(c) or not normalize_course_start_date(c):
+            skipped.add(c)
             continue
         # TODO: refactor to function `find_course_enrollment_type`
         for e in c.enrollments:
@@ -104,7 +102,7 @@ def get_user_courses_categorized(user: FakeUser | User) \
     _sort_courses(student_courses)
     _sort_courses(other)
 
-    return list(staff_courses), list(student_courses), list(other)
+    return list(staff_courses), list(student_courses), list(other), list(skipped)
 
 
 def get_student_roster_for_offering(offering_canvas_id, key=None):
