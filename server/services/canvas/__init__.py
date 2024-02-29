@@ -39,7 +39,7 @@ def is_staff_enrollment(enrollment_type: str):
 
 def is_course_valid(c) -> bool:
     # A valid course has a name, id and course code
-    # TODO:TBD if we should filter on published
+    # TODO: TBD if we should filter on published
     return not (not c) and \
         hasattr(c, 'id') and \
         hasattr(c, 'name') and \
@@ -50,6 +50,8 @@ def normalize_course_start_date(course: FakeCourse | Course) -> None:
     # Ensure a valid start_at date for a course.
     # return the term start_at_date if present
     # created_at is assumed to be at least always present
+    # TODO: does Course ever has `term` attribute? (This is added by Michael's PR)
+    # I know there is a `enrollment_term_id` attribute
     if hasattr(course, 'term') and course.term and course.term['start_at']:
         start_at = course.term['start_at']
         start_at_date = course.term['start_at_date']
@@ -59,6 +61,7 @@ def normalize_course_start_date(course: FakeCourse | Course) -> None:
                                                  and course.start_at_date) else course.created_at_date
     course.start_at = start_at
     course.start_at_date = start_at_date
+    return course.start_at is not None
 
 
 def get_user_courses_categorized(user: FakeUser | User) \
@@ -70,7 +73,8 @@ def get_user_courses_categorized(user: FakeUser | User) \
         if not is_course_valid(c):
             # TODO: Log that we are skipping a course.
             continue
-        normalize_course_start_date(c)
+        if not normalize_course_start_date(c):
+            continue
         # TODO: refactor to function `find_course_enrollment_type`
         for e in c.enrollments:
             if is_staff_enrollment(e["type"]):
