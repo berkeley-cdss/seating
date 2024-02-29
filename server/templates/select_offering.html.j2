@@ -4,34 +4,81 @@
 {% block body %}
 <section class="rooms mdl-grid">
   <div class="mdl-cell mdl-cell--12-col">
-    <h4>Staff Offerings</h4>
+    <h4>Staff Course Offerings</h4>
+    <div>
+      <p>The following course offerings that you are a staff member of already have exams set up. You can now manage their exams. You can add more courses you are a staff member of by clicking the button below.
+      </p>
+    </div>
     <ul class="mdl-list">
-    {% for offering in staff_offerings %}
+    {% if staff_offerings_existing == [] %}
       <li class="mdl-list__item">
+        You are not a staff member in any course offerings with exams set up.
+      </li>
+    {% endif %}
+    {% for offering in staff_offerings_existing %}  
+      <li class="mdl-list__item"  style="display: flex; justify-content: space-between;">
+        <div style="width: 15%;">
         <span style="margin-right: 10px; color: #424242; font-weight: bold;"><small>{{ offering.start_at_date.strftime('%Y-%m') }}</small></span>
+        </div>
+        <div style="width: 80%;">
         <a class="mdl-list__item-primary-content" href="{{ url_for('offering', offering=offering) }}">
           {{ offering.name }}
         </a>
+        </div>
+        <div style="width: 5%;">
+        <div class="material-icons std" style="float: right;"
+            onclick="confirmAction('Are you sure you want to delete this offering?', '{{ url_for('delete_offering', offering=offering) }}');"
+            >clear</div>
+        </div>
       </li>
     {% endfor %}
     </ul>
-    <h4>Student Offerings</h4>
+    <div style="display: flex; justify-content: center;">
+      <a class="mdl-button mdl-js-button mdl-button--raised mdl-button--colored" href="{{ url_for('add_offerings') }}">Import courses from canvas</a>
+    </div>
+    <h4>Student Course Offerings</h4>
+    <div>
+      <p>The following course offerings that you are a student of already have exams set up. You can now view your own seat assignments and exam schedule. If you expect to see a course here but it is not here, your course staff have not yet set up exams for the course yet in this system. Contact your course staff.
+      </p>
+    </div>
     <ul class="mdl-list">
-    {% for offering in student_offerings %}
+    {% if student_offerings_existing == [] %}
       <li class="mdl-list__item">
+        You are not a student in any course offerings with exams set up.
+      </li>
+    {% endif %}
+    {% for offering in student_offerings_existing %}
+      <li class="mdl-list__item">
+        <div style="width: 15%;">
         <span style="margin-right: 10px; color: #424242; font-weight: bold;"><small>{{ offering.start_at_date.strftime('%Y-%m') }}</small></span>
-         <a class="mdl-list__item-primary-content" href="{{ url_for('offering', offering=offering) }}">
+        </div>
+        <div style="width: 85%;">
+        <a class="mdl-list__item-primary-content" href="{{ url_for('offering', offering=offering) }}">
            {{ offering.name }}
         </a>
+        </div>
       </li>
     {% endfor %}
     </ul>
-    <h4>Other Offerings</h4>
+    <h4>Other Course Offerings</h4>
+    <div>
+    <p>In the following course offerings you are neither a staff member nor a student, but exams have been set up. You cannot do anything with these offerings.
+    </p>
+    </div>
     <ul class="mdl-list">
-    {% for offering in other_offerings %}
+    {% if other_offerings_existing == [] %}
       <li class="mdl-list__item">
+        There are no other course offerings with exams set up.
+      </li>
+    {% endif %}
+    {% for offering in other_offerings_existing %}
+      <li class="mdl-list__item"> 
+        <div style="width: 15%;">
         <span style="margin-right: 10px; color: #424242; font-weight: bold;"><small>{{ offering.start_at_date.strftime('%Y-%m') }}</small></span>
+        </div>
+        <div style="width: 85%;">
         {{ offering.name }}
+        </div>
       </li>
     {% endfor %}
     </ul>

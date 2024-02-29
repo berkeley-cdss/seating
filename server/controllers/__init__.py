@@ -47,7 +47,7 @@ class ExamConverter(BaseConverter):
                       "You have not been assigned a seat for this exam. " + GENERAL_STUDENT_HINT)
             raise Redirect(url_for('student_single_seat', seat_id=exam_student_seat.seat.id))
         else:
-            abort(403, "You are not authorized to view this page." + GENERAL_STUDENT_HINT)
+            abort(403, "You are not authorized to view this page. " + GENERAL_STUDENT_HINT)
 
         return exam
 
@@ -71,18 +71,7 @@ class OfferingConverter(BaseConverter):
         offering = Offering.query.filter_by(
             canvas_id=canvas_id).one_or_none()
         if not offering:
-            import server.services.canvas as canvas_client
-            # visiting a offering route the first time as a staff member will create it in db
-            if str(canvas_id) not in current_user.staff_offerings:
-                abort(404,
-                      "This course offering is not initialized for seating." +
-                      GENERAL_STUDENT_HINT)
-            course_raw = canvas_client.get_course(canvas_id)
-            if not canvas_client.is_course_valid(course_raw):
-                abort(404, "Offering not found from Canvas.")
-            offering = canvas_client.api_course_to_model(course_raw)
-            db.session.add(offering)
-            db.session.commit()
+            abort(404, "This course offering is not initialized for seating. " + GENERAL_STUDENT_HINT)
         return offering
 
     def to_url(self, offering):
