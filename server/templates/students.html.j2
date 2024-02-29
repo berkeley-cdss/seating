@@ -37,14 +37,17 @@
         <label class="mdl-textfield__label" for="search-expandable">Search</label>
       </div>
     </div>
-      <div id="tt6" class="material-icons std" onclick="location.href = '{{ url_for('export_students_as_csv', exam=exam) }}';" style="float: right;">file_download</div>
-      <div class="mdl-tooltip" data-mdl-for="tt6">Export</div>
+      <div id="tt7" class="material-icons std" onclick="location.href = '{{ url_for('export_students_as_csv', exam=exam) }}';" style="float: right;">file_download</div>
+      <div class="mdl-tooltip" data-mdl-for="tt7">Export</div>
       
-      <div id="tt5" class="material-icons std" onclick="location.href = '{{ url_for('email_all_students', exam=exam) }}';" style="float: right;">email</div>
-      <div class="mdl-tooltip" data-mdl-for="tt5">Email</div>
+      <div id="tt6" class="material-icons std" onclick="location.href = '{{ url_for('email_all_students', exam=exam) }}';" style="float: right;">email</div>
+      <div class="mdl-tooltip" data-mdl-for="tt6">Email</div>
 
-      <div id="tt4" class="material-icons std" onclick="location.href = '{{ url_for('delete_students', exam=exam) }}';" style="float: right;">delete</div>
-      <div class="mdl-tooltip" data-mdl-for="tt4">Delete Students</div>
+      <div id="tt5" class="material-icons std" onclick="location.href = '{{ url_for('delete_students', exam=exam) }}';" style="float: right;">delete</div>
+      <div class="mdl-tooltip" data-mdl-for="tt5">Delete Students</div>
+
+      <div id="tt4" class="material-icons std" onclick="location.href = '{{ url_for('edit_students', exam=exam) }}';" style="float: right;">edit</div>
+      <div class="mdl-tooltip" data-mdl-for="tt4">Edit All Students</div>
 
       <div id="tt3" class="material-icons std" onclick="location.href = '{{ url_for('assign', exam=exam) }}';" style="float: right;">assignment</div>
       <div class="mdl-tooltip" data-mdl-for="tt3">Assign</div>
@@ -61,11 +64,12 @@
           <th class="sort mdl-data-table__cell--non-numeric" data-sort="email" style="text-align: center;">Email</th>
           <th class="sort mdl-data-table__cell--non-numeric" data-sort="sid" style="text-align: center;">Student ID</th>
           <th class="sort mdl-data-table__cell--non-numeric" data-sort="canvas_id" style="text-align: center;">Canvas ID</th>
-          <th class="sort mdl-data-table__cell--non-numeric" data-sort="assignment" style="text-align: center;">Wants</th>
-          <th class="sort mdl-data-table__cell--non-numeric" data-sort="assignment" style="text-align: center;">Avoids</th>
-          <th class="sort mdl-data-table__cell--non-numeric" data-sort="assignment" style="text-align: center;">Seat</th>
+          <th class="sort mdl-data-table__cell--non-numeric" data-sort="wants" style="text-align: center;">Wants</th>
+          <th class="sort mdl-data-table__cell--non-numeric" data-sort="avoids" style="text-align: center;">Avoids</th>
+          <th class="sort mdl-data-table__cell--non-numeric" data-sort="seat" style="text-align: center;">Seat</th>
           <th class="sort mdl-data-table__cell--non-numeric" data-sort="emailed" style="text-align: center;">Emailed?</th>
-          <th class="sort mdl-data-table__cell--non-numeric" data-sort="assignment" style="text-align: center;">Edit</th>
+          <th class="sort mdl-data-table__cell--non-numeric" data-sort="assignment" style="text-align: center;">Assign</th>
+          <th class="sort mdl-data-table__cell--non-numeric" data-sort="edit" style="text-align: center;">Edit</th>
           <th class="mdl-data-table__cell--non-numeric" style="text-align: center;">Delete</th>
         </tr>
       </thead>
@@ -117,16 +121,21 @@
             {% else %}
               <div>NOT EMAILED</div>
             {% endif %}
-            <div class="material-icons" style="text-align: center; margin: 0; cursor: pointer;" onclick="location.href = '{{ url_for('email_single_student', exam=exam, student_id=student.id) }}';" style="float: right;">email</div>
+            <a class="material-icons" style="text-align: center; margin: 0; cursor: pointer;" onclick="location.href = '{{ url_for('email_single_student', exam=exam, student_id=student.id) }}';" style="float: right;">email</a>
           {% else %}
             <div>NO SEAT</div>
           {% endif %}
           </td>
           <td class="mdl-data-table__cell--non-numeric" style="text-align: center;">
+            <div class="material-icons" style="text-align: center; margin: 0; cursor: pointer;" onclick="location.href = '{{ url_for('assign_student', exam=exam, canvas_id=student.canvas_id) }}';" style="float: right;">assignment</div>
+          </td>
+          <td class="mdl-data-table__cell--non-numeric" style="text-align: center;">
             <div class="material-icons" style="text-align: center; margin: 0; cursor: pointer;" onclick="location.href = '{{ url_for('edit_student', exam=exam, canvas_id=student.canvas_id) }}';" style="float: right;">edit</div>
           </td>
           <td class="mdl-data-table__cell--non-numeric" style="text-align: center;">
-            <div class="material-icons" style="text-align: center; margin: 0; cursor: pointer;" onclick="location.href = '{{ url_for('delete_student', exam=exam, canvas_id=student.canvas_id) }}';" style="float: right;">clear</div>
+            <div class="material-icons" style="text-align: center; margin: 0; cursor: pointer;" style="float: right;"
+            onclick="confirmAction('Are you sure you want to delete this student?', '{{ url_for('delete_student', exam=exam, canvas_id=student.canvas_id) }}');"
+            >clear</div>
           </td>
         </tr>
         {% endfor %}

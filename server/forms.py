@@ -1,16 +1,38 @@
 import re
 
 from flask_wtf import FlaskForm
-from wtforms import ValidationError, BooleanField, FileField, SelectMultipleField, StringField, SubmitField, \
-    TextAreaField, DateTimeField, IntegerField, widgets
+from wtforms import FieldList, FormField, ValidationError, BooleanField, FileField, SelectMultipleField, StringField, \
+    SubmitField, TextAreaField, DateTimeField, IntegerField, widgets
+from wtforms import Form as NoCsrfForm
 from flask_wtf.file import FileRequired, FileAllowed
 from wtforms.validators import Email, InputRequired, URL, Optional
 from server.controllers import exam_regex
 
 
-class ExamForm(FlaskForm):
+class MultiCheckboxField(SelectMultipleField):
+    widget = widgets.ListWidget(prefix_label=False)
+    option_widget = widgets.CheckboxInput()
+
+
+class ChooseCourseOfferingForm(FlaskForm):
+    submit = SubmitField('import')
+    offerings = MultiCheckboxField('select_offerings')
+
+    def __init__(self, offering_list=None, *args, **kwargs):
+        super(ChooseCourseOfferingForm, self).__init__(*args, **kwargs)
+        if offering_list is not None:
+            self.offerings.choices = [(o.canvas_id, str(o)) for o in offering_list]  # (value, label)
+
+
+class ExamFormBase(FlaskForm):
     display_name = StringField('display_name', [InputRequired()], render_kw={
                                "placeholder": "Midterm 1"})
+    active = BooleanField('active', default=True)
+
+    cancel = SubmitField('cancel')
+
+
+class ExamForm(ExamFormBase):
     name = StringField('name', [InputRequired()], render_kw={"placeholder": "midterm1"})
     submit = SubmitField('create')
 
@@ -20,48 +42,50 @@ class ExamForm(FlaskForm):
             raise ValidationError('Exam name must be match pattern {}'.format(pattern))
 
 
-class MultiCheckboxField(SelectMultipleField):
-    widget = widgets.ListWidget(prefix_label=False)
-    option_widget = widgets.CheckboxInput()
+class EditExamForm(ExamFormBase):
+    submit = SubmitField('make edits')
 
 
-class RoomForm(FlaskForm):
+class RoomFormBase(FlaskForm):
+    start_at = DateTimeField('start_at', [Optional()], format='%Y-%m-%dT%H:%M')
+    duration_minutes = IntegerField('duration_minutes', [Optional()])
+
+
+class RoomForm(RoomFormBase):
     display_name = StringField('display_name', [InputRequired()])
     sheet_url = StringField('sheet_url', [URL(), InputRequired()])
     sheet_range = StringField('sheet_range', [InputRequired()])
-    start_at = DateTimeField('start_at', [Optional()], format='%Y-%m-%dT%H:%M')
-    duration_minutes = IntegerField('duration_minutes', [Optional()])
     preview_room = SubmitField('preview')
     create_room = SubmitField('create')
 
 
-class ChooseRoomForm(FlaskForm):
+class ChooseRoomForm(RoomFormBase):
     submit = SubmitField('import')
     rooms = MultiCheckboxField('select_rooms')
-    start_at = DateTimeField('start_at', [Optional()], format='%Y-%m-%dT%H:%M')
-    duration_minutes = IntegerField('duration_minutes', [Optional()])
 
     def __init__(self, room_list=None, *args, **kwargs):
         super(ChooseRoomForm, self).__init__(*args, **kwargs)
         if room_list is not None:
-            self.rooms.choices = [(item, item) for item in room_list]
+            self.rooms.choices = [(item, item) for item in room_list]  # (value, label)
 
 
-class UploadRoomForm(FlaskForm):
+class UploadRoomForm(RoomFormBase):
     submit = SubmitField('upload')
     file = FileField('Choose File', validators=[
         FileRequired(),
         FileAllowed(['csv'], 'CSV files only!')
     ])
     display_name = StringField('display_name', [InputRequired()])
-    start_at = DateTimeField('start_at', [Optional()], format='%Y-%m-%dT%H:%M')
-    duration_minutes = IntegerField('duration_minutes', [Optional()])
 
 
-class EditRoomForm(FlaskForm):
-    display_name = StringField('display_name')
-    start_at = DateTimeField('start_at', [Optional()], format='%Y-%m-%dT%H:%M')
-    duration_minutes = IntegerField('duration_minutes', [Optional()])
+class MovableSeatSubForm(NoCsrfForm):
+    attributes = StringField('attributes', default='', render_kw={"placeholder": "Righty, Aisle"})
+    count = IntegerField('count', [InputRequired()], default=1, render_kw={"placeholder": "1"})
+
+
+class EditRoomForm(RoomFormBase):
+    display_name = StringField('display_name', [InputRequired()])
+    movable_seats = FieldList(FormField(MovableSeatSubForm), min_entries=0)
     submit = SubmitField('make edits')
     cancel = SubmitField('cancel')
 
@@ -84,8 +108,7 @@ class ImportStudentFromCsvUploadForm(FlaskForm):
     ])
 
 
-class EditStudentForm(FlaskForm):
-    email = StringField('email', [Email()])
+class EditStudentsFormBase(FlaskForm):
     wants = StringField('wants')
     avoids = StringField('avoids')
     room_wants = MultiCheckboxField('room_wants')
@@ -94,10 +117,25 @@ class EditStudentForm(FlaskForm):
     cancel = SubmitField('cancel')
 
     def __init__(self, room_list=None, *args, **kwargs):
-        super(EditStudentForm, self).__init__(*args, **kwargs)
+        super(EditStudentsFormBase, self).__init__(*args, **kwargs)
         if room_list is not None:
             self.room_wants.choices = [(str(item.id), item.name_and_start_at_time_display()) for item in room_list]
             self.room_avoids.choices = [(str(item.id), item.name_and_start_at_time_display()) for item in room_list]
+
+
+class EditStudentForm(EditStudentsFormBase):
+    new_email = StringField('email', [Email()])
+
+    def __init__(self, room_list=None, *args, **kwargs):
+        super(EditStudentForm, self).__init__(room_list=room_list, *args, **kwargs)
+
+
+class EditStudentsForm(EditStudentsFormBase):
+    emails = TextAreaField('emails')
+    use_all_emails = BooleanField('use_all_emails')
+
+    def __init__(self, room_list=None, *args, **kwargs):
+        super(EditStudentsForm, self).__init__(room_list=room_list, *args, **kwargs)
 
 
 class DeleteStudentForm(FlaskForm):
@@ -110,6 +148,13 @@ class AssignForm(FlaskForm):
     submit = SubmitField('assign')
     delete_all = SubmitField('delete all assignments')
     reassign_all = SubmitField('reassign all assignments')
+
+
+class AssignSingleForm(FlaskForm):
+    ignore_restrictions = BooleanField('ignore restrictions')
+    seat_id = StringField('seat_id')
+    just_delete = SubmitField('just delete')
+    submit = SubmitField('assign')
 
 
 class EmailForm(FlaskForm):

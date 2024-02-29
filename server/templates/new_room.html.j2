@@ -8,6 +8,7 @@
     <a href="#sheet-panel" class="mdl-tabs__tab is-active">Import from Custom Sheet</a>
     <a href="#choice-panel" class="mdl-tabs__tab">Import from Master Sheet</a>
     <a href="#upload-panel" class="mdl-tabs__tab">Import from CSV Upload</a>
+    <a href="#manual-panel" class="mdl-tabs__tab">Manual Entry</a>
   </div>
 
   <div class="mdl-tabs__panel is-active" id="sheet-panel">
@@ -58,7 +59,7 @@
       <div class="mdl-layout-spacer"></div>
       <div class="mdl-cell mdl-cell--10-col">
         <div>
-        Master Sheet URL: <a href="{{ master_sheet_url }}">{{ master_sheet_url }}</a>
+        Master Sheet URL: <a href="{{ master_sheet_url }}" target="_blank">{{ master_sheet_url }}</a>
         </div>
         <form action="{{ url_for('import_room_from_master_sheet', exam=exam) }}" method="post">
           {{ choose_form.hidden_tag() }}
@@ -109,5 +110,16 @@
 
   </div>
 
+  <div class="mdl-tabs__panel" id="manual-panel">
+    <div class="mdl-grid">
+      <div class="mdl-layout-spacer"></div>
+      <div class="form-buttons">
+      <button class="mdl-button mdl-js-button mdl-button--raised" onclick="window.location.href='{{ url_for('import_room_manually', exam=exam) }}'">Create New Room</button>
+      </div>
+      <div class="mdl-layout-spacer"></div>
+    </div>
+  </div>
+
 </div>
+
 {% endblock %}
