@@ -55,6 +55,10 @@ class Offering(db.Model):
     def start_at_date(self):
         return parse_ISO8601(self.start_at)
 
+    @property
+    def active_exam(self):
+        return next((exam for exam in self.exams if exam.is_active), None)
+
     def __str__(self):
         return f"{self.start_at_date.strftime('%Y-%m')} | {self.code} | {self.name}"
 

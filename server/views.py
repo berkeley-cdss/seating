@@ -126,9 +126,16 @@ def offering(offering):
     Shows all exams created for a course offering.
     """
     is_staff = str(offering.canvas_id) in current_user.staff_offerings
+    all_exams = offering.exams
+    active_exams = [e for e in all_exams if e.is_active]
+    inactive_exams = [e for e in all_exams if not e.is_active]
     return render_template("select_exam.html.j2",
                            title="Select an Exam for {}".format(offering.name),
-                           exams=offering.exams, offering=offering, is_staff=is_staff)
+                           active_exams=active_exams,
+                           inactive_exams=inactive_exams,
+                           all_exams=all_exams,
+                           offering=offering,
+                           is_staff=is_staff)
 
 
 @app.route('/<offering:offering>/delete/', methods=['GET', 'DELETE'])
@@ -385,6 +392,12 @@ def import_room_from_csv_upload(exam):
 @app.route('/<exam:exam>/rooms/import/from_manual/', methods=['GET', 'POST'])
 def import_room_manually(exam):
     form = EditRoomForm()
+    if request.method == 'GET':
+        if not form.movable_seats.entries:
+            form.movable_seats.append_entry({
+                'attributes': '',
+                'count': 1
+            })
     if form.validate_on_submit():
         from collections import defaultdict
         seats_to_add = defaultdict(int)
