@@ -107,6 +107,7 @@ class ImportStudentFromCsvUploadForm(FlaskForm):
         FileAllowed(['csv'], 'CSV files only!')
     ])
 
+
 class EditStudentsFormBase(FlaskForm):
     wants = StringField('wants')
     avoids = StringField('avoids')
@@ -121,11 +122,13 @@ class EditStudentsFormBase(FlaskForm):
             self.room_wants.choices = [(str(item.id), item.name_and_start_at_time_display()) for item in room_list]
             self.room_avoids.choices = [(str(item.id), item.name_and_start_at_time_display()) for item in room_list]
 
+
 class EditStudentForm(EditStudentsFormBase):
     new_email = StringField('email', [Email()])
-    
+
     def __init__(self, room_list=None, *args, **kwargs):
         super(EditStudentForm, self).__init__(room_list=room_list, *args, **kwargs)
+
 
 class EditStudentsForm(EditStudentsFormBase):
     emails = TextAreaField('emails')
@@ -133,7 +136,7 @@ class EditStudentsForm(EditStudentsFormBase):
 
     def __init__(self, room_list=None, *args, **kwargs):
         super(EditStudentsForm, self).__init__(room_list=room_list, *args, **kwargs)
-        
+
 
 class DeleteStudentForm(FlaskForm):
     emails = TextAreaField('emails')
@@ -146,11 +149,13 @@ class AssignForm(FlaskForm):
     delete_all = SubmitField('delete all assignments')
     reassign_all = SubmitField('reassign all assignments')
 
+
 class AssignSingleForm(FlaskForm):
     ignore_restrictions = BooleanField('ignore restrictions')
     seat_id = StringField('seat_id')
     just_delete = SubmitField('just delete')
     submit = SubmitField('assign')
+
 
 class EmailForm(FlaskForm):
     from_addr = StringField('from_addr', [Email(), InputRequired()])

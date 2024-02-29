@@ -681,7 +681,7 @@ def edit_student(exam, canvas_id):
         form.avoids.data = set_to_str_set(orig_avoids_set)
         form.room_wants.data = set_to_str_set(orig_room_wants_set)
         form.room_avoids.data = set_to_str_set(orig_room_avoids_set)
-        form.email.data = student.email
+        form.new_email.data = student.email
     if form.validate_on_submit():
         if 'cancel' in request.form:
             return redirect(url_for('students', exam=exam))
