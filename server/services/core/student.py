@@ -1,8 +1,9 @@
 from server.typings.exception import DataValidationError
 from server.models import Student
+from server.models import SeatAssignment, Room, Seat
 
 
-def prepare_students(exam, headers, rows):
+def prepare_students(exam, headers, rows, reset_assignment=True):
     """
     Prepare a list of students from the spreadsheet data, for the given exam.
     """
@@ -22,6 +23,8 @@ def prepare_students(exam, headers, rows):
             'bcourses id', row.pop('canvas id', None))
         email = row.pop('email', None)
         name = row.pop('name', None)
+        room = row.pop('room', None)
+        seat = row.pop('seat', None)
         if not canvas_id:
             invalid_students.append(row)
         student = Student.query.filter_by(exam_id=int(exam.id), canvas_id=str(canvas_id)).first()
@@ -39,16 +42,23 @@ def prepare_students(exam, headers, rows):
         student.avoids = {k.lower() for k, v in row.items() if v.lower() == 'false'}
         student.room_wants = set()
         student.room_avoids = set()
+
         # wants and avoids should be mutually exclusive
         if not student.wants.isdisjoint(student.avoids) \
                 or not student.room_wants.isdisjoint(student.room_avoids):
             invalid_students.append(row)
             continue
+        if room and seat:
+            reset_assignment = False
+            # TODO: Query Exam.room or something
+            student.assignment = SeatAssignment(student=student, seat=seat)
+
+        if reset_assignment:
+            # clear original assignment (if any) if student is updated
+            student.assignment = None
         if is_new:
             new_students.append(student)
         else:
-            # clear original assignment (if any) if student is updated
-            student.assignment = None
             updated_students.append(student)
 
     return new_students, updated_students, invalid_students
