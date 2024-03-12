@@ -65,4 +65,5 @@ def get_students_from_csv(exam, student_form):
 
 def get_students_from_canvas(exam):
     headers, rows = get_student_roster_for_offering(exam.offering_canvas_id)
-    return prepare_students(exam, headers, rows)
+    # When importing via Canvas do not reset student seat assignments.
+    return prepare_students(exam, headers, rows, reset_assignment=False)
