@@ -630,7 +630,7 @@ def delete_students(exam):
         if not form.use_all_emails.data:
             emails = [x for x in str_set_to_set(form.emails.data) if x]
             students = Student.query.filter(
-                Student.email.in_(emails) & Student.exam_id == exam.id)
+                Student.email.in_(emails) & (Student.exam_id == exam.id))
         else:
             students = Student.query.filter_by(exam_id=exam.id)
         deleted = {student.email for student in students}
