@@ -111,4 +111,4 @@ axe/
 gcp-service-account-credentials.json
 
 # bootstrap
-setup.sh
+setup*.sh
