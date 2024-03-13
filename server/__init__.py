@@ -1,4 +1,5 @@
 from flask import Flask, redirect
+import logging
 import flask.ctx
 from werkzeug.exceptions import HTTPException
 from canvasapi.exceptions import InvalidAccessToken
@@ -40,6 +41,12 @@ sentry_sdk.init(
 )
 
 app = App(__name__)
+
+
+if __name__ != '__main__':
+    # Only configure logging if running on a WSGI server, like gunicorn on Heroku
+    app.logger.addHandler(logging.StreamHandler())
+    app.logger.setLevel(logging.INFO)
 
 
 from config import ConfigBase, ProductionConfig, StagingConfig, DevelopmentConfig, TestingConfig  # noqa
