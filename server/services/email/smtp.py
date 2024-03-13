@@ -1,3 +1,4 @@
+from flask import current_app
 from smtplib import SMTP, SMTPException
 from email.message import EmailMessage
 
@@ -47,6 +48,10 @@ def send_email(*, smtp: SMTPConfig, from_addr, to_addr, subject, body,
         server.quit()
         return (True, None)
     except SMTPException as e:
-        return (False, f"SMTP error occurred when sending email: {str(e)}\n Config: \n{smtp}")
+        err_msg = f"SMTP error occurred when sending email: {str(e)}\n Config: \n{smtp}"
+        current_app.logger.error(err_msg)
+        return (False, err_msg)
     except Exception as e:
-        return (False, f"Error sending email: {str(e)}\n Config: \n{smtp}")
+        err_msg = f"Error occurred when sending email: {str(e)}\n Config: \n{smtp}"
+        current_app.logger.error(err_msg)
+        return (False, err_msg)
