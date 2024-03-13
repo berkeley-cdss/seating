@@ -59,6 +59,15 @@
       function updatePreview() {
           var htmlContent = document.getElementById('body').value;
           document.getElementById('preview').innerHTML = htmlContent;
+          document.querySelectorAll('.preview-link').forEach(link => {
+            const href = link.getAttribute('href');
+            if (!href || href.includes('{{URL}}')) {
+              link.addEventListener('click', function(e) {
+                e.preventDefault();
+                alert('This link would be clickable in a real email.');
+              });
+            }
+          });
       }
   </script>
 </main>
