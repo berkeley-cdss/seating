@@ -19,5 +19,5 @@ def str_set_to_set(s, force_lower=True, ignore_empty=True):
     return rlt
 
 
-def set_to_str_set(s):
+def set_to_str(s):
     return ' '.join(s)

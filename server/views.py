@@ -18,7 +18,7 @@ from server.services.core.assign import assign_single_student, assign_students
 from server.typings.exception import NotEnoughSeatError, SeatAssignmentError
 from server.typings.enum import EmailTemplate
 from server.utils.date import to_ISO8601
-from server.utils.misc import set_to_str_set, str_set_to_set
+from server.utils.misc import set_to_str, str_set_to_set
 
 
 @app.route('/')
@@ -460,7 +460,7 @@ def edit_room(exam, id):
             form.duration_minutes.data = room.duration_minutes
         for attr in room.movable_seats_by_attribute:
             form.movable_seats.append_entry({
-                'attributes': set_to_str_set(attr),
+                'attributes': set_to_str(attr),
                 'count': len(room.movable_seats_by_attribute[attr])
             })
         if not form.movable_seats.entries:
@@ -542,7 +542,7 @@ def import_students_from_custom_sheet(exam):
                 f" {len(invalid_students)} invalid students.", 'success')
             if updated_students:
                 flash(
-                    f"Updated students: {set_to_str_set([s.name for s in updated_students])}", 'warning')
+                    f"Updated students: {set_to_str([s.name for s in updated_students])}", 'warning')
             if invalid_students:
                 flash(
                     f"Invalid students: {invalid_students}", 'error')
@@ -575,7 +575,7 @@ def import_students_from_canvas_roster(exam):
                 f" {len(invalid_students)} invalid students.", 'success')
             if updated_students:
                 flash(
-                    f"Updated students: {set_to_str_set([s.name for s in updated_students])}", 'warning')
+                    f"Updated students: {set_to_str([s.name for s in updated_students])}", 'warning')
             if invalid_students:
                 flash(
                     f"Invalid students: {invalid_students}", 'error')
@@ -598,23 +598,24 @@ def import_students_from_csv_upload(exam):
     from_csv_form = ImportStudentFromCsvUploadForm()
     if from_csv_form.validate_on_submit():
         if from_csv_form.file.data:
-            try:
-                new_students, updated_students, invalid_students = get_students_from_csv(exam, from_csv_form)
-                to_commit = new_students + updated_students
-                if to_commit:
-                    db.session.add_all(to_commit)
-                    db.session.commit()
+            # try:
+            new_students, updated_students, invalid_students = get_students_from_csv(exam, from_csv_form)
+            to_commit = new_students + updated_students
+            if to_commit:
+                db.session.add_all(to_commit)
+                db.session.commit()
+            flash(
+                f"Import done. {len(new_students)} new students, {len(updated_students)} updated students"
+                f" {len(invalid_students)} invalid students.", 'success')
+            if updated_students:
                 flash(
-                    f"Import done. {len(new_students)} new students, {len(updated_students)} updated students"
-                    f" {len(invalid_students)} invalid students.", 'success')
-                if updated_students:
-                    flash(
-                        f"Updated students: {set_to_str_set([s.name for s in updated_students])}", 'warning')
-                if invalid_students:
-                    flash(
-                        f"Invalid students: {invalid_students}", 'error')
-            except Exception as e:
-                flash(f"Failed to import students due to an unexpected error: {str(e)}", 'error')
+                    f"Updated students: {set_to_str([s.name for s in updated_students])}", 'warning')
+            if invalid_students:
+                flash(
+                    f"Invalid students: {invalid_students}", 'error')
+            # except Exception as e:
+            #     raise e
+            #     flash(f"Failed to import students due to an unexpected error: {str(e)}", 'error')
         else:
             flash("No file uploaded!", 'error')
         return redirect(url_for('students', exam=exam))
@@ -687,10 +688,10 @@ def edit_student(exam, canvas_id):
     orig_room_wants_set = set(student.room_wants)
     orig_room_avoids_set = set(student.room_avoids)
     if request.method == 'GET':
-        form.wants.data = set_to_str_set(orig_wants_set)
-        form.avoids.data = set_to_str_set(orig_avoids_set)
-        form.room_wants.data = set_to_str_set(orig_room_wants_set)
-        form.room_avoids.data = set_to_str_set(orig_room_avoids_set)
+        form.wants.data = set_to_str(orig_wants_set)
+        form.avoids.data = set_to_str(orig_avoids_set)
+        form.room_wants.data = set_to_str(orig_room_wants_set)
+        form.room_avoids.data = set_to_str(orig_room_avoids_set)
         form.new_email.data = student.email
     if form.validate_on_submit():
         if 'cancel' in request.form:
@@ -865,7 +866,7 @@ def email_all_students(exam):
         if successful_emails:
             flash(f"Successfully emailed {len(successful_emails)} students.", 'success')
         if failed_emails:
-            flash(f"Failed to email students: {set_to_str_set(failed_emails)}", 'error')
+            flash(f"Failed to email students: {set_to_str(failed_emails)}", 'error')
         if not successful_emails and not failed_emails:
             flash("No email sent.", 'warning')
         return redirect(url_for('students', exam=exam))
@@ -873,7 +874,7 @@ def email_all_students(exam):
         email_prefill = get_email(EmailTemplate.ASSIGNMENT_INFORM_EMAIL)
         form.subject.data = email_prefill.subject
         form.body.data = email_prefill.body
-        form.to_addr.data = set_to_str_set([s.email for s in exam.students])
+        form.to_addr.data = set_to_str([s.email for s in exam.students])
     return render_template('email.html.j2', exam=exam, form=form)
 
 
@@ -885,7 +886,7 @@ def email_single_student(exam, student_id):
         if successful_emails:
             flash(f"Successfully emailed {len(successful_emails)} students.", 'success')
         if failed_emails:
-            flash(f"Failed to email students: {set_to_str_set(failed_emails)}", 'error')
+            flash(f"Failed to email students: {set_to_str(failed_emails)}", 'error')
         if not successful_emails and not failed_emails:
             flash("No email sent.", 'warning')
         return redirect(url_for('students', exam=exam))
