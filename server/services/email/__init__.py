@@ -2,7 +2,6 @@ from server import app
 from server.models import db
 from server.services.email.smtp import SMTPConfig, construct_email, send_emails
 import server.services.email.templates as templates
-from server.typings.enum import EmailTemplate
 from flask import url_for
 from urllib.parse import urljoin
 
