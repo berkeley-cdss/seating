@@ -1,4 +1,3 @@
-import email
 import pytest
 from unittest.mock import patch
 from server.services.email import _email_config, SMTPConfig
