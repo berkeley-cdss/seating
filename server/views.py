@@ -501,7 +501,12 @@ def room(exam, id):
     Path: /offerings/<canvas_id>/exams/<exam_name>/rooms/<room_name>
     Displays the room diagram, with an optional seat highlighted.
     """
-    room = Room.query.filter_by(exam_id=exam.id, id=id).first_or_404()
+    # fetch all seat assignment at this point too to avoid N+1 problem
+    # we will need to display the seat assignment in the room diagram
+    from sqlalchemy.orm import joinedload
+    room = Room.query.options(
+        joinedload(Room.seats).joinedload(Seat.assignment)
+    ).filter_by(exam_id=exam.id, id=id).first_or_404()
     seat_id = request.args.get('seat')
     return render_template('room.html.j2', exam=exam, room=room, seat_id=seat_id)
 # endregion
