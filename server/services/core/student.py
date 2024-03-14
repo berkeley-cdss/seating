@@ -77,6 +77,7 @@ def prepare_students(exam, headers, rows):
             continue
 
         # some rows have already have a prev seat, or have seat assignment specified, try use that if that is valid
+        # try to match id first, then match name
         new_preference = get_preference_from_student(student)
         if student.assignment and not is_seat_valid_for_preference(student.assignment.seat, new_preference):
             student.assignment = None
@@ -86,6 +87,25 @@ def prepare_students(exam, headers, rows):
             if seat and not seat.assignment and seat.room.exam_id == exam.id and is_seat_valid_for_preference(seat, new_preference) and seat_id not in new_assignment_ids:
                 new_assignment_ids.add(seat_id)
                 student.assignment = SeatAssignment(student=student, seat=seat, emailed=emailed == 'true')
+        else:
+            room_name = row.pop('session name', row.pop('room name', None))
+            seat_name = row.pop('seat name', None)
+            if room_name and seat_name:
+                room_inferred = None
+                for room in exam.rooms:
+                    if room.name_and_start_at_time_display() == room_name:
+                        room_inferred = room
+                        break
+                seats_inferred: list[Seat] = []
+                if room_inferred:
+                    seats_inferred.extend(Seat.query.filter_by(room_id=room_inferred.id, name=seat_name).all())
+                    if not seats_inferred and 'Movable Seat' in seat_name:
+                        seats_inferred.extend(Seat.query.filter_by(room_id=room_inferred.id, name=None).all())
+                for seat in seats_inferred:
+                    if not seat.assignment and is_seat_valid_for_preference(seat, new_preference) and seat.id not in new_assignment_ids:
+                        new_assignment_ids.add(seat.id)
+                        student.assignment = SeatAssignment(student=student, seat=seat, emailed=emailed == 'true')
+                        break
 
         if is_new:
             new_students.append(student)

@@ -202,7 +202,7 @@ class Seat(db.Model):
 
     @property
     def display_name(self):
-        return self.name if self.name else f"Moveable Seat ({set_to_str(self.attributes)})"
+        return self.name if self.name else f"Movable Seat ({set_to_str(self.attributes)})"
 
     def __repr__(self):
         return '<Seat {}>'.format(self.display_name)
