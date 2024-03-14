@@ -565,7 +565,7 @@ def import_students_from_canvas_roster(exam):
     from_csv_form = ImportStudentFromCsvUploadForm()
     if from_canvas_form.validate_on_submit():
         try:
-            new_students, updated_students, invalid_students = get_students_from_canvas(exam)
+            new_students, updated_students, invalid_students = get_students_from_canvas(exam, from_canvas_form)
             to_commit = new_students + updated_students
             if to_commit:
                 db.session.add_all(to_commit)

@@ -1,5 +1,7 @@
 from enum import Enum
 
+from responses import DELETE
+
 
 class AppEnvironment(Enum):
     DEVELOPMENT = 'development'
@@ -15,3 +17,9 @@ class EmailTemplate(Enum):
 class GcpSaCredType(Enum):
     FILE = 'file'
     ENV = 'env'
+
+
+class AssignmentImportStrategy(Enum):
+    IGNORE = 'ignore'
+    REVALIDATE = 'revalidate'
+    FORCE = 'force'

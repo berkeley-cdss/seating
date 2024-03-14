@@ -1,12 +1,13 @@
 import re
 
 from flask_wtf import FlaskForm
-from wtforms import FieldList, FormField, ValidationError, BooleanField, FileField, SelectMultipleField, StringField, \
+from wtforms import FieldList, FormField, SelectField, ValidationError, BooleanField, FileField, SelectMultipleField, StringField, \
     SubmitField, TextAreaField, DateTimeField, IntegerField, widgets
 from wtforms import Form as NoCsrfForm
 from flask_wtf.file import FileRequired, FileAllowed
-from wtforms.validators import Email, InputRequired, URL, Optional
+from wtforms.validators import Email, InputRequired, URL, Optional, DataRequired
 from server.controllers import exam_regex
+from server.typings.enum import AssignmentImportStrategy
 
 
 class MultiCheckboxField(SelectMultipleField):
@@ -90,18 +91,25 @@ class EditRoomForm(RoomFormBase):
     cancel = SubmitField('cancel')
 
 
-class ImportStudentFromSheetForm(FlaskForm):
+class ImportStudentFormBase(FlaskForm):
+    revalidate_existing_assignments = BooleanField('revalidate_existing_assignments', default=True)
+    new_assignment_import_strategy = SelectField('new_assignment_import_strategy', choices=[
+                                                 (e.value, e.name) for e in AssignmentImportStrategy],
+                                                 default=AssignmentImportStrategy.REVALIDATE.value,
+                                                 validators=[DataRequired()])
+    submit = SubmitField('import')
+
+
+class ImportStudentFromSheetForm(ImportStudentFormBase):
     sheet_url = StringField('sheet_url', [URL()])
     sheet_range = StringField('sheet_range', [InputRequired()])
-    submit = SubmitField('import')
 
 
-class ImportStudentFromCanvasRosterForm(FlaskForm):
-    submit = SubmitField('import')
+class ImportStudentFromCanvasRosterForm(ImportStudentFormBase):
+    pass
 
 
-class ImportStudentFromCsvUploadForm(FlaskForm):
-    submit = SubmitField('import')
+class ImportStudentFromCsvUploadForm(ImportStudentFormBase):
     file = FileField('Choose File', validators=[
         FileRequired(),
         FileAllowed(['csv'], 'CSV files only!')

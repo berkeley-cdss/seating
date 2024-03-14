@@ -38,6 +38,18 @@
             {% endif %}
           </div>
         </div>
+        <div class="mdl-cell mdl-cell--12-col">
+          <div class="checkbox" id="revalidate_existing_assignments">
+            {{ from_sheet_form.revalidate_existing_assignments }}
+            <label class="" for="revalidate_existing_assignments">Revalidate Existing Assignments</label>
+          </div>
+        </div>
+        <div class="mdl-cell mdl-cell--12-col">
+          <div id="new_assignment_import_strategy">
+            <label class="" for="new_assignment_import_strategy">New Assignment Import Strategy</label>
+            {{ from_sheet_form.new_assignment_import_strategy() }}
+          </div>
+        </div>
         <div class="form-buttons">
           {{ from_sheet_form.submit(class="mdl-button mdl-js-button mdl-button--raised") }}
         </div>
@@ -73,6 +85,18 @@
     <form action="{{ url_for('import_students_from_canvas_roster', exam=exam) }}" method="post">
         {{ from_canvas_form.hidden_tag() }}
         <div class="mdl-grid">
+          <div class="mdl-cell mdl-cell--12-col">
+            <div class="checkbox" id="revalidate_existing_assignments">
+              {{ from_canvas_form.revalidate_existing_assignments }}
+              <label class="" for="revalidate_existing_assignments">Revalidate Existing Assignments</label>
+            </div>
+          </div>
+          <div class="mdl-cell mdl-cell--12-col">
+            <div id="new_assignment_import_strategy">
+              <label class="" for="new_assignment_import_strategy">New Assignment Import Strategy</label>
+              {{ from_canvas_form.new_assignment_import_strategy() }}
+            </div>
+          </div>
           <div class="form-buttons">
             {{ from_canvas_form.submit(class="mdl-button mdl-js-button mdl-button--raised") }}
           </div>
@@ -84,7 +108,21 @@
     <form action="{{ url_for('import_students_from_csv_upload', exam=exam) }}" method="post" enctype="multipart/form-data">
         {{ from_csv_form.hidden_tag() }}
         <div class="mdl-grid">
-          {{ from_csv_form.file(class="mdl-textfield__input", type="file", id="upload_csv_file")}}
+          <div class="mdl-cell mdl-cell--12-col">
+            {{ from_csv_form.file(class="mdl-textfield__input", type="file", id="upload_csv_file")}}
+          </div>
+          <div class="mdl-cell mdl-cell--12-col">
+            <div class="checkbox" id="revalidate_existing_assignments">
+              {{ from_csv_form.revalidate_existing_assignments }}
+              <label class="" for="revalidate_existing_assignments">Revalidate Existing Assignments</label>
+            </div>
+          </div>
+          <div class="mdl-cell mdl-cell--12-col">
+            <div id="new_assignment_import_strategy">
+              <label class="" for="new_assignment_import_strategy">New Assignment Import Strategy</label>
+              {{ from_csv_form.new_assignment_import_strategy() }}
+            </div>
+          </div>
           <div class="form-buttons">
             {{ from_csv_form.submit(class="mdl-button mdl-js-button mdl-button--raised") }}
           </div>
