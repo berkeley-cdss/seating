@@ -20,8 +20,33 @@ class SMTPConfig:
                 f'use_auth={self.use_auth})')
 
 
-def send_email(*, smtp: SMTPConfig, from_addr, to_addr, subject, body,
-               body_html=None, bcc_addr=None, cc_addr=None):
+def send_emails(*, smtp: SMTPConfig, messages=list[EmailMessage]):
+    successful_emails = []
+    failed_emails = []
+    for msg in messages:
+        try:
+            server = SMTP(smtp.smtp_server, smtp.smtp_port)
+            # if server.has_extn('STARTTLS'):
+            if smtp.use_tls:
+                server.starttls()
+            # if server.has_extn('AUTH'):
+            if smtp.use_auth:
+                server.login(smtp.username, smtp.password)
+            server.send_message(msg)
+            server.quit()
+            successful_emails.append((msg, None))
+        except SMTPException as e:
+            err_msg = f"SMTP error occurred when sending email: {str(e)}\n Config: \n{smtp}"
+            current_app.logger.error(err_msg)
+            failed_emails.append((msg, err_msg))
+        except Exception as e:
+            err_msg = f"Error occurred when sending email: {str(e)}\n Config: \n{smtp}"
+            current_app.logger.error(err_msg)
+            failed_emails.append((msg, err_msg))
+    return successful_emails, failed_emails
+
+
+def construct_email(*, from_addr, to_addr, subject, body, body_html=None, bcc_addr=None, cc_addr=None):
     msg = EmailMessage()
     msg['From'], msg['To'], msg['Subject'] = from_addr, to_addr, subject
     if bcc_addr:
@@ -35,23 +60,15 @@ def send_email(*, smtp: SMTPConfig, from_addr, to_addr, subject, body,
     msg.set_content(body)
     if body_html:
         msg.add_alternative(body_html, subtype='html')
+    return msg
 
-    try:
-        server = SMTP(smtp.smtp_server, smtp.smtp_port)
-        # if server.has_extn('STARTTLS'):
-        if smtp.use_tls:
-            server.starttls()
-        # if server.has_extn('AUTH'):
-        if smtp.use_auth:
-            server.login(smtp.username, smtp.password)
-        server.send_message(msg)
-        server.quit()
-        return (True, None)
-    except SMTPException as e:
-        err_msg = f"SMTP error occurred when sending email: {str(e)}\n Config: \n{smtp}"
-        current_app.logger.error(err_msg)
-        return (False, err_msg)
-    except Exception as e:
-        err_msg = f"Error occurred when sending email: {str(e)}\n Config: \n{smtp}"
-        current_app.logger.error(err_msg)
-        return (False, err_msg)
+
+def send_single_email(*, smtp: SMTPConfig, from_addr, to_addr, subject, body,
+                      body_html=None, bcc_addr=None, cc_addr=None):
+    msg = construct_email(from_addr=from_addr, to_addr=to_addr, subject=subject, body=body,
+                          body_html=body_html, bcc_addr=bcc_addr, cc_addr=cc_addr)
+    successful_emails, failed_emails = send_emails(smtp=smtp, messages=[msg])
+    if successful_emails:
+        return successful_emails[0]
+    if failed_emails:
+        return failed_emails[0]

@@ -1,7 +1,9 @@
+import email
 import pytest
 from unittest.mock import patch
+from server.services.email import _email_config, SMTPConfig
+from server.services.email.smtp import construct_email, send_single_email, send_emails
 import server.services.email.templates as templates
-from server.services.email import send_email, _email_config, SMTPConfig
 from server.typings.enum import EmailTemplate
 from email.message import Message
 
@@ -32,11 +34,11 @@ def test_send_plain_text_email(mock_smtp):
     Stubs out the SMTP server and checks that plain text email is sent correctly
     """
 
-    success = send_email(smtp=_email_config,
-                         from_addr=TEST_FROM_EMAIL,
-                         to_addr=TEST_TO_EMAIL,
-                         subject=TEST_SUBJECT,
-                         body=TEST_BODY)
+    success = send_single_email(smtp=_email_config,
+                                from_addr=TEST_FROM_EMAIL,
+                                to_addr=TEST_TO_EMAIL,
+                                subject=TEST_SUBJECT,
+                                body=TEST_BODY)
 
     assert success[0]
 
@@ -63,12 +65,12 @@ def test_send_html_email(mock_smtp):
     Stubs out the SMTP server and checks that html email is sent correctly
     """
 
-    success = send_email(smtp=_email_config,
-                         from_addr=TEST_FROM_EMAIL,
-                         to_addr=TEST_TO_EMAIL,
-                         subject=TEST_SUBJECT,
-                         body=TEST_BODY,
-                         body_html=TEST_BODY_HTML)
+    success = send_single_email(smtp=_email_config,
+                                from_addr=TEST_FROM_EMAIL,
+                                to_addr=TEST_TO_EMAIL,
+                                subject=TEST_SUBJECT,
+                                body=TEST_BODY,
+                                body_html=TEST_BODY_HTML)
 
     assert success[0]
 
@@ -76,6 +78,24 @@ def test_send_html_email(mock_smtp):
     html = _get_content(msg, 'text/html')
     assert html is not None
     assert TEST_BODY_HTML in html
+
+
+@patch('server.services.email.smtp.SMTP')
+def test_batch_send(mock_smtp):
+    """
+    Stubs out the SMTP server and checks that we can send multiple emails in one batch
+    """
+    batch_size = 1000
+    email_messages = [
+        construct_email(from_addr=TEST_FROM_EMAIL,
+                        to_addr=TEST_TO_EMAIL,
+                        subject=TEST_SUBJECT,
+                        body=TEST_BODY)
+        for _ in range(batch_size)
+    ]
+    successful_emails, failed_emails = send_emails(smtp=_email_config, messages=email_messages)
+    assert len(successful_emails) == batch_size
+    assert len(failed_emails) == 0
 
 
 import threading  # noqa
@@ -115,7 +135,7 @@ def test_send_plain_text_email_with_mock_smtp_server(smtp_server):
     Use a local fake smtp server to test that plain text email is sent correctly
     """
 
-    success = send_email(
+    success = send_single_email(
         smtp=_fake_email_config,
         from_addr=TEST_FROM_EMAIL,
         to_addr=TEST_TO_EMAIL,
@@ -138,7 +158,7 @@ def test_send_html_email_with_mock_smtp_server(smtp_server):
     Use a local fake smtp server to test that html email is sent correctly
     """
 
-    success = send_email(
+    success = send_single_email(
         smtp=_fake_email_config,
         from_addr=TEST_FROM_EMAIL,
         to_addr=TEST_TO_EMAIL,
@@ -156,6 +176,24 @@ def test_send_html_email_with_mock_smtp_server(smtp_server):
     assert TEST_BODY_HTML in html
 
 
+def test_batch_send_with_mock_smtp_server(smtp_server):
+    """
+    Use a local fake smtp server to test that we can send multiple emails in one batch
+    """
+
+    batch_size = 1000
+    email_messages = [
+        construct_email(from_addr=TEST_FROM_EMAIL,
+                        to_addr=TEST_TO_EMAIL,
+                        subject=TEST_SUBJECT,
+                        body=TEST_BODY)
+        for _ in range(batch_size)
+    ]
+    successful_emails, failed_emails = send_emails(smtp=_fake_email_config, messages=email_messages)
+    assert len(successful_emails) == batch_size
+    assert len(failed_emails) == 0
+
+
 def test_send_seating_html_email_with_mock_smtp_server(smtp_server):
 
     test_seating_email = \
@@ -170,12 +208,12 @@ def test_send_seating_html_email_with_mock_smtp_server(smtp_server):
                                 "ADDITIONAL_INFO": "test additional text",
                                 "SIGNATURE": "test signature"})
 
-    success = send_email(smtp=_fake_email_config,
-                         from_addr=TEST_FROM_EMAIL,
-                         to_addr=TEST_TO_EMAIL,
-                         subject=test_seating_email.subject,
-                         body=test_seating_email.body,
-                         body_html=test_seating_email.body if test_seating_email.body_html else None)
+    success = send_single_email(smtp=_fake_email_config,
+                                from_addr=TEST_FROM_EMAIL,
+                                to_addr=TEST_TO_EMAIL,
+                                subject=test_seating_email.subject,
+                                body=test_seating_email.body,
+                                body_html=test_seating_email.body if test_seating_email.body_html else None)
 
     assert success[0]
 
@@ -188,7 +226,3 @@ def test_send_seating_html_email_with_mock_smtp_server(smtp_server):
     html = _get_content(msg, 'text/html')
     assert html is not None
     assert test_seating_email.body in html
-
-
-def test_send_email_for_exam_with_mock_smtp_server(smtp_server):
-    pass
