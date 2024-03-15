@@ -7,7 +7,7 @@ from wtforms import Form as NoCsrfForm
 from flask_wtf.file import FileRequired, FileAllowed
 from wtforms.validators import Email, InputRequired, URL, Optional, DataRequired
 from server.controllers import exam_regex
-from server.typings.enum import AssignmentImportStrategy
+from server.typings.enum import AssignmentImportStrategy, NewRowImportStrategy, UpdatedRowImportStrategy, MissingRowImportStrategy
 
 
 class MultiCheckboxField(SelectMultipleField):
@@ -93,10 +93,26 @@ class EditRoomForm(RoomFormBase):
 
 class ImportStudentFormBase(FlaskForm):
     revalidate_existing_assignments = BooleanField('revalidate_existing_assignments', default=True)
-    new_assignment_import_strategy = SelectField('new_assignment_import_strategy', choices=[
-                                                 (e.value, e.name) for e in AssignmentImportStrategy],
-                                                 default=AssignmentImportStrategy.REVALIDATE.value,
-                                                 validators=[DataRequired()])
+    assignment_import_strategy = SelectField('assignment_import_strategy', choices=[
+        (e.value, e.name) for e in AssignmentImportStrategy],
+        default=AssignmentImportStrategy.REVALIDATE.value,
+        validators=[DataRequired()])
+    updated_student_info_import_strategy = SelectField('updated_student_info_import_strategy', choices=[
+        (e.value, e.name) for e in UpdatedRowImportStrategy],
+        default=UpdatedRowImportStrategy.MERGE.value,
+        validators=[DataRequired()])
+    updated_preference_import_strategy = SelectField('updated_preference_import_strategy', choices=[
+        (e.value, e.name) for e in UpdatedRowImportStrategy],
+        default=UpdatedRowImportStrategy.OVERWRITE.value,
+        validators=[DataRequired()])
+    new_student_import_strategy = SelectField('new_student_import_strategy', choices=[
+        (e.value, e.name) for e in NewRowImportStrategy],
+        default=NewRowImportStrategy.APPEND.value,
+        validators=[DataRequired()])
+    missing_student_import_strategy = SelectField('missing_student_import_strategy', choices=[
+        (e.value, e.name) for e in MissingRowImportStrategy],
+        default=MissingRowImportStrategy.IGNORE.value,
+        validators=[DataRequired()])
     submit = SubmitField('import')
 
 

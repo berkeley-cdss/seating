@@ -532,14 +532,18 @@ def import_students_from_custom_sheet(exam):
     from_csv_form = ImportStudentFromCsvUploadForm()
     if from_sheet_form.validate_on_submit():
         try:
-            new_students, updated_students, invalid_students = get_students_from_google_spreadsheet(exam, from_sheet_form)
+            new_students, updated_students, invalid_students, students_ids_to_remove = get_students_from_google_spreadsheet(
+                exam, from_sheet_form)
             to_commit = new_students + updated_students
+            if students_ids_to_remove:
+                Student.query.filter(Student.id.in_(students_ids_to_remove)).delete(synchronize_session=False)
             if to_commit:
                 db.session.add_all(to_commit)
+            if students_ids_to_remove or to_commit:
                 db.session.commit()
             flash(
                 f"Import done. {len(new_students)} new students, {len(updated_students)} updated students"
-                f" {len(invalid_students)} invalid students.", 'success')
+                f" {len(invalid_students)} invalid students. {len(students_ids_to_remove)} students removed.", 'success')
             if updated_students:
                 flash(
                     f"Updated students: {set_to_str([s.name for s in updated_students])}", 'warning')
@@ -565,14 +569,18 @@ def import_students_from_canvas_roster(exam):
     from_csv_form = ImportStudentFromCsvUploadForm()
     if from_canvas_form.validate_on_submit():
         try:
-            new_students, updated_students, invalid_students = get_students_from_canvas(exam, from_canvas_form)
+            new_students, updated_students, invalid_students, students_ids_to_remove = get_students_from_canvas(
+                exam, from_canvas_form)
             to_commit = new_students + updated_students
+            if students_ids_to_remove:
+                Student.query.filter(Student.id.in_(students_ids_to_remove)).delete(synchronize_session=False)
             if to_commit:
                 db.session.add_all(to_commit)
+            if students_ids_to_remove or to_commit:
                 db.session.commit()
             flash(
                 f"Import done. {len(new_students)} new students, {len(updated_students)} updated students"
-                f" {len(invalid_students)} invalid students.", 'success')
+                f" {len(invalid_students)} invalid students. {len(students_ids_to_remove)} students removed.", 'success')
             if updated_students:
                 flash(
                     f"Updated students: {set_to_str([s.name for s in updated_students])}", 'warning')
@@ -599,14 +607,18 @@ def import_students_from_csv_upload(exam):
     if from_csv_form.validate_on_submit():
         if from_csv_form.file.data:
             # try:
-            new_students, updated_students, invalid_students = get_students_from_csv(exam, from_csv_form)
+            new_students, updated_students, invalid_students, students_ids_to_remove = get_students_from_csv(
+                exam, from_csv_form)
             to_commit = new_students + updated_students
+            if students_ids_to_remove:
+                Student.query.filter(Student.id.in_(students_ids_to_remove)).delete(synchronize_session=False)
             if to_commit:
                 db.session.add_all(to_commit)
+            if students_ids_to_remove or to_commit:
                 db.session.commit()
             flash(
                 f"Import done. {len(new_students)} new students, {len(updated_students)} updated students"
-                f" {len(invalid_students)} invalid students.", 'success')
+                f" {len(invalid_students)} invalid students. {len(students_ids_to_remove)} students removed.", 'success')
             if updated_students:
                 flash(
                     f"Updated students: {set_to_str([s.name for s in updated_students])}", 'warning')
