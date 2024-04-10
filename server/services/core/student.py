@@ -1,4 +1,3 @@
-from re import U
 from server.services.core.assign import get_preference_from_student, is_seat_valid_for_preference
 from server.typings.enum import AssignmentImportStrategy, \
     MissingRowImportStrategy, NewRowImportStrategy, UpdatedRowImportStrategy
