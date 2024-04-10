@@ -932,6 +932,36 @@ def student_single_seat(seat_id):
 # region TBD! photo feature
 
 
+@app.route('/c1c/card/test', methods=['GET'])
+def test_card():
+    # https://c1c-api.sait-west.berkeley.edu/c1c-api/v1/cardData/{pik}
+    username = app.config.get('C1C_API_USERNAME')
+    password = app.config.get('C1C_API_PASSWORD')
+    url = app.config.get('C1C_API_DOMAIN') + '/c1c-api/v1/cardData/3036668093'
+    import requests
+    r = requests.get(url, auth=(username, password))
+    if (r.status_code == 200):
+        print(r.json())
+    else:
+        print("Error: " + str(r.status_code) + " " + r.text)
+
+    # json = r.json()
+    # print(json)
+    return r
+
+
+@app.route('/c1c/photos/test', methods=['GET'])
+def test_photos():
+    # basic auth to https://c1c-api.sait-west.berkeley.edu/c1c-api/v1/photo/3036668093
+    username = app.config.get('C1C_API_USERNAME')
+    password = app.config.get('C1C_API_PASSWORD')
+    url = app.config.get('C1C_API_DOMAIN') + '/c1c-api/v1/photo/3036668093'
+    import requests
+    r = requests.get(url, auth=(username, password))
+    print(r)
+    return r
+
+
 @app.route('/<exam:exam>/students/photos/', methods=['GET', 'POST'])
 def new_photos(exam):
     return render_template('new_photos.html.j2', exam=exam)

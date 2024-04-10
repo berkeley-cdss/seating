@@ -1,6 +1,8 @@
 import os
 from typing import Optional
 
+from pyparsing import C
+
 from server.typings.exception import EnvironmentalVariableMissingError
 from server.typings.enum import AppEnvironment, GcpSaCredType
 
@@ -42,6 +44,11 @@ class ConfigBase(object):
     EMAIL_PORT = getenv('EMAIL_PORT', optional=True)
     EMAIL_USERNAME = getenv('EMAIL_USERNAME', optional=True)
     EMAIL_PASSWORD = getenv('EMAIL_PASSWORD', optional=True)
+
+    FIXIE_URL = getenv('FIXIE_URL', optional=True)
+    C1C_API_DOMAIN = getenv('C1C_API_DOMAIN', optional=True)
+    C1C_API_USERNAME = getenv('C1C_API_USERNAME', optional=True)
+    C1C_API_PASSWORD = getenv('C1C_API_PASSWORD', optional=True)
 
     # Master room sheet
     MASTER_ROOM_SHEET_URL = getenv('MASTER_ROOM_SHEET_URL', optional=True)
