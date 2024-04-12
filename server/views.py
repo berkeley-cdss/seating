@@ -903,22 +903,31 @@ def student(exam_student):
 def student_photo(exam_student):
     _, student = exam_student
     student_canvas_id = student.canvas_id
-    fixie_url = app.config.get('FIXIE_URL')
-    if not fixie_url:
-        return jsonify({"error": "Photo cannot be fetched as proxy is not configured."}), 500
-    proxy_dict = {
-        "http": fixie_url,
-        "https": fixie_url
-    }
+    from server.cache import cache_store, cache_key_photo, cache_life_photo
+    import io
+    photo = cache_store.get(cache_key_photo(student_canvas_id))
+    if photo is not None:
+        return send_file(io.BytesIO(photo), mimetype='image/jpeg')
+
+    proxy_url = app.config.get('C1C_PROXY_URL')
     username = app.config.get('C1C_API_USERNAME')
     password = app.config.get('C1C_API_PASSWORD')
     url = app.config.get('C1C_API_DOMAIN') + '/c1c-api/v1/photo/' + student_canvas_id
     import requests
     try:
-        r = requests.get(url, auth=(username, password), proxies=proxy_dict)
+        r = None
+        if proxy_url:
+            proxy_dict = {
+                "http": proxy_url,
+                "https": proxy_url
+            }
+            r = requests.get(url, auth=(username, password), proxies=proxy_dict)
+        else:
+            r = requests.get(url, auth=(username, password))
         if r.status_code == 200:
-            import io
-            return send_file(io.BytesIO(r.content), mimetype='image/jpeg')
+            photo = r.content
+            cache_store.set(cache_key_photo(student_canvas_id), photo, timeout=cache_life_photo)
+            return send_file(io.BytesIO(photo), mimetype='image/jpeg')
         else:
             return jsonify({"error": "Photo not available."}), r.status_code
     except requests.exceptions.RequestException as e:

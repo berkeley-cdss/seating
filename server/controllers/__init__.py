@@ -23,7 +23,6 @@ class StudentConverter(BaseConverter):
     regex = format_student_url(offering_regex, exam_regex, student_regex)
 
     def to_python(self, value):
-        print("student converter activated", value)
         if not current_user.is_authenticated:
             session['after_login'] = request.url
             raise Redirect(url_for('auth.login'))
@@ -45,10 +44,8 @@ class StudentConverter(BaseConverter):
         return exam, exam_student
 
     def to_url(self, value):
-        print("student converter to_url activated", value)
         exam, exam_student = value
         rlt = format_student_url(exam.offering_canvas_id, exam.name, exam_student.canvas_id)
-        print("student converter to_url result", rlt)
         return rlt
 
 
@@ -60,7 +57,6 @@ class ExamConverter(BaseConverter):
     regex = format_exam_url(offering_regex, exam_regex + r'(?!/students/\d+)')
 
     def to_python(self, value):
-        print("exam converter activated:", value)
         if not current_user.is_authenticated:
             session['after_login'] = request.url
             raise Redirect(url_for('auth.login'))
@@ -102,7 +98,6 @@ class OfferingConverter(BaseConverter):
     regex = format_offering_url(offering_regex)
 
     def to_python(self, value):
-        print("offering converter activated: ", value)
         if not current_user.is_authenticated:
             session['after_login'] = request.url
             raise Redirect(url_for('auth.login'))
