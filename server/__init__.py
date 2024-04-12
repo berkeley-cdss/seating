@@ -89,7 +89,8 @@ import server.services.auth  # noqa
 import server.services.canvas.fake_data  # noqa
 
 # registers controller converters
-from server.controllers import ExamConverter, OfferingConverter  # noqa
+from server.controllers import ExamConverter, OfferingConverter, StudentConverter  # noqa
+app.url_map.converters['exam_student'] = StudentConverter
 app.url_map.converters['exam'] = ExamConverter
 app.url_map.converters['offering'] = OfferingConverter
 

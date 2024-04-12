@@ -1,5 +1,6 @@
 import re
 from flask import abort, redirect, render_template, request, send_file, url_for, flash, Response
+from flask.json import jsonify
 from flask_login import current_user, login_required
 
 from server import app
@@ -669,17 +670,9 @@ def export_students_as_csv(exam):
     )
 
 
-@app.route('/<exam:exam>/students/<string:canvas_id>/')
-def student(exam, canvas_id):
-    student = Student.query.filter_by(
-        exam_id=exam.id, canvas_id=canvas_id).first_or_404()
-    return render_template('student.html.j2', exam=exam, student=student)
-
-
-@app.route('/<exam:exam>/students/<string:canvas_id>/edit', methods=['GET', 'POST'])
-def edit_student(exam, canvas_id):
-    student = Student.query.filter_by(
-        exam_id=exam.id, canvas_id=canvas_id).first_or_404()
+@app.route('/<exam_student:exam_student>/edit', methods=['GET', 'POST'])
+def edit_student(exam_student):
+    exam, student = exam_student
     form = EditStudentForm(room_list=exam.rooms)
     edited, did_not_exist = set(), set()
     orig_wants_set = set(student.wants)
@@ -786,10 +779,9 @@ def edit_students(exam):
                            did_not_exist=did_not_exist, student=None)
 
 
-@app.route('/<exam:exam>/students/<string:canvas_id>/delete', methods=['GET', 'DELETE'])
-def delete_student(exam, canvas_id):
-    student = Student.query.filter_by(
-        exam_id=exam.id, canvas_id=canvas_id).first_or_404()
+@app.route('/<exam_student:exam_student>/delete', methods=['GET', 'DELETE'])
+def delete_student(exam_student):
+    exam, student = exam_student
     if student:
         try:
             db.session.delete(student)
@@ -827,11 +819,11 @@ def assign(exam):
     return render_template('assign.html.j2', exam=exam, form=form)
 
 
-@app.route('/<exam:exam>/students/<string:canvas_id>/assign/', methods=['GET', 'POST'])
-def assign_student(exam, canvas_id):
+@app.route('/<exam_student:exam_student>/assign/', methods=['GET', 'POST'])
+def assign_student(exam_student):
     form = AssignSingleForm()
     if form.validate_on_submit():
-        student = Student.query.filter_by(exam_id=exam.id, canvas_id=canvas_id).first_or_404()
+        exam, student = exam_student
         try:
             if 'just_delete' in request.form:
                 if student.assignment:
@@ -900,6 +892,38 @@ def email_single_student(exam, student_id):
         form.to_addr.data = student.email
     return render_template('email.html.j2', exam=exam, form=form)
 
+
+@app.route('/<exam_student:exam_student>', methods=['GET'])
+def student(exam_student):
+    exam, student = exam_student
+    return render_template('student.html.j2', exam=exam, student=student)
+
+
+@app.route('/<exam_student:exam_student>/photo/', methods=['GET'])
+def student_photo(exam_student):
+    _, student = exam_student
+    student_canvas_id = student.canvas_id
+    fixie_url = app.config.get('FIXIE_URL')
+    if not fixie_url:
+        return jsonify({"error": "Photo cannot be fetched as proxy is not configured."}), 500
+    proxy_dict = {
+        "http": fixie_url,
+        "https": fixie_url
+    }
+    username = app.config.get('C1C_API_USERNAME')
+    password = app.config.get('C1C_API_PASSWORD')
+    url = app.config.get('C1C_API_DOMAIN') + '/c1c-api/v1/photo/' + student_canvas_id
+    import requests
+    try:
+        r = requests.get(url, auth=(username, password), proxies=proxy_dict)
+        if r.status_code == 200:
+            import io
+            return send_file(io.BytesIO(r.content), mimetype='image/jpeg')
+        else:
+            return jsonify({"error": "Photo not available."}), r.status_code
+    except requests.exceptions.RequestException as e:
+        return jsonify({"error": "Failed to fetch the photo due to an internal error:" + e.message}), 500
+
 # endregion
 
 # region Misc
@@ -927,51 +951,4 @@ def students_template():
 def student_single_seat(seat_id):
     seat = Seat.query.filter_by(id=seat_id).first_or_404()
     return render_template('seat.html.j2', room=seat.room, seat=seat)
-# endregion
-
-# region TBD! photo feature
-
-
-@app.route('/c1c/card/test', methods=['GET'])
-def test_card():
-    # https://c1c-api.sait-west.berkeley.edu/c1c-api/v1/cardData/{pik}
-    username = app.config.get('C1C_API_USERNAME')
-    password = app.config.get('C1C_API_PASSWORD')
-    url = app.config.get('C1C_API_DOMAIN') + '/c1c-api/v1/cardData/3036668093'
-    import requests
-    r = requests.get(url, auth=(username, password))
-    if (r.status_code == 200):
-        print(r.json())
-    else:
-        print("Error: " + str(r.status_code) + " " + r.text)
-
-    # json = r.json()
-    # print(json)
-    return r
-
-
-@app.route('/c1c/photos/test', methods=['GET'])
-def test_photos():
-    # basic auth to https://c1c-api.sait-west.berkeley.edu/c1c-api/v1/photo/3036668093
-    username = app.config.get('C1C_API_USERNAME')
-    password = app.config.get('C1C_API_PASSWORD')
-    url = app.config.get('C1C_API_DOMAIN') + '/c1c-api/v1/photo/3036668093'
-    import requests
-    r = requests.get(url, auth=(username, password))
-    print(r)
-    return r
-
-
-@app.route('/<exam:exam>/students/photos/', methods=['GET', 'POST'])
-def new_photos(exam):
-    return render_template('new_photos.html.j2', exam=exam)
-
-
-@app.route('/<exam:exam>/students/<string:email>/photo')
-def photo(exam, email):
-    student = Student.query.filter_by(
-        exam_id=exam.id, email=email).first_or_404()
-    photo_path = '{}/{}/{}.jpeg'.format(app.config['PHOTO_DIRECTORY'],
-                                        exam.offering_canvas_id, student.canvas_id)
-    return send_file(photo_path, mimetype='image/jpeg')
 # endregion
