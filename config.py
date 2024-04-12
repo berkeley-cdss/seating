@@ -46,6 +46,7 @@ class ConfigBase(object):
     EMAIL_PASSWORD = getenv('EMAIL_PASSWORD', optional=True)
 
     # C1C API setup
+    MOCK_C1C = getenv('MOCK_C1C', 'false').lower() == 'true'
     C1C_PROXY_URL = getenv('C1C_PROXY_URL', optional=True)
     C1C_API_DOMAIN = getenv('C1C_API_DOMAIN', optional=True)
     C1C_API_USERNAME = getenv('C1C_API_USERNAME', optional=True)

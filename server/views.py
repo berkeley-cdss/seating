@@ -908,30 +908,12 @@ def student_photo(exam_student):
     photo = cache_store.get(cache_key_photo(student_canvas_id))
     if photo is not None:
         return send_file(io.BytesIO(photo), mimetype='image/jpeg')
-
-    proxy_url = app.config.get('C1C_PROXY_URL')
-    username = app.config.get('C1C_API_USERNAME')
-    password = app.config.get('C1C_API_PASSWORD')
-    url = app.config.get('C1C_API_DOMAIN') + '/c1c-api/v1/photo/' + student_canvas_id
-    import requests
-    try:
-        r = None
-        if proxy_url:
-            proxy_dict = {
-                "http": proxy_url,
-                "https": proxy_url
-            }
-            r = requests.get(url, auth=(username, password), proxies=proxy_dict)
-        else:
-            r = requests.get(url, auth=(username, password))
-        if r.status_code == 200:
-            photo = r.content
-            cache_store.set(cache_key_photo(student_canvas_id), photo, timeout=cache_life_photo)
-            return send_file(io.BytesIO(photo), mimetype='image/jpeg')
-        else:
-            return jsonify({"error": "Photo not available."}), r.status_code
-    except requests.exceptions.RequestException as e:
-        return jsonify({"error": "Failed to fetch the photo due to an internal error:" + e.message}), 500
+    from server.services.c1c import c1c_client
+    photo = c1c_client.get_student_photo(student_canvas_id)
+    if photo is not None:
+        cache_store.set(cache_key_photo(student_canvas_id), photo, timeout=cache_life_photo)
+        return send_file(io.BytesIO(photo), mimetype='image/jpeg')
+    return send_file('static/img/photo-placeholder.png', mimetype='image/png')
 
 # endregion
 
