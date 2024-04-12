@@ -1,8 +1,6 @@
 import os
 from typing import Optional
 
-from pyparsing import C
-
 from server.typings.exception import EnvironmentalVariableMissingError
 from server.typings.enum import AppEnvironment, GcpSaCredType
 
