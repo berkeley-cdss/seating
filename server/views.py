@@ -963,17 +963,18 @@ def student(exam_student):
 @app.route('/<exam_student:exam_student>/photo/', methods=['GET'])
 def student_photo(exam_student):
     _, student = exam_student
-    student_canvas_id = student.canvas_id
-    from server.cache import cache_store, cache_key_photo, cache_life_photo
-    import io
-    photo = cache_store.get(cache_key_photo(student_canvas_id))
-    if photo is not None:
-        return send_file(io.BytesIO(photo), mimetype='image/jpeg')
-    from server.services.c1c import c1c_client
-    photo = c1c_client.get_student_photo(student_canvas_id)
-    if photo is not None:
-        cache_store.set(cache_key_photo(student_canvas_id), photo, timeout=cache_life_photo)
-        return send_file(io.BytesIO(photo), mimetype='image/jpeg')
+    sid = student.sid
+    if sid:
+        from server.cache import cache_store, cache_key_photo, cache_life_photo
+        import io
+        photo = cache_store.get(cache_key_photo(sid))
+        if photo is not None:
+            return send_file(io.BytesIO(photo), mimetype='image/jpeg')
+        from server.services.c1c import c1c_client
+        photo = c1c_client.get_student_photo(sid)
+        if photo is not None:
+            cache_store.set(cache_key_photo(sid), photo, timeout=cache_life_photo)
+            return send_file(io.BytesIO(photo), mimetype='image/jpeg')
     return send_file('static/img/photo-placeholder.png', mimetype='image/png')
 
 # endregion

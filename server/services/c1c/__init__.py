@@ -26,11 +26,11 @@ class C1C:
         else:
             return requests.request(method, url, auth=(self.username, self.password))
 
-    def get_student_photo(self, student_canvas_id):
+    def get_student_photo(self, sid):
         if is_mock_c1c():
-            return fake_data.get_fake_photo(student_canvas_id)
+            return fake_data.get_fake_photo(sid)
         try:
-            r = self._make_request(f'/c1c-api/v1/photo/{student_canvas_id}')
+            r = self._make_request(f'/c1c-api/v1/photo/{sid}')
             if r.status_code == 200:
                 return r.content
             else:
