@@ -40,8 +40,16 @@ def attr_to_room_id(attr: str) -> None | str:
     return attr[5:]
 
 
+SPECIAL_HEADERS = ['email', 'name', 'bcourses id', 'canvas id', 'student id', 'emailed', 'seat id', 'assignment',
+                   'session name', 'room name', 'seat name']
+
+
+def is_normal_attr(attr: str):
+    return not is_room_attr(attr) and attr not in SPECIAL_HEADERS
+
+
 def is_room_attr(attr: str):
-    return attr.startswith('room:')
+    return attr.startswith('room:') and attr not in SPECIAL_HEADERS
 
 
 def prepare_students(exam, headers, rows, *, config: StudentImportConfig = StudentImportConfig()):
@@ -69,6 +77,7 @@ def prepare_students(exam, headers, rows, *, config: StudentImportConfig = Stude
         name = row.pop('name', None)
         if not canvas_id:
             invalid_students.append(row)
+            continue
 
         # try matching existing student (by canvas id)
         student = Student.query.filter_by(exam_id=int(exam.id), canvas_id=str(canvas_id)).first()
@@ -94,14 +103,14 @@ def prepare_students(exam, headers, rows, *, config: StudentImportConfig = Stude
         # parse out preferences: wants and avoids should be mutually exclusive
         if not config.updated_preference_import_strategy == UpdatedRowImportStrategy.IGNORE:
             overwrite_pref = not is_new and config.updated_preference_import_strategy == UpdatedRowImportStrategy.OVERWRITE
-            wants = {k.lower() for k, v in row.items() if v.lower() == 'true' and not is_room_attr(k)}
-            student.wants = wants if overwrite_pref else student.wants.union(wants)
-            avoids = {k.lower() for k, v in row.items() if v.lower() == 'false' and not is_room_attr(k)}
-            student.avoids = avoids if overwrite_pref else student.avoids.union(avoids)
-            room_wants = {attr_to_room_id(k) for k, v in row.items() if v.lower() == 'true' and is_room_attr(k)}
-            student.room_wants = room_wants if overwrite_pref else student.room_wants.union(room_wants)
-            room_avoids = {attr_to_room_id(k) for k, v in row.items() if v.lower() == 'false' and is_room_attr(k)}
-            student.room_avoids = room_avoids if overwrite_pref else student.room_avoids.union(room_avoids)
+            wants = {k.lower() for k, v in row.items() if is_normal_attr(k) and v.lower() == 'true'}
+            student.wants = wants if (is_new or overwrite_pref) else student.wants.union(wants)
+            avoids = {k.lower() for k, v in row.items() if is_normal_attr(k) and v.lower() == 'false'}
+            student.avoids = avoids if (is_new or overwrite_pref) else student.avoids.union(avoids)
+            room_wants = {attr_to_room_id(k) for k, v in row.items() if is_room_attr(k) and v.lower() == 'true'}
+            student.room_wants = room_wants if (is_new or overwrite_pref) else student.room_wants.union(room_wants)
+            room_avoids = {attr_to_room_id(k) for k, v in row.items() if is_room_attr(k) and v.lower() == 'false'}
+            student.room_avoids = room_avoids if (is_new or overwrite_pref) else student.room_avoids.union(room_avoids)
             if not student.wants.isdisjoint(student.avoids) \
                     or not student.room_wants.isdisjoint(student.room_avoids):
                 invalid_students.append(row)

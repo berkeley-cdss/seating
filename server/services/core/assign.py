@@ -16,16 +16,16 @@ class Preference:
         return hash((frozenset(self.wants), frozenset(self.avoids), frozenset(self.room_wants), frozenset(self.room_avoids)))
 
     def __eq__(self, other):
-        return (self.wants, self.avoids, self.room_wants, self.room_avoids) == (other.wants, other.avoids, other.room_wants, other.room_avoids)
+        return (self.wants, self.avoids, self.room_wants, self.room_avoids) == (other.wants, other.avoids, other.room_wants, other.room_avoids)  # noqa
 
     def __ne__(self, other):
         return not (self == other)
 
     def __repr__(self):
-        return f'Preference(wants={self.wants}, avoids={self.avoids}, room_wants={self.room_wants}, room_avoids={self.room_avoids})'
+        return f'Preference(wants={self.wants}, avoids={self.avoids}, room_wants={self.room_wants}, room_avoids={self.room_avoids})'  # noqa
 
     def __str__(self):
-        return f'Preference(wants={self.wants}, avoids={self.avoids}, room_wants={self.room_wants}, room_avoids={self.room_avoids})'
+        return f'Preference(wants={self.wants}, avoids={self.avoids}, room_wants={self.room_wants}, room_avoids={self.room_avoids})'  # noqa
 
 
 def is_seat_valid_for_preference(seat: Seat, preference: Preference):
@@ -37,7 +37,7 @@ def is_seat_valid_for_preference(seat: Seat, preference: Preference):
     return (all(want.lower() in {attr.lower() for attr in seat.attributes} for want in wants) and  # noqa
             all(avoid.lower() not in {attr.lower() for attr in seat.attributes} for avoid in avoids) and  # noqa
             (not room_wants or any(int(a) == seat.room.id for a in room_wants)) and  # noqa
-            all(int(a) != seat.room.id for a in room_avoids)
+            all(int(a) != seat.room.id for a in room_avoids)  # noqa
             )
 
 
