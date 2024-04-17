@@ -169,6 +169,30 @@ def test_update_student_preference_with_room_default_config(exam169):
     assert updated_students[0].room_avoids == set()
 
 
+def test_update_student_preference_overwrite(seeded_db, exam169):
+    headers = ['email', 'name', 'canvas id', 'old_attr']
+    first_student = exam169.students[0]
+    first_student.wants = {'old_attr'}
+    seeded_db.session.commit()
+    first_student_canvas_id = first_student.canvas_id
+    updated_student = {
+        'canvas id': first_student_canvas_id,
+        'old_attr': 'false'
+    }
+    rows = [updated_student]
+    new_students, updated_students, invalid_students, students_ids_to_remove = \
+        prepare_students(exam169, headers, rows,
+                         config=StudentImportConfig(updated_preference_import_strategy=UpdatedRowImportStrategy.OVERWRITE))
+    assert len(new_students) == 0
+    assert len(updated_students) == 1
+    assert len(invalid_students) == 0
+    assert len(students_ids_to_remove) == 0
+    assert updated_students[0].avoids == {'old_attr'}
+    assert updated_students[0].wants == set()
+    assert updated_students[0].room_wants == set()
+    assert updated_students[0].room_avoids == set()
+
+
 def test_update_student_preference_merge(seeded_db, exam169):
     headers = ['email', 'name', 'canvas id', 'New_Want_Attr', 'New_Avoid_Attr']
     first_student = exam169.students[0]
@@ -538,7 +562,7 @@ def test_revalidate_existing_assignments_while_changing_prefs(seeded_db, exam169
     assert updated_students[0].assignment is None
 
 
-def test_no_revalidate_exisiting_assignments_while_giving_conflicting_prefs(seeded_db, exam169):
+def test_no_revalidate_existing_assignments_while_giving_conflicting_prefs(seeded_db, exam169):
     first_student = exam169.students[0]
     first_seat = exam169.unassigned_seats[0]
     first_student.assignment = SeatAssignment(student=first_student, seat=first_seat)
