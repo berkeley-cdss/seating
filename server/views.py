@@ -1,5 +1,6 @@
 import re
 from flask import abort, redirect, render_template, request, send_file, url_for, flash, Response
+from flask.json import jsonify
 from flask_login import current_user, login_required
 
 from server import app
@@ -730,17 +731,9 @@ def export_students_as_csv(exam):
     )
 
 
-@app.route('/<exam:exam>/students/<string:canvas_id>/')
-def student(exam, canvas_id):
-    student = Student.query.filter_by(
-        exam_id=exam.id, canvas_id=canvas_id).first_or_404()
-    return render_template('student.html.j2', exam=exam, student=student)
-
-
-@app.route('/<exam:exam>/students/<string:canvas_id>/edit', methods=['GET', 'POST'])
-def edit_student(exam, canvas_id):
-    student = Student.query.filter_by(
-        exam_id=exam.id, canvas_id=canvas_id).first_or_404()
+@app.route('/<exam_student:exam_student>/edit', methods=['GET', 'POST'])
+def edit_student(exam_student):
+    exam, student = exam_student
     form = EditStudentForm(room_list=exam.rooms)
     edited, did_not_exist = set(), set()
     orig_wants_set = set(student.wants)
@@ -847,10 +840,9 @@ def edit_students(exam):
                            did_not_exist=did_not_exist, student=None)
 
 
-@app.route('/<exam:exam>/students/<string:canvas_id>/delete', methods=['GET', 'DELETE'])
-def delete_student(exam, canvas_id):
-    student = Student.query.filter_by(
-        exam_id=exam.id, canvas_id=canvas_id).first_or_404()
+@app.route('/<exam_student:exam_student>/delete', methods=['GET', 'DELETE'])
+def delete_student(exam_student):
+    exam, student = exam_student
     if student:
         try:
             db.session.delete(student)
@@ -888,11 +880,11 @@ def assign(exam):
     return render_template('assign.html.j2', exam=exam, form=form)
 
 
-@app.route('/<exam:exam>/students/<string:canvas_id>/assign/', methods=['GET', 'POST'])
-def assign_student(exam, canvas_id):
+@app.route('/<exam_student:exam_student>/assign/', methods=['GET', 'POST'])
+def assign_student(exam_student):
     form = AssignSingleForm()
     if form.validate_on_submit():
-        student = Student.query.filter_by(exam_id=exam.id, canvas_id=canvas_id).first_or_404()
+        exam, student = exam_student
         try:
             if 'just_delete' in request.form:
                 if student.assignment:
@@ -961,6 +953,29 @@ def email_single_student(exam, student_id):
         form.to_addr.data = student.email
     return render_template('email.html.j2', exam=exam, form=form)
 
+
+@app.route('/<exam_student:exam_student>', methods=['GET'])
+def student(exam_student):
+    exam, student = exam_student
+    return render_template('student.html.j2', exam=exam, student=student)
+
+
+@app.route('/<exam_student:exam_student>/photo/', methods=['GET'])
+def student_photo(exam_student):
+    _, student = exam_student
+    student_canvas_id = student.canvas_id
+    from server.cache import cache_store, cache_key_photo, cache_life_photo
+    import io
+    photo = cache_store.get(cache_key_photo(student_canvas_id))
+    if photo is not None:
+        return send_file(io.BytesIO(photo), mimetype='image/jpeg')
+    from server.services.c1c import c1c_client
+    photo = c1c_client.get_student_photo(student_canvas_id)
+    if photo is not None:
+        cache_store.set(cache_key_photo(student_canvas_id), photo, timeout=cache_life_photo)
+        return send_file(io.BytesIO(photo), mimetype='image/jpeg')
+    return send_file('static/img/photo-placeholder.png', mimetype='image/png')
+
 # endregion
 
 # region Misc
@@ -988,21 +1003,4 @@ def students_template():
 def student_single_seat(seat_id):
     seat = Seat.query.filter_by(id=seat_id).first_or_404()
     return render_template('seat.html.j2', room=seat.room, seat=seat)
-# endregion
-
-# region TBD! photo feature
-
-
-@app.route('/<exam:exam>/students/photos/', methods=['GET', 'POST'])
-def new_photos(exam):
-    return render_template('new_photos.html.j2', exam=exam)
-
-
-@app.route('/<exam:exam>/students/<string:email>/photo')
-def photo(exam, email):
-    student = Student.query.filter_by(
-        exam_id=exam.id, email=email).first_or_404()
-    photo_path = '{}/{}/{}.jpeg'.format(app.config['PHOTO_DIRECTORY'],
-                                        exam.offering_canvas_id, student.canvas_id)
-    return send_file(photo_path, mimetype='image/jpeg')
 # endregion

@@ -6,7 +6,7 @@
 {% block body %}
 <section class="student mdl-grid">
   <div class="mdl-cell mdl-cell--12-col">
-    <img class="photo" src="photo"/>
+    <img class="photo" src="{{ url_for('student_photo', exam_student=(exam, student)) }}" alt="photo for: {{ student.name }}" />
     <h6>{{ student.name }}</h6>
     <p>{{ student.email }}</p>
     <p>Student ID: {{ student.sid }}</p>

@@ -43,6 +43,14 @@ class ConfigBase(object):
     EMAIL_USERNAME = getenv('EMAIL_USERNAME', optional=True)
     EMAIL_PASSWORD = getenv('EMAIL_PASSWORD', optional=True)
 
+    # C1C API setup
+    MOCK_C1C = getenv('MOCK_C1C', 'false').lower() == 'true'
+    C1C_PROXY_URL = getenv('C1C_PROXY_URL', optional=True)
+    C1C_API_DOMAIN = getenv('C1C_API_DOMAIN', optional=True)
+    C1C_API_USERNAME = getenv('C1C_API_USERNAME', optional=True)
+    C1C_API_PASSWORD = getenv('C1C_API_PASSWORD', optional=True)
+    C1C_PHOTO_CACHE_LIFE = getenv('C1C_PHOTO_CACHE_LIFE', 3600 * 24 * 90)
+
     # Master room sheet
     MASTER_ROOM_SHEET_URL = getenv('MASTER_ROOM_SHEET_URL', optional=True)
 

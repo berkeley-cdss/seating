@@ -9,9 +9,44 @@ from flask import Blueprint
 
 GENERAL_STUDENT_HINT = "If you think this is a mistake, please contact your course staff."
 
-ban_words = '(?!(((new)|(offerings)|(exams))\b))'
+ban_words = r'(?!((new)|(offerings)|(exams)|(student)))'
 offering_regex = ban_words + r'\d+'
 exam_regex = ban_words + r'\w+'
+student_regex = r'\d+'
+
+
+def format_student_url(offering_canvas_id, exam_name, student_canvas_id):
+    return 'offerings/{}/exams/{}/students/{}'.format(offering_canvas_id, exam_name, student_canvas_id)
+
+
+class StudentConverter(BaseConverter):
+    regex = format_student_url(offering_regex, exam_regex, student_regex)
+
+    def to_python(self, value):
+        if not current_user.is_authenticated:
+            session['after_login'] = request.url
+            raise Redirect(url_for('auth.login'))
+        _, offering_canvas_id, _, exam_name, _, student_canvas_id = value.split('/', 5)
+        exam = Exam.query.filter_by(
+            offering_canvas_id=offering_canvas_id, name=exam_name
+        ).one_or_none()
+
+        if str(offering_canvas_id) in current_user.staff_offerings:
+            pass
+        elif str(offering_canvas_id) in current_user.student_offerings:
+            abort(403, "You are not authorized to view this page. " + GENERAL_STUDENT_HINT)
+        else:
+            abort(403, "You are not authorized to view this page. " + GENERAL_STUDENT_HINT)
+        exam_student = Student.query.filter_by(
+            canvas_id=student_canvas_id, exam_id=exam.id).one_or_none()
+        if not exam_student:
+            abort(404, "This student is not in this exam. ")
+        return exam, exam_student
+
+    def to_url(self, value):
+        exam, exam_student = value
+        rlt = format_student_url(exam.offering_canvas_id, exam.name, exam_student.canvas_id)
+        return rlt
 
 
 def format_exam_url(offering_canvas_id, exam_name):
@@ -19,7 +54,7 @@ def format_exam_url(offering_canvas_id, exam_name):
 
 
 class ExamConverter(BaseConverter):
-    regex = format_exam_url(offering_regex, exam_regex)
+    regex = format_exam_url(offering_regex, exam_regex + r'(?!/students/\d+)')
 
     def to_python(self, value):
         if not current_user.is_authenticated:
@@ -81,6 +116,7 @@ class OfferingConverter(BaseConverter):
 auth_module = Blueprint('auth', 'auth', url_prefix='/')
 dev_login_module = Blueprint('dev_login', 'dev_login', url_prefix='/dev_login')
 health_module = Blueprint('health', 'health', url_prefix='/health')
+c1c_module = Blueprint('c1c', 'c1c', url_prefix='/c1c')
 
 import server.controllers.auth_controllers  # noqa
 import server.controllers.dev_login_controllers  # noqa
