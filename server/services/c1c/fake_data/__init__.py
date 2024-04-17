@@ -8,7 +8,6 @@ if not FAKE_PHOTO_DICT:
 
 
 def get_fake_photo(student_canvas_id):
-    print(FAKE_PHOTO_DICT)
     try:
         with open(f"server/services/c1c/fake_data/photos/{FAKE_PHOTO_DICT[student_canvas_id]}",
                   'rb') as f:
