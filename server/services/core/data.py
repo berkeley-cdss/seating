@@ -1,9 +1,11 @@
+from server.forms import ImportStudentFormBase
 from server.services.canvas import get_student_roster_for_offering
-from server.services.csv import parse_csv
+from server.services.csv import parse_csv, parse_csv_str
 from server.services.google import get_spreadsheet_tab_content
 
 from server.services.core.room import prepare_room, prepare_seat
-from server.services.core.student import prepare_students
+from server.services.core.student import StudentImportConfig, prepare_students
+from server.typings.enum import AssignmentImportStrategy
 
 
 def get_room_from_google_spreadsheet(exam, room_form):
@@ -52,17 +54,33 @@ def _get_seats_from_manual_input(manual_input_dict):
     return headers, rows
 
 
+def _get_config_from_form(student_form: ImportStudentFormBase):
+    return StudentImportConfig(
+        revalidate_existing_assignments=student_form.revalidate_existing_assignments.data,
+        assignment_import_strategy=student_form.assignment_import_strategy.data,
+        updated_student_info_import_strategy=student_form.updated_student_info_import_strategy.data,
+        updated_preference_import_strategy=student_form.updated_preference_import_strategy.data,
+        new_student_import_strategy=student_form.new_student_import_strategy.data,
+        missing_student_import_strategy=student_form.missing_student_import_strategy.data
+    )
+
+
 def get_students_from_google_spreadsheet(exam, student_form):
     headers, rows = get_spreadsheet_tab_content(student_form.sheet_url.data,
                                                 student_form.sheet_range.data)
-    return prepare_students(exam, headers, rows)
+    return prepare_students(exam, headers, rows, config=_get_config_from_form(student_form))
 
 
 def get_students_from_csv(exam, student_form):
     headers, rows = parse_csv(student_form.file.data)
-    return prepare_students(exam, headers, rows)
+    return prepare_students(exam, headers, rows, config=_get_config_from_form(student_form))
 
 
-def get_students_from_canvas(exam):
+def get_students_from_manual_input(exam, student_form):
+    headers, rows = parse_csv_str(student_form.text.data)
+    return prepare_students(exam, headers, rows, config=_get_config_from_form(student_form))
+
+
+def get_students_from_canvas(exam, student_form):
     headers, rows = get_student_roster_for_offering(exam.offering_canvas_id)
-    return prepare_students(exam, headers, rows)
+    return prepare_students(exam, headers, rows, config=_get_config_from_form(student_form))

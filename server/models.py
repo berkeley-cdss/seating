@@ -12,7 +12,7 @@ from sqlalchemy.ext.associationproxy import association_proxy
 
 from server import app
 from server.utils.date import parse_ISO8601
-from server.utils.misc import arr_to_dict
+from server.utils.misc import arr_to_dict, set_to_str
 
 db = SQLAlchemy(app=app)
 
@@ -202,7 +202,7 @@ class Seat(db.Model):
 
     @property
     def display_name(self):
-        return self.name if self.name else "Movable Seat"
+        return self.name if self.name else f"Movable Seat ({set_to_str(self.attributes)})"
 
     def __repr__(self):
         return '<Seat {}>'.format(self.display_name)

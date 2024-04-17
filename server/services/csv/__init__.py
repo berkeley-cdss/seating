@@ -16,7 +16,14 @@ def parse_csv(file):
     """
     Parse a CSV file and return a list of headers and rows.
     """
-    reader = LowerCaseDictReader(io.StringIO(file.read().decode('utf-8')))
+    return parse_csv_str(file.read().decode('utf-8'))
+
+
+def parse_csv_str(csv_str):
+    """
+    Parse a CSV string and return a list of headers and rows.
+    """
+    reader = LowerCaseDictReader(io.StringIO(csv_str))
     headers = list(reader.fieldnames)
     rows = [row for row in reader]
     return headers, rows

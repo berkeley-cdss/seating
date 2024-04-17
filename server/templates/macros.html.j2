@@ -142,3 +142,48 @@
 </div>
 {% endif %}
 {% endmacro %}
+
+{% macro render_checkbox(form, field_name, label) %}
+<div class="checkbox" id="{{ field_name }}">
+  {{ form[field_name] }}
+  <label for="{{ field_name }}">{{ label }}</label>
+</div>
+{% endmacro %}
+
+{% macro render_import_strategies_choices(form) %}
+<div class="mdl-grid">
+  <div class="mdl-cell mdl-cell--12-col">
+    {{ render_checkbox(form, 'revalidate_existing_assignments', 'Revalidate Existing Seat Assignments') }}
+  </div>
+  <div class="mdl-cell mdl-cell--12-col">
+    <div id="assignment_import_strategy">
+      <label class="" for="assignment_import_strategy">Seat Assignment Import Strategy</label>
+      {{ form.assignment_import_strategy() }}
+    </div>
+  </div>
+  <div class="mdl-cell mdl-cell--12-col">
+    <div id="updated_student_info_import_strategy">
+      <label class="" for="updated_student_info_import_strategy">Student Basic Info Update Import Strategy</label>
+      {{ form.updated_student_info_import_strategy() }}
+    </div>
+  </div>
+  <div class="mdl-cell mdl-cell--12-col">
+    <div id="updated_preference_import_strategy">
+      <label class="" for="updated_preference_import_strategy">Student Preference Update Import Strategy</label>
+      {{ form.updated_preference_import_strategy() }}
+    </div>
+  </div>
+  <div class="mdl-cell mdl-cell--12-col">
+    <div id="new_student_import_strategy">
+      <label class="" for="new_student_import_strategy">New Row Strategy</label>
+      {{ form.new_student_import_strategy() }}
+    </div>
+  </div>
+  <div class="mdl-cell mdl-cell--12-col">
+    <div id="missing_student_import_strategy">
+      <label class="" for="missing_student_import_strategy">Missing row Strategy</label>
+      {{ form.missing_student_import_strategy() }}
+    </div>
+  </div>
+</div>
+{% endmacro %}
