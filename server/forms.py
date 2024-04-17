@@ -132,6 +132,11 @@ class ImportStudentFromCsvUploadForm(ImportStudentFormBase):
     ])
 
 
+class ImportStudentFromManualInputForm(ImportStudentFormBase):
+    text = TextAreaField('text', [InputRequired()], render_kw={
+                         "placeholder": "canvas id,email,name\n123456,x@y.z,John\n..."})
+
+
 class EditStudentsFormBase(FlaskForm):
     wants = StringField('wants')
     avoids = StringField('avoids')

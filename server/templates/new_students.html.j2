@@ -7,6 +7,7 @@
     <a href="#sheet-panel" class="mdl-tabs__tab is-active">Import from Custom Sheet</a>
     <a href="#canvas-panel" class="mdl-tabs__tab">Import from Canvas Roster</a>
     <a href="#upload-panel" class="mdl-tabs__tab">Import from CSV upload</a>
+    <a href="#manual-panel" class="mdl-tabs__tab">Manual Entry</a>
   </div>
   <div class="mdl-tabs__panel is-active" id="sheet-panel">
     <form action="{{ url_for('import_students_from_custom_sheet', exam=exam) }}" method="post">
@@ -69,6 +70,24 @@
           {{ macros.render_import_strategies_choices(from_csv_form) }}
           <div class="form-buttons">
             {{ from_csv_form.submit(class="mdl-button mdl-js-button mdl-button--raised") }}
+          </div>
+        </div>
+    </form>
+  </div>
+
+  <div class="mdl-tabs__panel" id="manual-panel">
+    <form action="{{ url_for('import_students_from_manual_input', exam=exam) }}" method="post">
+        {{ from_manual_input_form.hidden_tag() }}
+        <div class="mdl-grid">
+          <div class="mdl-cell mdl-cell--12-col">
+            <div class="mdl-textfield mdl-js-textfield mdl-textfield--floating-label">
+                {{ from_manual_input_form.text(class="mdl-textfield__input", id="students", rows=10, cols=70) }}
+              <label class="mdl-textfield__label" for="students">Enter student roster here (CSV format):</label>
+            </div>
+          </div>
+          {{ macros.render_import_strategies_choices(from_manual_input_form) }}
+          <div class="form-buttons">
+            {{ from_manual_input_form.submit(class="mdl-button mdl-js-button mdl-button--raised") }}
           </div>
         </div>
     </form>
