@@ -80,7 +80,11 @@ app.jinja_env.filters.update(
     max=max,
 )
 
+
 # These must be done after `app`` is created as they depend on `app`
+
+# prepare server cache
+import server.cache  # noqa
 
 # prepares all auth clients
 import server.services.auth  # noqa
@@ -89,7 +93,8 @@ import server.services.auth  # noqa
 import server.services.canvas.fake_data  # noqa
 
 # registers controller converters
-from server.controllers import ExamConverter, OfferingConverter  # noqa
+from server.controllers import ExamConverter, OfferingConverter, StudentConverter  # noqa
+app.url_map.converters['exam_student'] = StudentConverter
 app.url_map.converters['exam'] = ExamConverter
 app.url_map.converters['offering'] = OfferingConverter
 

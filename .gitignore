@@ -112,3 +112,6 @@ gcp-service-account-credentials.json
 
 # bootstrap
 setup*.sh
+
+# cache
+.cache/
