@@ -5,6 +5,10 @@ from server.typings.exception import DataValidationError
 from server.models import Room, Seat, SeatAssignment, Student
 
 
+SPECIAL_HEADERS = ['email', 'name', 'bcourses id', 'canvas id', 'student id', 'emailed', 'seat id', 'assignment',
+                   'session name', 'room name', 'seat name', 'public seat url']
+
+
 class StudentImportConfig:
     def __init__(self, *, revalidate_existing_assignments=True,
                  assignment_import_strategy: AssignmentImportStrategy = AssignmentImportStrategy.REVALIDATE,
@@ -38,10 +42,6 @@ def attr_to_room_id(attr: str) -> None | str:
     if not is_room_attr(attr):
         return None
     return attr[5:]
-
-
-SPECIAL_HEADERS = ['email', 'name', 'bcourses id', 'canvas id', 'student id', 'emailed', 'seat id', 'assignment',
-                   'session name', 'room name', 'seat name']
 
 
 def is_normal_attr(attr: str):
