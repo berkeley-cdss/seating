@@ -2,8 +2,6 @@ from werkzeug.exceptions import HTTPException
 from os import getenv
 from flask import redirect
 
-from server.services.core.assign import Preference
-
 
 class DataValidationError(Exception):
     pass
@@ -18,7 +16,7 @@ class SeatAssignmentError(Exception):
 
 
 class NotEnoughSeatError(SeatAssignmentError):
-    def __init__(self, exam, students, preference: Preference):
+    def __init__(self, exam, students, preference):
         pref_str = """\
         wants: {}
         avoids: {}
