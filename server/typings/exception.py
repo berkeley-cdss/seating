@@ -2,6 +2,8 @@ from werkzeug.exceptions import HTTPException
 from os import getenv
 from flask import redirect
 
+from server.services.core.assign import Preference
+
 
 class DataValidationError(Exception):
     pass
@@ -16,18 +18,17 @@ class SeatAssignmentError(Exception):
 
 
 class NotEnoughSeatError(SeatAssignmentError):
-    def __init__(self, exam, students, preference):
-        wants, avoids, room_wants, room_avoids = preference
+    def __init__(self, exam, students, preference: Preference):
         pref_str = """\
         wants: {}
         avoids: {}
         room_wants: {}
         room_avoids: {}
         """.format(
-            ', '.join(wants),
-            ', '.join(avoids),
-            ', '.join([exam.get_room(id).name_and_start_at_time_display(short=True) for id in room_wants]),
-            ', '.join([exam.get_room(id).name_and_start_at_time_display(short=True) for id in room_avoids]),
+            ', '.join(preference.wants),
+            ', '.join(preference.avoids),
+            ', '.join([exam.get_room(id).name_and_start_at_time_display(short=True) for id in preference.room_wants]),
+            ', '.join([exam.get_room(id).name_and_start_at_time_display(short=True) for id in preference.room_avoids]),
         )
         students_str = ', '.join([s.name for s in students])
         super().__init__(self, "Assignment failed on:\n"
