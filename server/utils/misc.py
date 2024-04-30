@@ -13,11 +13,11 @@ def str_set_to_set(s, force_lower=True, ignore_empty=True):
     import re
     if force_lower:
         s = s.lower()
-    rlt = set(re.split(r'\s|,', s)) if s else set()
+    rlt = set(re.split(r',', s)) if s else set()
     if ignore_empty:
         rlt.discard('')
     return rlt
 
 
 def set_to_str(s):
-    return ' '.join(s)
+    return ','.join(s)
