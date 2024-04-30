@@ -883,8 +883,8 @@ def assign(exam):
 @app.route('/<exam_student:exam_student>/assign/', methods=['GET', 'POST'])
 def assign_student(exam_student):
     form = AssignSingleForm()
+    exam, student = exam_student
     if form.validate_on_submit():
-        exam, student = exam_student
         try:
             if 'just_delete' in request.form:
                 if student.assignment:
