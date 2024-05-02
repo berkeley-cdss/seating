@@ -791,9 +791,9 @@ def edit_students(exam):
         if 'cancel' in request.form:
             return redirect(url_for('students', exam=exam))
         if not form.use_all_emails.data:
-            emails = [x for x in re.split(r'\s|,', form.emails.data) if x]
+            emails = list(str_set_to_set(form.emails.data))
             students = Student.query.filter(
-                Student.email.in_(emails) & Student.exam_id == exam.id)
+                Student.email.in_(emails) & (Student.exam_id == exam.id))
         else:
             students = Student.query.filter_by(exam_id=exam.id)
         edited = {student.email for student in students}
@@ -803,8 +803,8 @@ def edit_students(exam):
         if not edited and not did_not_exist:
             abort(404, "No change has been made.")
         for student in students:
-            new_wants_set = set(re.split(r'\s|,', form.wants.data)) if form.wants.data else set()
-            new_avoids_set = set(re.split(r'\s|,', form.avoids.data)) if form.avoids.data else set()
+            new_wants_set = str_set_to_set(form.wants.data)
+            new_avoids_set = str_set_to_set(form.avoids.data)
             new_room_wants_set = set(form.room_wants.data)
             new_room_avoids_set = set(form.room_avoids.data)
             # wants and avoids should not overlap
