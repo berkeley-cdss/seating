@@ -94,8 +94,8 @@ def get_user_courses_categorized(user: FakeUser | User) \
     def _safe_to_date(date):
         try:
             return datetime.strptime(date, '%Y-%m-%dT%H:%M:%S%z')
-        except ValueError:
-            return None
+        except:
+            return date
 
     # sorted by start_at_date DESC and then by name ASC
     def _sort_courses(courses: list[FakeCourse | Course]):
