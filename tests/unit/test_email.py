@@ -34,7 +34,7 @@ def test_send_plain_text_email(mock_smtp):
     """
 
     success = send_single_email(smtp=_email_config,
-                                from_addr=TEST_FROM_EMAIL,
+                                reply_to=TEST_FROM_EMAIL,
                                 to_addr=TEST_TO_EMAIL,
                                 subject=TEST_SUBJECT,
                                 body=TEST_BODY)
@@ -86,7 +86,7 @@ def test_batch_send(mock_smtp):
     """
     batch_size = 1000
     email_messages = [
-        construct_email(from_addr=TEST_FROM_EMAIL,
+        construct_email(reply_to=TEST_FROM_EMAIL,
                         to_addr=TEST_TO_EMAIL,
                         subject=TEST_SUBJECT,
                         body=TEST_BODY)
@@ -182,7 +182,7 @@ def test_batch_send_with_mock_smtp_server(smtp_server):
 
     batch_size = 1000
     email_messages = [
-        construct_email(from_addr=TEST_FROM_EMAIL,
+        construct_email(reply_to=TEST_FROM_EMAIL,
                         to_addr=TEST_TO_EMAIL,
                         subject=TEST_SUBJECT,
                         body=TEST_BODY)

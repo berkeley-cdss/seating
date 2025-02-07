@@ -21,9 +21,12 @@ class SMTPConfig:
                 f'use_auth={self.use_auth})')
 
 
-def construct_email(*, from_addr, to_addr, subject, body, body_html=None, bcc_addr=None, cc_addr=None):
+# TODO: Due to email config, we hard code the FROM address
+# What _users_ specify is the REPLY-TO address, but is labeled as FROM in the form.
+def construct_email(*, reply_to, to_addr, subject, body, body_html=None, bcc_addr=None, cc_addr=None):
     msg = EmailMessage()
-    msg['From'], msg['To'], msg['Subject'] = from_addr, to_addr, subject
+    msg['From'] = 'seamless-learning@berkeley.edu'
+    msg['Reply-To'], msg['To'], msg['Subject'] = reply_to, to_addr, subject
     if bcc_addr:
         if isinstance(bcc_addr, str):
             bcc_addr = bcc_addr.split(',')
@@ -110,9 +113,9 @@ def send_emails(*, smtp: SMTPConfig, messages=list[EmailMessage],
     return successful_emails, failed_emails
 
 
-def send_single_email(*, smtp: SMTPConfig, from_addr, to_addr, subject, body,
+def send_single_email(*, smtp: SMTPConfig, reply_to, to_addr, subject, body,
                       body_html=None, bcc_addr=None, cc_addr=None):
-    msg = construct_email(from_addr=from_addr, to_addr=to_addr, subject=subject, body=body,
+    msg = construct_email(reply_to=reply_to, to_addr=to_addr, subject=subject, body=body,
                           body_html=body_html, bcc_addr=bcc_addr, cc_addr=cc_addr)
     successful_emails, failed_emails = send_emails(smtp=smtp, messages=[msg])
     if successful_emails:
