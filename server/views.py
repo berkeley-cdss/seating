@@ -871,9 +871,19 @@ def assign(exam):
             delete_all_assignments_no_sync(exam)
         try:
             assignments = assign_students(exam)
-            db.session.add_all(assignments)
-            db.session.commit()
-            flash(f"Successfully assigned {len(assignments)} students.", 'success')
+            if assignments:
+                # Use a single optimized INSERT statement for all assignments
+                from sqlalchemy import insert
+                stmt = insert(SeatAssignment)
+                assignment_values = [
+                    {'student_id': a.student.id, 'seat_id': a.seat.id}
+                    for a in assignments
+                ]
+                db.session.execute(stmt, assignment_values)
+                db.session.commit()
+                flash(f"Successfully assigned {len(assignments)} students.", 'success')
+            else:
+                flash("No assignments to make.", 'info')
         except SeatAssignmentError as e:
             flash(str(e), 'error')
         return redirect(url_for('students', exam=exam))

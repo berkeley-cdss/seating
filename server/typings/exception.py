@@ -32,7 +32,7 @@ class NotEnoughSeatError(SeatAssignmentError):
             ', '.join(str(x) for x in preference.room_wants),
             ', '.join(str(x) for x in preference.room_avoids)
         )
-        students_str = ', '.join(str(s) for s in students)  # Use str(s) instead of s.name for MagicMock objects
+        students_str = ', '.join([s.name if s.name else str(s) for s in students])
         super().__init__(self, "Assignment failed on:\n"
                          f"- Student:\n{students_str}\n"
                          f"- Preference:\n{pref_str}\n"
