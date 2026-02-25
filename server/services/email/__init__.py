@@ -51,7 +51,7 @@ def email_about_assignment(exam, form, to_addrs):
             failure_addrs.add(to_addr)
             continue
         email_message = construct_email(
-            from_addr=form.from_addr.data,
+            reply_to=form.from_addr.data,
             to_addr=to_addr,
             subject=subject,
             body=body,

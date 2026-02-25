@@ -7,7 +7,7 @@ from server import app
 from server.models import Offering
 from server.services.canvas.fake_canvas import FakeCanvas, FakeCourse, FakeUser
 from server.typings.exception import Redirect
-
+from datetime import datetime
 
 def is_mock_canvas() -> bool:
     return app.config['MOCK_CANVAS'] and \
@@ -91,12 +91,18 @@ def get_user_courses_categorized(user: FakeUser | User) \
     student_courses: list[FakeCourse | Course] = list(student_courses)
     other: list[FakeCourse | Course] = list(other)
 
+    def _safe_to_date(date):
+        try:
+            return datetime.strptime(date, '%Y-%m-%dT%H:%M:%S%z')
+        except:
+            return date
+
     # sorted by start_at_date DESC and then by name ASC
     def _sort_courses(courses: list[FakeCourse | Course]):
         # Cannot do courses.sort(key=lambda c: (c.start_at_date, c.name))
         # String or Datetime object cannot be negated to reverse the order
         courses.sort(key=lambda c: c.name)
-        courses.sort(key=lambda c: c.start_at_date, reverse=True)
+        courses.sort(key=lambda c: _safe_to_date(c.start_at_date), reverse=True)
 
     _sort_courses(staff_courses)
     _sort_courses(student_courses)
