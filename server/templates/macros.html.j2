@@ -70,6 +70,9 @@
               <img class="photo" src="{{ url_for('student_photo', exam_student=(room.exam, seat.assignment.student)) }}" alt="photo for: {{ seat.assignment.student.name }}"/>
             <br>{{ seat.assignment.student.sid }}
           {% endif %}
+          {% if staff %}
+            <br><a target="_blank" href="{{ url_for('student_single_seat', seat_id=seat.id) }}">Shareable Link</a>
+          {% endif %}
         </div>
       {% endfor %}
 
@@ -128,6 +131,9 @@
           <br>
             <img class="photo" src="{{ url_for('student_photo', exam_student=(room.exam, seat.assignment.student)) }}" alt="photo for: {{ seat.assignment.student.name }}"/>
           <br>{{ seat.assignment.student.sid }}
+        {% endif %}
+        {% if staff %}
+          <br><a target="_blank" href="{{ url_for('student_single_seat', seat_id=seat.id) }}">Shareable Link</a>
         {% endif %}
       </div>
       {% if loop.last %}
