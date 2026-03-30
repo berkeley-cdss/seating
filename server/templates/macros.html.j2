@@ -129,7 +129,7 @@
           <br>
             <img class="photo" src="{{ url_for('student_photo', exam_student=(room.exam, seat.assignment.student)) }}" alt="photo for: {{ seat.assignment.student.name }}"/>
           <br>{{ seat.assignment.student.sid }}
-        {% endif %}
+        {% endif %} -m 
       </div>
       {% if loop.last %}
         <div class="seat-label" style="left:{{ x - 50 }}px;top:{{ y }}px">{{ seat.name }}</div>
@@ -139,7 +139,9 @@
   </div>
   </div>
   <h6>Back</h6>
+  {% if staff %}
   <h6>Click on any assigned seat (blue) to view student details. Clicking on an unoccupied seat will lead you to a shareable link for that seat.</h6>
+  {% endif %}
   {% endif %}
 </div>
 {% endif %}
