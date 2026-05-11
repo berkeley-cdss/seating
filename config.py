@@ -33,6 +33,15 @@ class ConfigBase(object):
     CANVAS_CLIENT_ID = getenv('CANVAS_CLIENT_ID')
     CANVAS_CLIENT_SECRET = getenv('CANVAS_CLIENT_SECRET')
 
+    # Google OAuth setup (used as an alternate login provider).
+    # When unset, the Google login button is hidden. See the wiki/README for
+    # details on creating an OAuth client in Google Cloud Console.
+    GOOGLE_CLIENT_ID = getenv('GOOGLE_CLIENT_ID', optional=True)
+    GOOGLE_CLIENT_SECRET = getenv('GOOGLE_CLIENT_SECRET', optional=True)
+    # Comma-separated list of hosted domains to accept (e.g. "berkeley.edu").
+    # Leave empty to accept any Google account that matches an existing user.
+    GOOGLE_HOSTED_DOMAINS = getenv('GOOGLE_HOSTED_DOMAINS', '')
+
     # Stub Setup, allow
     MOCK_CANVAS = getenv('MOCK_CANVAS', 'false').lower() == 'true'
     SEND_EMAIL = getenv('SEND_EMAIL', 'off').lower()

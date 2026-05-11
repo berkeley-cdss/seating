@@ -26,3 +26,21 @@ The entire app is protected behind Canvas (bCourses) authentication and authoriz
 - If you are an instructor or a course staff member who wants to use this app for your course, see [here](../../wiki/for-course-staff).
 - If you are a developer or maintainer that works with this app, see [here](../../wiki/for-developers).
 - If you are a student, see [here](../../wiki/for-students).
+
+## Authentication
+
+The app supports two login providers:
+
+- **Canvas (bCourses)** — the primary provider. Required for first-time
+  sign-in; this is also what populates a user's email and course
+  enrollments.
+- **Google** — an optional secondary provider. When configured, users
+  who have already signed in via Canvas at least once may sign in with
+  the Google account that matches their Canvas email. Google sign-in
+  will **never** create a new user.
+
+See [`docs/google-oauth.md`](docs/google-oauth.md) for step-by-step
+instructions on creating an OAuth client in Google Cloud Console, the
+exact JavaScript origins and redirect URIs to register, and the
+`GOOGLE_CLIENT_ID` / `GOOGLE_CLIENT_SECRET` / `GOOGLE_HOSTED_DOMAINS`
+environment variables that enable the Google login button.
