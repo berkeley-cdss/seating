@@ -79,6 +79,24 @@ class UploadRoomForm(RoomFormBase):
     display_name = StringField('display_name', [InputRequired()])
 
 
+class PreviewLayoutForm(FlaskForm):
+    """Upload or paste a room CSV just to look at it - nothing is saved."""
+    file = FileField('Choose File', validators=[
+        FileAllowed(['csv'], 'CSV files only!')
+    ])
+    text = TextAreaField('text', render_kw={
+        "placeholder": "row,seat,left,right,broken\nA,1,TRUE,,\nA,2,,TRUE,TRUE\n..."})
+    submit = SubmitField('preview layout')
+
+    def validate(self, extra_validators=None):
+        if not super().validate(extra_validators):
+            return False
+        if not self.file.data and not (self.text.data or '').strip():
+            self.file.errors = list(self.file.errors) + ['Upload a CSV file or paste CSV text.']
+            return False
+        return True
+
+
 class MovableSeatSubForm(NoCsrfForm):
     attributes = StringField('attributes', default='', render_kw={"placeholder": "Righty, Aisle"})
     count = IntegerField('count', [InputRequired()], default=1, render_kw={"placeholder": "1"})

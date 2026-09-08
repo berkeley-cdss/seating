@@ -29,6 +29,16 @@ def parse_csv_str(csv_str):
     return headers, rows
 
 
+def original_csv_headers(csv_str):
+    """
+    The header row exactly as written, before parse_csv_str lowercases it.
+
+    Useful when a column name is data - a layout is named by whoever made the
+    spreadsheet, so it should be shown the way they spelled it.
+    """
+    return next(csv.reader(io.StringIO(csv_str)), [])
+
+
 def to_csv_str(headers, rows) -> str:
     """
     Convert a list of headers and rows to a CSV string.

@@ -2,18 +2,64 @@
 {% import 'macros.html.j2' as macros with context %}
 
 {% block body %}
-<label>Currently Available Mock Users:</label>
-<ul>
-  {% for mock_user in available_mock_users %}
-    <li> {{mock_user}} </li>
-  {% endfor %}
-</ul>
-{% call macros.form(form) %}
-<main class="mdl-grid">
-  <div class="form-buttons">
-    <label for="user_id">User ID:</label>   {{ form.user_id(class="mdl-textfield__input") }}
-    {{ form.submit(class="mdl-button mdl-js-button mdl-button--raised mdl-js-ripple-effect mdl-button--accent") }}
+<div class="rooms mdl-grid">
+  <div class="mdl-cell mdl-cell--12-col">
+    <h4>Dev Login</h4>
+    <p>
+      This server runs against the fake Canvas, so there is no real sign-in. Pick one of the
+      seeded users below. This page does not exist in staging or production.
+    </p>
   </div>
-</main>
-{% endcall %}
+
+  <div class="mdl-cell mdl-cell--12-col">
+    {% call macros.form(form) %}
+    <table class="mdl-data-table mdl-js-data-table mdl-shadow--2dp" style="width: 100%;">
+      <thead>
+        <tr>
+          <th class="mdl-data-table__cell--non-numeric">Name</th>
+          <th class="mdl-data-table__cell--non-numeric">Canvas ID</th>
+          <th class="mdl-data-table__cell--non-numeric">Enrollments</th>
+          <th class="mdl-data-table__cell--non-numeric"></th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for user in mock_users %}
+        <tr>
+          <td class="mdl-data-table__cell--non-numeric">
+            {{ user.name }}<br><small>{{ user.email }}</small>
+          </td>
+          <td class="mdl-data-table__cell--non-numeric">{{ user.id }}</td>
+          <td class="mdl-data-table__cell--non-numeric">
+            {% for course in user.courses %}
+              {{ course.roles|join(', ') }} in {{ course.name }}{% if not loop.last %}<br>{% endif %}
+            {% else %}
+              No course enrollments
+            {% endfor %}
+          </td>
+          <td class="mdl-data-table__cell--non-numeric">
+            {# A submit button carries its own name and value, so one form covers every user. #}
+            <button class="mdl-button mdl-js-button mdl-button--raised mdl-js-ripple-effect"
+                    type="submit" name="user_id" value="{{ user.id }}">Log in</button>
+          </td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+    {% endcall %}
+  </div>
+
+  <div class="mdl-cell mdl-cell--12-col">
+    <h5>Another Canvas ID</h5>
+    <form method="POST">
+      {{ form.csrf_token(id="manual_csrf_token") }}
+      <div class="mdl-textfield mdl-js-textfield mdl-textfield--floating-label mdl-cell--4-col">
+        {{ form.user_id(class="mdl-textfield__input") }}
+        <label class="mdl-textfield__label" for="user_id">Canvas ID</label>
+      </div>
+      <div class="form-buttons">
+        {{ form.submit(class="mdl-button mdl-js-button mdl-button--raised") }}
+      </div>
+    </form>
+  </div>
+</div>
 {% endblock %}

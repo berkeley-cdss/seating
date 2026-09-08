@@ -1,8 +1,9 @@
 from server.forms import ImportStudentFormBase
 from server.services.canvas import get_student_roster_for_offering
-from server.services.csv import parse_csv, parse_csv_str
+from server.services.csv import original_csv_headers, parse_csv, parse_csv_str
 from server.services.google import get_spreadsheet_tab_content
 
+from server.services.core.layout_preview import build_layout_preview
 from server.services.core.room import prepare_room, prepare_seat
 from server.services.core.student import StudentImportConfig, prepare_students
 from server.typings.enum import AssignmentImportStrategy
@@ -52,6 +53,18 @@ def _get_seats_from_manual_input(manual_input_dict):
         row_dic['count'] = count
         rows.append(row_dic)
     return headers, rows
+
+
+def get_layout_preview_from_csv(file):
+    """Parse an uploaded room CSV into a preview, without creating a room."""
+    return get_layout_preview_from_text(file.read().decode('utf-8'))
+
+
+def get_layout_preview_from_text(csv_str):
+    """Parse room CSV text into a preview, without creating a room."""
+    headers, rows = parse_csv_str(csv_str)
+    return build_layout_preview(prepare_seat(headers, rows),
+                                columns=original_csv_headers(csv_str))
 
 
 def _get_config_from_form(student_form: ImportStudentFormBase):
