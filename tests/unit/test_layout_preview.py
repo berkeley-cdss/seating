@@ -17,7 +17,7 @@ from server.services.core.layout_preview import (
     seat_label,
 )
 from server.services.core.room import prepare_seat
-from server.services.csv import parse_csv_str
+from server.services.csv import parse_csv_str, sniff_delimiter
 
 # The column vocabulary of the master room sheet, whose tabs are exported as
 # CSV to get here. Rows are two seats of a row, a walkway gap and movable seats.
@@ -239,6 +239,53 @@ class TestBuildLayoutPreview:
         assert Seat.query.count() == 0
 
 
+class TestDelimiters:
+    """A room can arrive as a downloaded CSV or as rows pasted from a sheet."""
+
+    def test_a_comma_separated_header_is_read_as_csv(self):
+        assert sniff_delimiter('row,seat,lefty\nA,1,TRUE\n') == ','
+
+    def test_a_tab_separated_header_is_read_as_tsv(self):
+        assert sniff_delimiter('Row\tSeat\tLefty\nA\t1\tTRUE\n') == '\t'
+
+    def test_a_heading_containing_a_comma_does_not_beat_the_tabs(self):
+        # "2/3 Seating" is a real column, and pasted rows are tab separated.
+        assert sniff_delimiter('Row\tSeat\t2/3 Seating, alt\nA\t1\tTRUE\n') == '\t'
+
+    def test_a_single_column_falls_back_to_csv(self):
+        assert sniff_delimiter('row\nA\n') == ','
+
+    def test_a_byte_order_mark_is_ignored(self):
+        assert sniff_delimiter('\ufeffRow\tSeat\nA\t1\n') == '\t'
+
+    def test_pasted_rows_give_the_same_layout_as_the_csv(self):
+        as_csv = preview_from_csv(MASTER_SHEET_CSV)
+        as_tsv = preview_from_csv(MASTER_SHEET_CSV.replace(',', '\t'))
+        assert as_tsv['counts'] == as_csv['counts']
+        assert [s['label'] for s in as_tsv['seats']] == [s['label'] for s in as_csv['seats']]
+
+    def test_a_pasted_google_sheets_range_is_understood(self):
+        # Tab separated, TRUE/FALSE in every cell, blank x/y - exactly what a
+        # copied range out of the master room sheet looks like.
+        pasted = (
+            "Row\tSeat\tX\tY\tReserved\tLefty\tRighty\tAisle\tFront\tBack\tTable\t"
+            "AlternateSeating1\t2/3 Seating\tWalkingRow\tBroken\t150Wheeler\n"
+            "A\t3\t\t\tTRUE\tFALSE\tTRUE\tFALSE\tTRUE\tFALSE\tFALSE\tTRUE\tFALSE\tFALSE\t\tTRUE\n"
+            "A\t9\t\t\tTRUE\tTRUE\tFALSE\tTRUE\tTRUE\tFALSE\tFALSE\tTRUE\tFALSE\tFALSE\t\tTRUE\n"
+            "C\t2\t\t\tFALSE\tFALSE\tTRUE\tFALSE\tFALSE\tFALSE\tFALSE\tTRUE\tTRUE\tTRUE\t\tTRUE\n"
+        )
+        preview = preview_from_csv(pasted)
+        assert preview['counts'] == {'total': 3, 'fixed': 3, 'movable': 0, 'broken': 0}
+        by_name = {seat['name']: seat for seat in preview['fixed_seats']}
+        assert by_name['A9']['badge'] == 'L'
+        assert by_name['A3']['badge'] == ''
+        # FALSE cells stay off, and layouts keep the sheet's own spelling.
+        assert by_name['A3']['attributes'] == ['150wheeler', 'alternateseating1', 'front',
+                                               'reserved', 'righty']
+        layouts = [entry['label'] for entry in preview['legend_layouts']]
+        assert layouts == ['150Wheeler', '2/3 Seating', 'AlternateSeating1']
+
+
 class TestMasterSheetLayout:
     """The columns a room tab of the master room sheet actually uses."""
 
@@ -310,10 +357,32 @@ class TestPreviewLayoutPage:
         assert response.status_code == 200
         assert response.data.count(b'class="layout-seat"') == 7
 
+    def test_uploaded_tsv_renders_every_seat(self, authed_client):
+        import io
+        data = {'file': (io.BytesIO(SAMPLE_CSV.replace(',', '\t').encode()), 'room.tsv')}
+        response = authed_client.post('/layouts/preview/', data=data,
+                                      content_type='multipart/form-data')
+        assert response.status_code == 200
+        assert response.data.count(b'class="layout-seat"') == 7
+
+    def test_an_upload_with_a_byte_order_mark_is_read(self, authed_client):
+        import io
+        data = {'file': (io.BytesIO(SAMPLE_CSV.encode('utf-8-sig')), 'room.csv')}
+        response = authed_client.post('/layouts/preview/', data=data,
+                                      content_type='multipart/form-data')
+        assert response.status_code == 200
+        assert response.data.count(b'class="layout-seat"') == 7
+
+    def test_pasted_rows_render_every_seat(self, authed_client):
+        response = authed_client.post('/layouts/preview/',
+                                      data={'text': SAMPLE_CSV.replace(',', '\t')})
+        assert response.status_code == 200
+        assert response.data.count(b'class="layout-seat"') == 7
+
     def test_empty_submission_is_rejected(self, authed_client):
         response = authed_client.post('/layouts/preview/', data={'text': '  '})
         assert response.status_code == 200
-        assert b'Upload a CSV file or paste CSV text.' in response.data
+        assert b'Upload a file, or paste the rows from a spreadsheet.' in response.data
         assert b'class="layout-seat"' not in response.data
 
     def test_csv_without_required_columns_is_reported(self, authed_client):

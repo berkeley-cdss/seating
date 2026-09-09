@@ -16,7 +16,7 @@ import server.services.canvas as canvas_client
 from server.services.email import email_about_assignment, substitute_about_assignment
 from server.services.core.data import get_room_from_csv, get_room_from_google_spreadsheet, get_room_from_manual_input, \
     get_students_from_canvas, get_students_from_csv, get_students_from_google_spreadsheet, update_room_from_manual_input, \
-    get_students_from_manual_input, get_layout_preview_from_csv, get_layout_preview_from_text
+    get_students_from_manual_input, get_layout_preview_from_file, get_layout_preview_from_text
 from server.services.core.assign import assign_single_student, assign_students
 from server.typings.exception import NotEnoughSeatError, SeatAssignmentError
 from server.typings.enum import EmailTemplate
@@ -1015,7 +1015,7 @@ def preview_layout():
     if form.validate_on_submit():
         try:
             if form.file.data:
-                preview = get_layout_preview_from_csv(form.file.data)
+                preview = get_layout_preview_from_file(form.file.data)
             else:
                 preview = get_layout_preview_from_text(form.text.data)
         except Exception as e:

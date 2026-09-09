@@ -61,15 +61,15 @@
       {{ form.hidden_tag() }}
       <div class="mdl-tabs mdl-js-tabs mdl-js-ripple-effect">
         <div class="mdl-tabs__tab-bar">
-          <a href="#preview-upload-panel" class="mdl-tabs__tab is-active">From CSV Upload</a>
-          <a href="#preview-paste-panel" class="mdl-tabs__tab">From Pasted Text</a>
+          <a href="#preview-upload-panel" class="mdl-tabs__tab is-active">From File Upload</a>
+          <a href="#preview-paste-panel" class="mdl-tabs__tab">From Pasted Rows</a>
         </div>
 
         <div class="mdl-tabs__panel is-active" id="preview-upload-panel">
           <div class="mdl-grid">
             <div class="mdl-cell mdl-cell--12-col">
-              {{ form.file(class="mdl-textfield__input", type="file", accept=".csv", id="upload_csv_file") }}
-              <label for="upload_csv_file">Export one room tab of the master sheet as CSV, then upload it here.</label>
+              {{ form.file(class="mdl-textfield__input", type="file", accept=".csv,.tsv,.txt", id="upload_csv_file") }}
+              <label for="upload_csv_file">Export one room tab of the master sheet as CSV or TSV, then upload it here.</label>
             </div>
           </div>
         </div>
@@ -79,7 +79,7 @@
             <div class="mdl-cell mdl-cell--12-col">
               <div class="mdl-textfield mdl-js-textfield mdl-cell--12-col">
                 {{ form.text(class="mdl-textfield__input layout-preview__textarea", rows=8, id="layout-csv-text") }}
-                <label class="mdl-textfield__label" for="layout-csv-text">Paste the header row and seat rows here</label>
+                <label class="mdl-textfield__label" for="layout-csv-text">Copy the header row and seat rows out of the sheet and paste them here</label>
               </div>
             </div>
           </div>
@@ -99,7 +99,9 @@
         (<code>A</code> + <code>1</code> becomes seat <code>A1</code>). Optional <code>x</code> and
         <code>y</code> columns move where a seat is drawn. A row with a blank
         <code>row</code>/<code>seat</code> describes movable seats, and its <code>count</code>
-        column says how many. If you both upload a file and paste text, the file wins.
+        column says how many. Columns may be separated by commas or tabs, so a range copied
+        straight out of Google Sheets works as-is. If you both upload a file and paste rows,
+        the file wins.
       </p>
       <p>
         Every other column is a flag that is on when the cell says <code>TRUE</code>, and column

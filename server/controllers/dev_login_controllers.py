@@ -1,4 +1,4 @@
-from flask import request, jsonify, abort, redirect, url_for, render_template
+from flask import request, jsonify, abort, flash, redirect, url_for, render_template
 import server.services.canvas as canvas_client
 
 from server.controllers import dev_login_module
@@ -34,14 +34,19 @@ def dev_login_page():
         from server.forms import DevLoginForm
         form = DevLoginForm()
         if form.validate_on_submit():
-            if form.user_id.data:
+            user_id = form.user_id.data
+            # The fake Canvas only knows the seeded users, so anything else
+            # would fail later on with a stack trace instead of an explanation.
+            if user_id in FAKE_USERS:
                 return oauth_provider.authorize(
                     callback=url_for('auth.authorized'),
                     state=None,
-                    user_id=form.user_id.data,
+                    user_id=user_id,
                     _external=True, _scheme="http")
-            else:
-                abort(500, 'Invalid dev user')
+            flash(f"No seeded user has Canvas ID {user_id}. Pick one of the users below.", 'error')
+        for field, errors in form.errors.items():
+            for error in errors:
+                flash("{}: {}".format(field, error), 'error')
         return render_template('dev_login.html.j2', mock_users=_mock_user_roster(),
                                form=form, title="Dev Login")
     return redirect(url_for('index'))
@@ -66,11 +71,14 @@ def mock_token():
     user_id = request.form.get('code')
     if not user_id:
         abort(400, 'Invalid dev user')
+    fake_user = FAKE_USERS.get(str(user_id))
+    if not fake_user:
+        abort(400, 'Unknown dev user: {}'.format(user_id))
 
     mock_response = {
         'access_token': 'dev_access_token',
         'token_type': 'Bearer',
-        'user': FAKE_USERS[str(user_id)],
+        'user': fake_user,
         'canvas_region': 'us-east-1',
         'refresh_token': 'dev_refresh_token',
         'expires_in': 3600

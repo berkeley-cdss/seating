@@ -59,6 +59,15 @@ class TestMockUserRoster:
         assert roles['Computer Architecture (Fall 2022)'] == ['student']
 
 
+@pytest.fixture()
+def no_csrf():
+    """The dev login posts a form; these tests are not about its CSRF token."""
+    was_enabled = flask_app.config.get('WTF_CSRF_ENABLED', True)
+    flask_app.config['WTF_CSRF_ENABLED'] = False
+    yield
+    flask_app.config['WTF_CSRF_ENABLED'] = was_enabled
+
+
 class TestDevLoginPage:
     def test_login_lands_on_the_dev_login_page(self, client):
         response = client.get('/login/')
@@ -71,6 +80,28 @@ class TestDevLoginPage:
         for name in ('Jimmy Xu', 'Lavender Angela', 'Sharon Lovera', 'Yu Long'):
             assert name.encode() in response.data
         assert response.data.count(b'name="user_id" value=') == 4
+
+    def test_a_pasted_id_is_trimmed(self, client, no_csrf):
+        # Copying an ID out of a spreadsheet brings whitespace with it.
+        response = client.post('/dev_login/', data={'user_id': '  345678\n'})
+        assert response.status_code == 302
+        assert 'user_id=345678' in response.headers['Location']
+
+    def test_an_unknown_id_is_explained_rather_than_crashing(self, client, no_csrf):
+        response = client.post('/dev_login/', data={'user_id': '999999'}, follow_redirects=True)
+        assert response.status_code == 200
+        assert b'No seeded user has Canvas ID 999999' in response.data
+
+    def test_a_missing_id_is_reported(self, client, no_csrf):
+        response = client.post('/dev_login/', data={'user_id': ''}, follow_redirects=True)
+        assert response.status_code == 200
+        assert b'This field is required' in response.data
+
+    def test_the_token_endpoint_rejects_an_unknown_user(self, client):
+        # Nothing reaches this with a bad id now, but it should not 500 if it does.
+        assert client.post('/dev_login/oauth2/token/', data={'code': '999999'}).status_code == 400
+        assert client.post('/dev_login/oauth2/token/', data={}).status_code == 400
+        assert client.post('/dev_login/oauth2/token/', data={'code': '123456'}).status_code == 200
 
     def test_page_is_hidden_when_canvas_is_real(self, client, monkeypatch):
         monkeypatch.setitem(flask_app.config, 'MOCK_CANVAS', False)

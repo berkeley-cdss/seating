@@ -51,7 +51,9 @@
   <div class="mdl-cell mdl-cell--12-col">
     <h5>Another Canvas ID</h5>
     <form method="POST">
-      {{ form.csrf_token(id="manual_csrf_token") }}
+      {# Rendered by hand rather than via hidden_tag() so the id stays unique;
+         Flask-WTF drops the field entirely when CSRF is switched off. #}
+      {% if form.csrf_token %}{{ form.csrf_token(id="manual_csrf_token") }}{% endif %}
       <div class="mdl-textfield mdl-js-textfield mdl-textfield--floating-label mdl-cell--4-col">
         {{ form.user_id(class="mdl-textfield__input") }}
         <label class="mdl-textfield__label" for="user_id">Canvas ID</label>
