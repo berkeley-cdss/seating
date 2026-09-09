@@ -1,0 +1,45 @@
+# NOTE: tests/ is deliberately NOT ignored. cli/db.py imports tests.fixtures at
+# runtime (via server/__init__.py -> cli), so the app will not start without it.
+
+# VCS and CI
+.git
+.gitignore
+.github
+
+# Local Python environments and caches
+.venv
+venv/
+ENV/
+__pycache__/
+*.py[cod]
+.pytest_cache/
+.mypy_cache/
+.cache/
+
+# Secrets and local config - never bake these into an image
+.env*
+gcp-service-account-credentials.json
+client_secret.json
+secrets.sh
+setup*.sh
+
+# Local databases
+*.db
+
+# Test and report output
+reports/
+axe/
+htmlcov/
+.coverage
+.coverage.*
+coverage.xml
+
+# Editor and OS files
+.vscode
+**/.DS_Store
+
+# Docs and dev-only tooling
+README.md
+codecov.yml
+.flake8
+requirements-dev.txt
