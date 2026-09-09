@@ -13,7 +13,7 @@ jobs:
   check-broken-dependencies:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v3
+      - uses: actions/checkout@v5
       - name: Bootstrap
         uses: ./.github/actions/bootstrap
       - name: Audit with pip
@@ -24,29 +24,17 @@ jobs:
   check-package-updates:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v3
+      - uses: actions/checkout@v5
       - name: Bootstrap
         uses: ./.github/actions/bootstrap
       - name: Audit with pip
         # only informational, does not fail CI
         run: |
           pip list --outdated
-  audit-with-safety:
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v3
-      - name: Bootstrap
-        uses: ./.github/actions/bootstrap
-      - name: Audit with safety
-        # returns 255 if there are vulnerabilities, 0 otherwise
-        # we use `|| true` to make sure CI does not fail whatsoever
-        run: |
-          safety check || true
-        continue-on-error: true
   audit-with-pip-audit:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v3
+      - uses: actions/checkout@v5
       - name: Bootstrap
         uses: ./.github/actions/bootstrap
         # returns 1 if there are vulnerabilities, 0 otherwise

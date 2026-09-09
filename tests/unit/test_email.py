@@ -110,7 +110,6 @@ def test_batch_send(mock_smtp):
     assert len(failed_emails) == 0
 
 
-import threading  # noqa
 from aiosmtpd.controller import Controller  # noqa
 from aiosmtpd.handlers import Message as MessageHandler  # noqa
 from email import message_from_string  # noqa
@@ -132,14 +131,14 @@ def smtp_server():
                             port=_fake_email_config.smtp_port)
     # has to use 127.0.0.1 instead of localhost so that the test can run on Github Actions
     # otherwise, the test does not seem to be able to find the smtp server
-    thread = threading.Thread(target=controller.start)
-    thread.start()
+    # Controller.start() runs the server on its own thread and only returns once
+    # the socket is bound, so starting it on yet another thread would race the test.
+    controller.start()
 
     yield controller
 
     CustomMessageHandler.received_message = []
     controller.stop()
-    thread.join()
 
 
 def test_send_plain_text_email_with_mock_smtp_server(smtp_server):

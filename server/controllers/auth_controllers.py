@@ -1,4 +1,4 @@
-from flask import redirect, request, session, url_for
+from flask import redirect, session, url_for
 from flask_login import login_user, logout_user, login_required
 import server.services.canvas as canvas_client
 
@@ -6,21 +6,25 @@ from server.models import db, User
 
 from server.controllers import auth_module
 from server.services.auth import oauth_provider
+from authlib.integrations.base_client import OAuthError
 
 
 @auth_module.route('/login/')
 def login():
     if canvas_client.is_mock_canvas():
         return redirect(url_for('dev_login.dev_login_page'))
-    return oauth_provider.authorize(
-        callback=url_for('auth.authorized', state=None, _external=True, _scheme="https"))
+    return oauth_provider.authorize_redirect(
+        url_for('auth.authorized', _external=True, _scheme="https"))
 
 
 @auth_module.route('/authorized/')
 def authorized():
-    resp = oauth_provider.authorized_response()
-    if resp is None:
-        return 'Access denied: {}'.format(request.args.get('error', 'unknown error'))
+    try:
+        # Authlib raises OAuthError when the provider reports an error, when the
+        # `state` does not match the one we generated, or when the code exchange fails.
+        resp = oauth_provider.authorize_access_token()
+    except OAuthError as e:
+        return 'Access denied: {}'.format(e.description or e.error or 'unknown error')
     session['access_token'] = resp['access_token']
     user_info = resp['user']
 
