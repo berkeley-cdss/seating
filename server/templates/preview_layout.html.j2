@@ -1,0 +1,325 @@
+{% extends 'base.html.j2' %}
+
+{% block head %}
+<link rel="stylesheet" type="text/css" href="{{ url_for('static', filename='css/layout_preview.css') }}">
+<script defer src="{{ url_for('static', filename='js/layout_preview.js') }}"></script>
+{% endblock %}
+
+{% set scale = 30 %}
+
+{#
+  A single seat, drawn the same way the room charts draw seats. Everything the
+  client-side editor needs (attributes, coordinates, whether it is broken)
+  travels with the button as data attributes.
+#}
+{% macro seat_button(seat, style='') %}
+<button type="button"
+        class="layout-seat"
+        id="{{ seat.id }}"
+        style="{{ style }}"
+        aria-pressed="true"
+        aria-disabled="true"
+        aria-label="{{ seat.label }}"
+        data-selected="true"
+        data-badge="{{ seat.badge }}"
+        data-fixed="{{ 'true' if seat.fixed else 'false' }}"
+        data-broken="{{ 'true' if seat.broken else 'false' }}"
+        data-notes="{{ 'true' if seat.notes else 'false' }}"
+        data-label="{{ seat.label }}"
+        data-name="{{ seat.name }}"
+        data-row="{{ seat.row }}"
+        data-seat-num="{{ seat.seat }}"
+        data-x="{{ seat.x if seat.x is not none else '' }}"
+        data-y="{{ seat.y if seat.y is not none else '' }}"
+        data-attributes="{{ seat.attributes|join(',') }}"><span class="layout-seat__badge">{{ seat.badge }}</span></button>
+<div class="seat-tooltip mdl-tooltip mdl-tooltip--large" for="{{ seat.id }}">
+  {{ seat.name if seat.name else 'Movable seat' }}
+  {% for attribute in seat.attribute_labels %}
+    <br>{{ attribute }}
+  {% endfor %}
+</div>
+{% endmacro %}
+
+{% macro legend_swatch(modifier='', badge='') %}
+<span class="layout-seat layout-legend__swatch {{ modifier }}" aria-hidden="true"
+      data-badge="{{ badge }}">{% if badge %}<span class="layout-seat__badge">{{ badge }}</span>{% endif %}</span>
+{% endmacro %}
+
+{% block body %}
+<div class="layout-preview mdl-grid" id="layout-preview">
+  <div class="mdl-cell mdl-cell--12-col">
+    <h4>Seating Layout Preview</h4>
+    <p>
+      Load the same room spreadsheet the import flow accepts to see how it renders, highlight
+      the seats belonging to a layout or attribute, then build a new layout and export it as a
+      CSV you can import as a room. Nothing on this page is saved to an exam.
+    </p>
+  </div>
+
+  <div class="mdl-cell mdl-cell--12-col">
+    <form action="{{ url_for('preview_layout') }}" method="post" enctype="multipart/form-data">
+      {{ form.hidden_tag() }}
+      <div class="mdl-tabs mdl-js-tabs mdl-js-ripple-effect">
+        <div class="mdl-tabs__tab-bar">
+          <a href="#preview-upload-panel" class="mdl-tabs__tab is-active">From File Upload</a>
+          <a href="#preview-paste-panel" class="mdl-tabs__tab">From Pasted Rows</a>
+        </div>
+
+        <div class="mdl-tabs__panel is-active" id="preview-upload-panel">
+          <div class="mdl-grid">
+            <div class="mdl-cell mdl-cell--12-col">
+              {{ form.file(class="mdl-textfield__input", type="file", accept=".csv,.tsv,.txt", id="upload_csv_file") }}
+              <label for="upload_csv_file">Export one room tab of the master sheet as CSV or TSV, then upload it here.</label>
+            </div>
+          </div>
+        </div>
+
+        <div class="mdl-tabs__panel" id="preview-paste-panel">
+          <div class="mdl-grid">
+            <div class="mdl-cell mdl-cell--12-col">
+              <div class="mdl-textfield mdl-js-textfield mdl-cell--12-col">
+                {{ form.text(class="mdl-textfield__input layout-preview__textarea", rows=8, id="layout-csv-text") }}
+                <label class="mdl-textfield__label" for="layout-csv-text">Copy the header row and seat rows out of the sheet and paste them here</label>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div class="form-buttons">
+        {{ form.submit(class="mdl-button mdl-js-button mdl-button--raised") }}
+        <button type="button" class="mdl-button mdl-js-button" id="layout-load-sample">Load example</button>
+      </div>
+    </form>
+
+    <details class="layout-preview__csv-help">
+      <summary>What does the spreadsheet look like?</summary>
+      <p>
+        <code>row</code> and <code>seat</code> are required and together name the seat
+        (<code>A</code> + <code>1</code> becomes seat <code>A1</code>). Optional <code>x</code> and
+        <code>y</code> columns move where a seat is drawn. A row with a blank
+        <code>row</code>/<code>seat</code> describes movable seats, and its <code>count</code>
+        column says how many. Columns may be separated by commas or tabs, so a range copied
+        straight out of Google Sheets works as-is. If you both upload a file and paste rows,
+        the file wins.
+      </p>
+      <p>
+        Every other column is a flag that is on when the cell says <code>TRUE</code>, and column
+        names are lowercased exactly as they are on import. A flag is a
+        <strong>seat attribute</strong> if its name is one this app knows &mdash;
+        <code>lefty</code>, <code>righty</code>, <code>broken</code>, <code>damaged</code>,
+        <code>unusable</code>, <code>aisle</code>, <code>front</code>, <code>back</code>,
+        <code>center</code>, <code>corner</code>, <code>window</code>, <code>table</code>,
+        <code>power</code>, <code>walkingrow</code>, <code>movable</code>, <code>reserved</code>,
+        <code>restricted</code>, <code>dsp</code>.
+        Anything else is a <strong>layout</strong>: a named set of seats, such as
+        <code>AlternateSeating1</code>, <code>2/3 Seating</code> or <code>2050VLSB</code>.
+      </p>
+      <p>
+        The example below is rows A and B of <em>Soda 306</em>, taken from the master room sheet.
+      </p>
+      <pre id="layout-sample-csv">Row,Seat,X,Y,Reserved,Lefty,Righty,Aisle,Front,Back,Table,AlternateSeating,Broken
+A,1,1,,,,TRUE,TRUE,TRUE,,,TRUE,
+A,2,,,,,TRUE,,TRUE,,,,
+A,3,,,,,TRUE,,TRUE,,,TRUE,
+A,4,,,,,TRUE,,TRUE,,,,
+A,5,,,,,TRUE,,TRUE,,,TRUE,
+A,6,,,,,TRUE,,TRUE,,,,
+A,7,,,,,TRUE,,TRUE,,,TRUE,
+A,8,,,,TRUE,,TRUE,TRUE,,,,
+B,1,1,,,,TRUE,TRUE,TRUE,,,TRUE,
+B,2,,,,,TRUE,,TRUE,,,,
+B,3,,,,,TRUE,,TRUE,,,TRUE,
+B,4,,,,,TRUE,,TRUE,,,,
+B,5,,,,,TRUE,,TRUE,,,TRUE,
+B,6,,,,,TRUE,,TRUE,,,,
+B,7,,,,,TRUE,,TRUE,,,TRUE,
+B,8,,,,,TRUE,,TRUE,,,,
+B,9,,,,TRUE,,TRUE,TRUE,,,TRUE,</pre>
+    </details>
+  </div>
+
+  {% if preview %}
+  <div class="mdl-cell mdl-cell--12-col">
+    <h5>Highlight and edit</h5>
+    <div class="layout-toolbar">
+      <div id="layout-highlight-field">
+        <label for="layout-highlight">Highlight seats belonging to</label>
+        <select id="layout-highlight">
+          <option value="">All seats ({{ preview.counts.total }})</option>
+          {% for group in preview.highlight_options %}
+          <optgroup label="{{ group.group }}">
+            {% for option in group.options %}
+            <option value="{{ option.key }}">{{ option.label }} ({{ option.count }})</option>
+            {% endfor %}
+          </optgroup>
+          {% endfor %}
+        </select>
+      </div>
+      <div class="form-buttons">
+        <button type="button" class="mdl-button mdl-js-button mdl-button--raised"
+                id="layout-mode-toggle" aria-pressed="false">New layout</button>
+      </div>
+    </div>
+
+    <div class="layout-edit-only" hidden>
+      <div class="layout-toolbar">
+        <div class="mdl-textfield mdl-js-textfield mdl-textfield--floating-label">
+          <input class="mdl-textfield__input" type="text" id="layout-name" value="newlayout">
+          <label class="mdl-textfield__label" for="layout-name">Name this layout</label>
+        </div>
+        <div class="form-buttons">
+          <button type="button" class="mdl-button mdl-js-button mdl-button--raised mdl-button--colored"
+                  id="layout-export">Export CSV</button>
+          <button type="button" class="mdl-button mdl-js-button" id="layout-select-all">Select all</button>
+          <button type="button" class="mdl-button mdl-js-button" id="layout-select-none">Clear</button>
+          <button type="button" class="mdl-button mdl-js-button" id="layout-invert">Invert</button>
+          <button type="button" class="mdl-button mdl-js-button" id="layout-drop-broken">Deselect broken</button>
+        </div>
+      </div>
+      <p class="layout-hint">
+        Click a seat to add or remove it. Right-click a seat to change its attributes.
+        <strong>Export CSV</strong> writes this file back out with your layout as a new
+        <code id="layout-column-preview">newlayout</code> column, ready to import as a room.
+      </p>
+    </div>
+
+    <p class="layout-status">
+      <span class="layout-status__count" id="layout-selected-count">{{ preview.counts.total }}</span>
+      of {{ preview.counts.total }} seats are in this layout
+      ({{ preview.counts.fixed }} fixed, {{ preview.counts.movable }} movable,
+      <span id="layout-broken-count">{{ preview.counts.broken }}</span> broken).
+      <span class="layout-detail" id="layout-detail" role="status" aria-live="polite"></span>
+    </p>
+  </div>
+
+  <div class="mdl-cell mdl-cell--12-col room">
+    {% if preview.grid_rows %}
+    <h5>Fixed Seats</h5>
+    <h6>Front</h6>
+    {% set b = preview.bounds %}
+    <div class="scroll" style="overflow-y: hidden">
+      <div class="seats layout-grid"
+           style="width: {{ scale * (b.x_max - b.x_min + 1) }}px; height: {{ scale * (b.y_max - b.y_min + 1) }}px">
+        {% for row in preview.grid_rows %}
+          {% for seat in row %}
+            {% set left = scale * (b.x_max - seat.x) %}
+            {% set top = scale * (seat.y - b.y_min) %}
+            {% if loop.first %}
+            <div class="seat-label" style="left: {{ left + 34 }}px; top: {{ top }}px">{{ seat.row }}</div>
+            {% endif %}
+            {{ seat_button(seat, 'left: %spx; top: %spx' | format(left, top)) }}
+            {% if loop.last %}
+            <div class="seat-label" style="left: {{ left - 34 }}px; top: {{ top }}px">{{ seat.row }}</div>
+            {% endif %}
+          {% endfor %}
+        {% endfor %}
+      </div>
+    </div>
+    <h6>Back</h6>
+    {% endif %}
+
+    {% if preview.movable_groups %}
+    <h5>Movable Seats</h5>
+    <div class="layout-movable">
+      {% for group in preview.movable_groups %}
+      <div class="layout-movable__group">
+        <div class="layout-movable__label">{{ group.label }} &mdash; {{ group.seats|length }}</div>
+        <div class="layout-movable__seats">
+          {% for seat in group.seats %}
+            {{ seat_button(seat) }}
+          {% endfor %}
+        </div>
+      </div>
+      {% endfor %}
+    </div>
+    {% endif %}
+  </div>
+
+  <div class="mdl-cell mdl-cell--12-col layout-legend">
+    <h5>Legend</h5>
+    <div class="mdl-grid">
+      <div class="mdl-cell mdl-cell--5-col">
+        <h6>Seat state</h6>
+        <ul>
+          <li>{{ legend_swatch('layout-legend__swatch--selected') }}
+            <span>In this layout <span class="layout-legend__desc">(Berkeley Blue)</span></span></li>
+          <li>{{ legend_swatch() }}
+            <span>Not in this layout <span class="layout-legend__desc">(inactive)</span></span></li>
+          <li>{{ legend_swatch('layout-legend__swatch--broken') }}
+            <span>Broken &mdash; slashed, on red</span></li>
+          <li>{{ legend_swatch('layout-legend__swatch--focus') }}
+            <span>Hovered or focused <span class="layout-legend__desc">(California Gold)</span></span></li>
+        </ul>
+        <h6>Seat markings</h6>
+        <ul>
+          <li>{{ legend_swatch('', 'L') }}
+            <span>Lefty desk <span class="layout-legend__desc">(righty desks, the default, are
+              left unlabelled, as are desks that work either way)</span></span></li>
+          <li>{{ legend_swatch('layout-legend__swatch--note') }}
+            <span>Restricted use (DSP, reserved, …) &mdash; hover any seat to see all its attributes</span></li>
+        </ul>
+      </div>
+
+      <div class="mdl-cell mdl-cell--7-col">
+        <h6>Columns in this file</h6>
+        <p class="layout-legend__desc">
+          A column is a <strong>seat attribute</strong> when its name is one the app knows
+          (below); every other column is a <strong>layout</strong> &mdash; a named set of seats.
+          Counts update as you edit.
+        </p>
+
+        <strong>Layouts</strong>
+        {% if preview.legend_layouts %}
+        <ul>
+          {% for entry in preview.legend_layouts %}
+          <li>
+            {{ legend_swatch('layout-legend__swatch--selected') }}
+            <span>
+              {{ entry.label }}
+              <span class="layout-legend__desc">(<span data-legend-count="{{ entry.key }}">{{ entry.count }}</span>
+                seat{{ '' if entry.count == 1 else 's' }})</span>
+              <br><span class="layout-legend__desc">{{ entry.description }}</span>
+            </span>
+          </li>
+          {% endfor %}
+        </ul>
+        {% else %}
+        <p class="layout-legend__desc">This file does not define any layouts.</p>
+        {% endif %}
+
+        <strong>Seat attributes</strong>
+        {% if preview.legend_attributes %}
+          {% for group in preview.legend_attributes %}
+          <ul>
+            {% for entry in group.entries %}
+            <li>
+              {% if entry.broken %}
+                {{ legend_swatch('layout-legend__swatch--broken', entry.badge) }}
+              {% elif entry.note %}
+                {{ legend_swatch('layout-legend__swatch--note', entry.badge) }}
+              {% else %}
+                {{ legend_swatch('', entry.badge) }}
+              {% endif %}
+              <span>
+                {{ entry.label }}
+                <span class="layout-legend__desc">({{ group.group }},
+                  <span data-legend-count="{{ entry.key }}">{{ entry.count }}</span> seats)</span>
+                <br><span class="layout-legend__desc">{{ entry.description }}</span>
+              </span>
+            </li>
+            {% endfor %}
+          </ul>
+          {% endfor %}
+        {% else %}
+        <p class="layout-legend__desc">This file does not set any seat attributes.</p>
+        {% endif %}
+      </div>
+    </div>
+  </div>
+
+  <script type="application/json" id="layout-data">{{ {'vocabulary': preview.vocabulary, 'columns': preview.columns} | tojson }}</script>
+
+  {% endif %}
+</div>
+{% endblock %}

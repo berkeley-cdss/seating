@@ -1,0 +1,326 @@
+/*
+ * Seating layout preview.
+ *
+ * The page is built out of the same Material Design Lite pieces as the rest of
+ * the app, and the seat chart reuses the `.seats` / `.seat-label` containers
+ * from style.css. Only the seats themselves depart from the app's palette, so
+ * that a layout can be read at a glance, using the UC Berkeley colors
+ * (https://brand.berkeley.edu/visual-identity/colors/):
+ *
+ *   Berkeley Blue   #003262  - the seat is in the current layout
+ *   light gray               - the seat is not in the current layout
+ *   Rose Garden     #EE1F60  - broken seats, slashed
+ *   California Gold #FDB515  - hover / focus, and the "other attribute" dot
+ *   Pacific         #46535E  - secondary text
+ */
+
+.layout-preview {
+  max-width: 1100px;
+  margin: 0 auto;
+}
+
+.layout-preview .layout-legend__desc {
+  color: #46535e;
+}
+
+/* --- loading a layout ------------------------------------------------ */
+
+.layout-preview textarea.layout-preview__textarea {
+  font-family: monospace;
+  font-size: 13px;
+}
+
+.layout-preview__csv-help {
+  margin-top: 8px;
+  font-size: 13px;
+}
+
+.layout-preview__csv-help summary {
+  cursor: pointer;
+  color: #1976d2;
+}
+
+.layout-preview__csv-help pre {
+  background: #f0f0f0;
+  padding: 8px 12px;
+  overflow-x: auto;
+}
+
+/* --- toolbar --------------------------------------------------------- */
+
+.layout-toolbar {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px 24px;
+}
+
+.layout-toolbar select {
+  display: block;
+  min-width: 260px;
+  margin-top: 4px;
+  padding: 4px;
+  font-size: 14px;
+}
+
+.layout-status {
+  color: #46535e;
+  font-size: 14px;
+}
+
+.layout-status__count {
+  font-weight: bold;
+  color: #003262;
+}
+
+.layout-detail {
+  display: inline-block;
+  margin-left: 8px;
+  font-style: italic;
+}
+
+.layout-edit-only[hidden] {
+  display: none;
+}
+
+/* --- seats ----------------------------------------------------------- */
+
+/* Keep the row labels inside the chart's box. */
+.layout-preview .layout-grid {
+  box-sizing: content-box;
+  padding: 0 44px;
+}
+
+/* Same circle as the room charts, one size up so the L/R label fits. */
+.layout-preview .layout-seat {
+  position: absolute;
+  width: 24px;
+  height: 24px;
+  box-sizing: border-box;
+  padding: 0;
+  border: 2px solid #9aa2a8;
+  border-radius: 50%;
+  background: #e4e4e4;
+  color: #46535e;
+  font-family: inherit;
+  line-height: 1;
+  text-align: center;
+  cursor: default;
+}
+
+.layout-preview .layout-seat[data-selected="true"] {
+  background: #003262;
+  border-color: #00243f;
+  color: #ffffff;
+}
+
+.layout-preview .layout-seat[data-broken="true"] {
+  background: #ee1f60;
+  border-color: #c41547;
+}
+
+/* The "/" over a broken seat. */
+.layout-preview .layout-seat[data-broken="true"]::after {
+  content: "";
+  position: absolute;
+  top: -2px;
+  bottom: -2px;
+  left: 50%;
+  width: 3px;
+  margin-left: -1.5px;
+  background: #ffffff;
+  transform: rotate(45deg);
+}
+
+/* A dot for the attributes that are neither a side nor the broken marker
+   (aisle, table, DSP, ...), so they are visible without hovering. */
+.layout-preview .layout-seat[data-notes="true"]::before {
+  content: "";
+  position: absolute;
+  top: 0;
+  right: 0;
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: #fdb515;
+  box-shadow: 0 0 0 1px rgba(0, 0, 0, 0.35);
+}
+
+/* Gold on its own is too light to be a dependable focus ring, so it is paired
+   with a dark halo that shows up against every seat color. */
+.layout-preview .layout-seat:focus,
+.layout-preview__editing .layout-seat:hover {
+  outline: 3px solid #fdb515;
+  outline-offset: 1px;
+  box-shadow: 0 0 0 5px rgba(0, 50, 98, 0.55);
+  z-index: 2;
+}
+
+.layout-preview__editing .layout-seat {
+  cursor: pointer;
+}
+
+/* The handedness letter is a footnote on the seat, not its headline: small and
+   light so a full room chart still reads as a pattern of colors. */
+.layout-seat__badge {
+  position: relative;
+  z-index: 1;
+  font-size: 10px;
+  font-weight: 500;
+  line-height: 20px;
+  color: #54606a;
+}
+
+.layout-preview .layout-seat[data-selected="true"] .layout-seat__badge {
+  color: rgba(255, 255, 255, 0.85);
+}
+
+.layout-preview .seat-label {
+  color: #46535e;
+  font-size: 14px;
+  line-height: 24px;
+}
+
+/* --- movable seats --------------------------------------------------- */
+
+.layout-movable__group {
+  margin-bottom: 12px;
+}
+
+.layout-movable__label {
+  font-size: 13px;
+  color: #46535e;
+}
+
+.layout-movable__seats {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin-top: 4px;
+}
+
+.layout-preview .layout-movable__seats .layout-seat {
+  position: static;
+}
+
+/* --- legend ---------------------------------------------------------- */
+
+.layout-legend ul {
+  list-style: none;
+  padding-left: 0;
+  margin: 4px 0 16px 0;
+}
+
+.layout-legend li {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin-bottom: 8px;
+  font-size: 13px;
+}
+
+/* The gold focus ring is drawn outside the swatch, so every swatch gets the
+   same margin and the legend rows stay aligned. */
+.layout-preview .layout-legend__swatch {
+  position: relative;
+  flex: 0 0 auto;
+  margin: 5px;
+}
+
+.layout-preview .layout-legend__swatch--selected {
+  background: #003262;
+  border-color: #00243f;
+  color: #ffffff;
+}
+
+.layout-preview .layout-legend__swatch--broken {
+  background: #ee1f60;
+  border-color: #c41547;
+}
+
+.layout-preview .layout-legend__swatch--broken::after {
+  content: "";
+  position: absolute;
+  top: -2px;
+  bottom: -2px;
+  left: 50%;
+  width: 3px;
+  margin-left: -1.5px;
+  background: #ffffff;
+  transform: rotate(45deg);
+}
+
+.layout-preview .layout-legend__swatch--focus {
+  outline: 3px solid #fdb515;
+  outline-offset: 1px;
+  box-shadow: 0 0 0 5px rgba(0, 50, 98, 0.55);
+}
+
+.layout-preview .layout-legend__swatch--note::before {
+  content: "";
+  position: absolute;
+  top: 0;
+  right: 0;
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: #fdb515;
+  box-shadow: 0 0 0 1px rgba(0, 0, 0, 0.35);
+}
+
+/* --- edit mode ------------------------------------------------------- */
+
+.layout-hint {
+  margin: 4px 0 0 0;
+  color: #46535e;
+  font-size: 13px;
+}
+
+/* The per-seat attribute menu, opened by right-clicking a seat while editing.
+   Styled like an MDL menu, but built at runtime so it can follow the cursor. */
+.layout-menu {
+  position: absolute;
+  z-index: 20;
+  min-width: 220px;
+  max-height: 60vh;
+  overflow-y: auto;
+  padding: 8px 0;
+  background: #fff;
+  border-radius: 2px;
+  font-size: 13px;
+}
+
+.layout-menu[hidden] {
+  display: none;
+}
+
+.layout-menu__title {
+  padding: 0 16px 6px 16px;
+  font-weight: bold;
+  color: #003262;
+}
+
+.layout-menu__group {
+  padding: 8px 16px 2px 16px;
+  border-top: 1px solid #eee;
+  color: #46535e;
+  font-size: 11px;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+
+.layout-menu__item {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 5px 16px;
+  cursor: pointer;
+}
+
+.layout-menu__item:hover {
+  background: #f0f0f0;
+}
+
+.layout-menu__item input {
+  margin: 0;
+}

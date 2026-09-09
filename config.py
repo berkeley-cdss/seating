@@ -73,6 +73,8 @@ class ProductionConfig(ConfigBase):
 class StagingConfig(ConfigBase):
     FLASK_ENV = AppEnvironment.STAGING.value
     SECRET_KEY = 'staging'
+    # Staging talks to real Canvas, so the dev login is never available here.
+    MOCK_CANVAS = False
 
     @property
     def SQLALCHEMY_DATABASE_URI(self):
@@ -84,6 +86,10 @@ class StagingConfig(ConfigBase):
 class DevelopmentConfig(ConfigBase):
     FLASK_ENV = AppEnvironment.DEVELOPMENT.value
     SECRET_KEY = 'development'
+    # Outside staging and production the fake Canvas is the default, so a fresh
+    # checkout can be signed into through /dev_login without any Canvas
+    # credentials. Set MOCK_CANVAS=false to point a dev server at real Canvas.
+    MOCK_CANVAS = ConfigBase.getenv('MOCK_CANVAS', 'true').lower() == 'true'
 
     @property
     def SQLALCHEMY_DATABASE_URI(self):

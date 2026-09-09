@@ -8,7 +8,7 @@ from server.models import SeatAssignment, db, Exam, Room, Seat, Student
 from server.forms import AssignSingleForm, EditExamForm, EditRoomForm, ExamForm, ImportStudentFromCsvUploadForm, \
     RoomForm, ChooseRoomForm, ImportStudentFromSheetForm, ImportStudentFromCanvasRosterForm, DeleteStudentForm, \
     AssignForm, EmailForm, EditStudentForm, UploadRoomForm, ChooseCourseOfferingForm, EditStudentsForm, \
-    ImportStudentFromManualInputForm
+    ImportStudentFromManualInputForm, PreviewLayoutForm
 from server.services.core.export import export_exam_student_info
 from server.services.email.templates import get_email
 from server.services.google import get_spreadsheet_tabs
@@ -16,7 +16,7 @@ import server.services.canvas as canvas_client
 from server.services.email import email_about_assignment, substitute_about_assignment
 from server.services.core.data import get_room_from_csv, get_room_from_google_spreadsheet, get_room_from_manual_input, \
     get_students_from_canvas, get_students_from_csv, get_students_from_google_spreadsheet, update_room_from_manual_input, \
-    get_students_from_manual_input
+    get_students_from_manual_input, get_layout_preview_from_file, get_layout_preview_from_text
 from server.services.core.assign import assign_single_student, assign_students
 from server.typings.exception import NotEnoughSeatError, SeatAssignmentError
 from server.typings.enum import EmailTemplate
@@ -995,6 +995,40 @@ def favicon():
 @app.route('/students-template.png')
 def students_template():
     return send_file('static/img/students-template.png')
+# endregion
+
+# region Layout preview
+
+
+@app.route('/layouts/preview/', methods=['GET', 'POST'])
+@login_required
+def preview_layout():
+    """
+    Path: /layouts/preview
+    A scratchpad for seating layouts: upload (or paste) the same room CSV the
+    import flow accepts, look at the resulting layout, highlight the seats
+    belonging to a layout or attribute, and toggle seats to build a new layout.
+    Nothing here touches the database.
+    """
+    form = PreviewLayoutForm()
+    preview = None
+    if form.validate_on_submit():
+        try:
+            if form.file.data:
+                preview = get_layout_preview_from_file(form.file.data)
+            else:
+                preview = get_layout_preview_from_text(form.text.data)
+        except Exception as e:
+            flash(f"Failed to preview layout: {e}", 'error')
+        if preview is not None and not preview['counts']['total']:
+            flash("That file did not contain any seats.", 'warning')
+            preview = None
+    for field, errors in form.errors.items():
+        for error in errors:
+            flash("{}: {}".format(field, error), 'error')
+    return render_template('preview_layout.html.j2',
+                           title="Seating Layout Preview",
+                           form=form, preview=preview)
 # endregion
 
 # region Student-facing pages
