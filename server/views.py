@@ -715,16 +715,12 @@ def delete_students(exam):
 
 @app.route('/<exam:exam>/students/')
 def students(exam):
-    # Fetch all students and eager-load their assignments & seats in 1 query
     students_list = (
         Student.query.filter_by(exam_id=exam.id)
-        .options(
-            joinedload(Student.assignment).joinedload('seat')
-        )
+        .options(joinedload(Student.assignment))
         .all()
     )
     return render_template('students.html.j2', exam=exam, students=students_list)
-
 
 @app.route('/<exam:exam>/students/export/csv')
 def export_students_as_csv(exam):
