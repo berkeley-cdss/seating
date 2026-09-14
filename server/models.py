@@ -119,7 +119,11 @@ class Exam(db.Model):
         return query.all()
 
     def get_room(self, room_id):
-        return Room.query.filter_by(id=room_id, exam_id=self.id).first()
+        # Look up the room in the already-loaded relationship instead of issuing a
+        # query per call: the students page calls this once per room preference,
+        # which for a large exam is tens of thousands of queries.
+        room_id = str(room_id)
+        return next((room for room in self.rooms if str(room.id) == room_id), None)
 
     def __repr__(self):
         return '<Exam {}>'.format(self.name)
