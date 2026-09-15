@@ -23,6 +23,7 @@ from server.typings.enum import EmailTemplate
 from server.utils.date import to_ISO8601
 from server.utils.misc import set_to_str, str_set_to_set
 
+from sqlalchemy import select
 from sqlalchemy.orm import joinedload
 
 
@@ -509,7 +510,7 @@ def room(exam, id):
     # fetch all seat assignment at this point too to avoid N+1 problem
     # we will need to display the seat assignment in the room diagram
     room = Room.query.options(
-        joinedload(Room.seats).joinedload(Seat.assignment)
+        joinedload(Room.seats).joinedload(Seat.assignment).joinedload(SeatAssignment.student)
     ).filter_by(exam_id=exam.id, id=id).first_or_404()
     seat_id = request.args.get('seat')
     return render_template('room.html.j2', exam=exam, room=room, seat_id=seat_id)
@@ -715,11 +716,8 @@ def delete_students(exam):
 
 @app.route('/<exam:exam>/students/')
 def students(exam):
-    students_list = (
-        Student.query.filter_by(exam_id=exam.id)
-        .options(joinedload(Student.assignment))
-        .all()
-    )
+    # One query for students + assignment + seat + room; the template reads all of them per row.
+    students_list = exam.get_students(with_seat=True)
     return render_template('students.html.j2', exam=exam, students=students_list)
 
 @app.route('/<exam:exam>/students/export/csv')
@@ -796,10 +794,11 @@ def edit_students(exam):
             return redirect(url_for('students', exam=exam))
         if not form.use_all_emails.data:
             emails = list(str_set_to_set(form.emails.data))
-            students = Student.query.filter(
+            students_query = Student.query.filter(
                 Student.email.in_(emails) & (Student.exam_id == exam.id))
         else:
-            students = Student.query.filter_by(exam_id=exam.id)
+            students_query = Student.query.filter_by(exam_id=exam.id)
+        students = students_query.options(joinedload(Student.assignment)).all()
         edited = {student.email for student in students}
         did_not_exist = set()
         if not form.use_all_emails.data:
@@ -864,8 +863,9 @@ def assign(exam):
     form = AssignForm()
     if form.validate_on_submit():
         def delete_all_assignments_no_sync(e):
-            seat_ids = {seat.id for room in e.rooms for seat in room.seats}
-            SeatAssignment.query.filter(SeatAssignment.seat_id.in_(seat_ids)).delete(synchronize_session=False)
+            # single DELETE ... WHERE seat_id IN (SELECT ...); no need to load every seat first
+            exam_seat_ids = select(Seat.id).join(Room, Seat.room_id == Room.id).where(Room.exam_id == e.id)
+            SeatAssignment.query.filter(SeatAssignment.seat_id.in_(exam_seat_ids)).delete(synchronize_session=False)
             db.session.commit()
         if 'delete_all' in request.form:
             delete_all_assignments_no_sync(exam)
@@ -911,7 +911,12 @@ def assign_student(exam_student):
         except SeatAssignmentError as e:
             flash(str(e), 'error')
         return redirect(url_for('students', exam=exam))
-    return render_template('assign_single.html.j2', exam=exam, form=form)
+    # The page draws every room with every seat's occupant, so load all of it up front
+    # instead of one query per seat (assignment) plus one per occupied seat (student).
+    rooms = Room.query.filter_by(exam_id=exam.id).options(
+        joinedload(Room.seats).joinedload(Seat.assignment).joinedload(SeatAssignment.student)
+    ).order_by(Room.start_at.desc(), Room.display_name.desc()).all()
+    return render_template('assign_single.html.j2', exam=exam, rooms=rooms, form=form)
 
 
 @app.route('/<exam:exam>/students/email/', methods=['GET', 'POST'])
@@ -930,7 +935,7 @@ def email_all_students(exam):
         email_prefill = get_email(EmailTemplate.ASSIGNMENT_INFORM_EMAIL)
         form.subject.data = email_prefill.subject
         form.body.data = email_prefill.body
-        form.to_addr.data = set_to_str([s.email for s in exam.students])
+        form.to_addr.data = set_to_str([email for (email,) in db.session.query(Student.email).filter_by(exam_id=exam.id)])
     return render_template('email.html.j2', exam=exam, form=form)
 
 
