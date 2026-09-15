@@ -27,19 +27,6 @@ class App(Flask):
         return UrlRequestContext(self, environ)
 
 
-import sentry_sdk  # noqa
-
-sentry_sdk.init(
-    dsn="https://bb1482ed49f0807ee6a49accafe927f9@o4506322522734592.ingest.sentry.io/4506322540953600",
-    # Set traces_sample_rate to 1.0 to capture 100%
-    # of transactions for performance monitoring.
-    traces_sample_rate=1.0,
-    # Set profiles_sample_rate to 1.0 to profile 100%
-    # of sampled transactions.
-    # We recommend adjusting this value in production.
-    profiles_sample_rate=1.0,
-)
-
 app = App(__name__)
 
 
@@ -50,7 +37,8 @@ if __name__ != '__main__':
 
 
 from config import ConfigBase, ProductionConfig, StagingConfig, DevelopmentConfig, TestingConfig  # noqa
-env_value = ConfigBase.getenv('FLASK_ENV').lower()
+# FLASK_ENV defaults to development when not explicitly set
+env_value = ConfigBase.getenv('FLASK_ENV', AppEnvironment.DEVELOPMENT.value).lower()
 
 config_mapping = {
     AppEnvironment.PRODUCTION.value: ProductionConfig,
@@ -65,6 +53,30 @@ if selected_config_class:
     app.config.from_object(selected_config_class())
 else:
     raise EnvironmentalVariableMissingError('FLASK_ENV')
+
+# Sentry is only enabled in staging and production. Development and testing
+# environments never report to Sentry.
+SENTRY_ENABLED_ENVIRONMENTS = {
+    AppEnvironment.STAGING.value,
+    AppEnvironment.PRODUCTION.value,
+}
+
+if env_value in SENTRY_ENABLED_ENVIRONMENTS:
+    import sentry_sdk  # noqa
+
+    sentry_sdk.init(
+        dsn="https://bb1482ed49f0807ee6a49accafe927f9@o4506322522734592.ingest.sentry.io/4506322540953600",
+        # Tag every event with the app environment so staging and production
+        # issues can be told apart in Sentry.
+        environment=env_value,
+        # Set traces_sample_rate to 1.0 to capture 100%
+        # of transactions for performance monitoring.
+        traces_sample_rate=1.0,
+        # Set profiles_sample_rate to 1.0 to profile 100%
+        # of sampled transactions.
+        # We recommend adjusting this value in production.
+        profiles_sample_rate=1.0,
+    )
 
 
 @app.errorhandler(InvalidAccessToken)
