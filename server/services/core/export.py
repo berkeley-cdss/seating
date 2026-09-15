@@ -11,7 +11,8 @@ def export_exam_student_info(exam) -> str:
     headers = set(['name', 'email', 'student id', 'canvas id', 'session name',
                   'seat name', 'emailed', 'room id', 'seat id', 'public seat url'])
     rows = []
-    for student in exam.students:
+    # one query for students + assignment + seat + room (every column below reads them)
+    for student in exam.get_students(with_seat=True):
         row_dict = {
             'name': student.name,
             'email': student.email,
