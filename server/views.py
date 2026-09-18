@@ -440,6 +440,8 @@ def delete_room(exam, id):
     room = Room.query.filter_by(exam_id=exam.id, id=id).first_or_404()
     if room:
         try:
+            # students may still reference this room in their wants/avoids
+            exam.remove_room_preferences(room.id)
             db.session.delete(room)
             db.session.commit()
             flash("Deleted room.", 'success')
