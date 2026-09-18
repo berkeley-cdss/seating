@@ -23,6 +23,8 @@ from server.typings.enum import EmailTemplate
 from server.utils.date import to_ISO8601
 from server.utils.misc import set_to_str, str_set_to_set
 
+from sqlalchemy.orm import joinedload
+
 
 @app.route('/')
 def index():
@@ -506,7 +508,6 @@ def room(exam, id):
     """
     # fetch all seat assignment at this point too to avoid N+1 problem
     # we will need to display the seat assignment in the room diagram
-    from sqlalchemy.orm import joinedload
     room = Room.query.options(
         joinedload(Room.seats).joinedload(Seat.assignment)
     ).filter_by(exam_id=exam.id, id=id).first_or_404()
@@ -714,9 +715,12 @@ def delete_students(exam):
 
 @app.route('/<exam:exam>/students/')
 def students(exam):
-    # TODO load assignment and seat at the same time?
-    return render_template('students.html.j2', exam=exam, students=exam.students)
-
+    students_list = (
+        Student.query.filter_by(exam_id=exam.id)
+        .options(joinedload(Student.assignment))
+        .all()
+    )
+    return render_template('students.html.j2', exam=exam, students=students_list)
 
 @app.route('/<exam:exam>/students/export/csv')
 def export_students_as_csv(exam):
