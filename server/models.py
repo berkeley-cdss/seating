@@ -35,6 +35,8 @@ class User(db.Model, UserMixin):
     id = db.Column(db.Integer, primary_key=True)
     name = db.Column(db.String(255), index=True, nullable=False)
     canvas_id = db.Column(db.String(255), nullable=False, index=True, unique=True)
+    email = db.Column(db.String(255), index=True, nullable=True)
+    google_id = db.Column(db.String(255), index=True, unique=True, nullable=True)
     staff_offerings = db.Column(StringSet, nullable=False)
     student_offerings = db.Column(StringSet, nullable=False)
 

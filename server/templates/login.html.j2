@@ -1,0 +1,32 @@
+{% extends 'base.html.j2' %}
+
+{% block title %}Login{% endblock %}
+
+{% block body %}
+<main class="mdl-grid" style="justify-content: center;">
+  <h2 class="mdl-cell mdl-cell--10-col" style="text-align:center;margin: 20px;">Sign in to the Exam Seating Tool</h2>
+
+  <p class="mdl-cell mdl-cell--10-col" style="text-align:center;">
+    Choose how you would like to sign in. Both options sign you in to the same
+    account — Google login is only available for users that already have an
+    account from a previous Canvas login.
+  </p>
+
+  <div class="mdl-cell mdl-cell--10-col"
+       style="display: flex; flex-direction: column; align-items: center; gap: 12px; margin-top: 16px;">
+    <a href="{{ url_for('auth.login_canvas') }}"
+       class="mdl-button mdl-js-button mdl-button--raised mdl-js-ripple-effect mdl-button--accent"
+       style="min-width: 220px;">
+      Sign in with Canvas
+    </a>
+
+    {% if google_enabled %}
+      <a href="{{ url_for('auth.login_google') }}"
+         class="mdl-button mdl-js-button mdl-button--raised mdl-js-ripple-effect"
+         style="min-width: 220px;">
+        Sign in with Google
+      </a>
+    {% endif %}
+  </div>
+</main>
+{% endblock %}
