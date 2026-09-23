@@ -39,6 +39,20 @@ header a {
   min-height: 0px;
 }
 
+/* The "opens a menu" chevron. Drawn in CSS rather than set as a Material Icons
+   ligature, which renders as the literal word "expand_more" whenever the icon
+   font is slow, blocked or unavailable. */
+.dropdown-caret {
+  display: inline-block;
+  width: 0;
+  height: 0;
+  margin-left: 6px;
+  vertical-align: middle;
+  border-top: 5px solid currentColor;
+  border-right: 4px solid transparent;
+  border-left: 4px solid transparent;
+}
+
 .errormsg {
   color: #ff0000;
 }

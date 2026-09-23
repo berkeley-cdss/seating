@@ -104,6 +104,10 @@
           </div>
           <div class="form-buttons">{{ upload_form.submit(class="mdl-button mdl-js-button mdl-button--raised") }}</div>
         </form>
+        <p>
+          Not sure the file is right? <a href="{{ url_for('preview_layout') }}">Preview a layout CSV</a>
+          without saving it to this exam.
+        </p>
       </div>
       <div class="mdl-layout-spacer"></div>
     </div>
