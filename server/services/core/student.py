@@ -68,6 +68,7 @@ def prepare_students(exam, headers, rows, *, config: StudentImportConfig = Stude
     invalid_students = []
     students_ids_to_remove = []
     new_assignment_ids = set()
+    exam_room_ids = {str(room.id) for room in exam.rooms}
 
     for row in rows:
         # get canvas id
@@ -107,9 +108,13 @@ def prepare_students(exam, headers, rows, *, config: StudentImportConfig = Stude
             student.wants = wants if (is_new or overwrite_pref) else student.wants.union(wants)
             avoids = {k.lower() for k, v in row.items() if is_normal_attr(k) and v.lower() == 'false'}
             student.avoids = avoids if (is_new or overwrite_pref) else student.avoids.union(avoids)
+            # room preferences may only reference rooms of this exam, e.g. a CSV exported from another exam
+            # carries that exam's room ids, which would otherwise dangle here
             room_wants = {attr_to_room_id(k) for k, v in row.items() if is_room_attr(k) and v.lower() == 'true'}
+            room_wants &= exam_room_ids
             student.room_wants = room_wants if (is_new or overwrite_pref) else student.room_wants.union(room_wants)
             room_avoids = {attr_to_room_id(k) for k, v in row.items() if is_room_attr(k) and v.lower() == 'false'}
+            room_avoids &= exam_room_ids
             student.room_avoids = room_avoids if (is_new or overwrite_pref) else student.room_avoids.union(room_avoids)
             if not student.wants.isdisjoint(student.avoids) \
                     or not student.room_wants.isdisjoint(student.room_avoids):
