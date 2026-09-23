@@ -3,7 +3,7 @@
 
 {% block body %}
 <div class="">
-{% for room in exam.rooms %}
+{% for room in rooms %}
   {{ macros.room(room, highlight_seat_id=seat_id, show_attributes=True, remove_link=True) }}
   <hr style="border-top: 1px solid black;" />
 {% endfor %}

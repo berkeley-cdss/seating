@@ -28,17 +28,31 @@ class Preference:
         return f'Preference(wants={self.wants}, avoids={self.avoids}, room_wants={self.room_wants}, room_avoids={self.room_avoids})'  # noqa
 
 
+def _seat_features(seat: Seat):
+    """
+    The two things a preference is matched against: the seat's lower-cased attributes and its room id.
+    Computed once per seat, since assignment compares every seat against every distinct preference.
+    """
+    return {attr.lower() for attr in seat.attributes}, seat.room.id
+
+
+def _features_match_preference(attrs: set[str], room_id, preference: Preference):
+    if not all(want.lower() in attrs for want in preference.wants):
+        return False
+    if any(avoid.lower() in attrs for avoid in preference.avoids):
+        return False
+    if preference.room_wants and not any(int(a) == room_id for a in preference.room_wants):
+        return False
+    return all(int(a) != room_id for a in preference.room_avoids)
+
+
 def is_seat_valid_for_preference(seat: Seat, preference: Preference):
     """
     Check if a seat is valid for a given preference.
     Comparison of attributes is case-insensitive.
     """
-    wants, avoids, room_wants, room_avoids = preference.wants, preference.avoids, preference.room_wants, preference.room_avoids
-    return (all(want.lower() in {attr.lower() for attr in seat.attributes} for want in wants) and  # noqa
-            all(avoid.lower() not in {attr.lower() for attr in seat.attributes} for avoid in avoids) and  # noqa
-            (not room_wants or any(int(a) == seat.room.id for a in room_wants)) and  # noqa
-            all(int(a) != seat.room.id for a in room_avoids)  # noqa
-            )
+    attrs, room_id = _seat_features(seat)
+    return _features_match_preference(attrs, room_id, preference)
 
 
 def filter_seats_by_preference(seats, preference: Preference):
@@ -63,6 +77,9 @@ def assign_students(exam):
      c. Remove the student from their list.
      d. Remove the seat from *all* seat sets it belongs to so it can't be assigned again.
     """
+    # These two properties each run a single query that also loads the assignment
+    # (or lack of one) for every row. Do not iterate `exam.students` / `exam.seats`
+    # and check `.assignment` here: that is one query per student and per seat.
     students = set(exam.unassigned_students)
     all_seats = set(exam.unassigned_seats)
     assignments = []
@@ -76,9 +93,13 @@ def assign_students(exam):
 
     all_preferences = students_by_pref.keys()
 
-    # Step 2. Pre-calculate Seat Groups 
+    # Step 2. Pre-calculate Seat Groups
+    # Lower-cased attributes and room id are computed once per seat, then matched
+    # against every distinct preference (seats x preferences comparisons).
+    seat_features = {seat: _seat_features(seat) for seat in all_seats}
     seats_by_pref: dict[Preference, set[Seat]] = {
-        preference: set(filter_seats_by_preference(all_seats, preference))
+        preference: {seat for seat, (attrs, room_id) in seat_features.items()
+                     if _features_match_preference(attrs, room_id, preference)}
         for preference in all_preferences
     }
 
