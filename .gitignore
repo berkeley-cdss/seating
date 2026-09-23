@@ -79,7 +79,8 @@ target/
 .ipynb_checkpoints
 
 # pyenv
-.python-version
+# NOTE: .python-version is intentionally tracked - it pins the Python version
+# for local dev (pyenv/mise/uv) and for the Heroku Python buildpack.
 
 # celery beat schedule file
 celerybeat-schedule

@@ -14,11 +14,9 @@ def dev_login_page():
         form = DevLoginForm()
         if form.validate_on_submit():
             if form.user_id.data:
-                return oauth_provider.authorize(
-                    callback=url_for('auth.authorized'),
-                    state=None,
-                    user_id=form.user_id.data,
-                    _external=True, _scheme="http")
+                return oauth_provider.authorize_redirect(
+                    url_for('auth.authorized', _external=True, _scheme="http"),
+                    user_id=form.user_id.data)
             else:
                 abort(500, 'Invalid dev user')
         return render_template('dev_login.html.j2', available_mock_users=available_mock_users, form=form, title="Dev Login")

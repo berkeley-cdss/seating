@@ -1,4 +1,5 @@
 from flask import jsonify, current_app
+from sqlalchemy import text
 
 from server.controllers import health_module
 
@@ -12,7 +13,7 @@ def check():
 def check_db():
     from server.models import db
     try:
-        db.session.execute("SELECT 1")
+        db.session.execute(text("SELECT 1"))
         return jsonify(status="UP"), 200
     except Exception as e:
         return jsonify(status="DOWN", error=str(e)), 500

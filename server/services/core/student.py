@@ -2,7 +2,7 @@ from server.services.core.assign import get_preference_from_student, is_seat_val
 from server.typings.enum import AssignmentImportStrategy, \
     MissingRowImportStrategy, NewRowImportStrategy, UpdatedRowImportStrategy
 from server.typings.exception import DataValidationError
-from server.models import Room, Seat, SeatAssignment, Student
+from server.models import db, Room, Seat, SeatAssignment, Student
 
 
 SPECIAL_HEADERS = ['email', 'name', 'bcourses id', 'canvas id', 'student id', 'emailed', 'seat id', 'assignment',
@@ -31,7 +31,7 @@ def room_to_attr(room: Room):
 
 def attr_to_room(attr: str) -> Room | None:
     room_id = attr_to_room_id(attr)
-    return Room.query.get(int(room_id)) if room_id else None
+    return db.session.get(Room, int(room_id)) if room_id else None
 
 
 def room_id_to_attr(room_id: int):
@@ -128,12 +128,12 @@ def prepare_students(exam, headers, rows, *, config: StudentImportConfig = Stude
             ignore_restrictions_for_new = config.assignment_import_strategy == AssignmentImportStrategy.FORCE
             seat_id = row.pop('seat id', row.pop('assignment', None))
             if seat_id:
-                seat = Seat.query.get(int(seat_id))
+                seat = db.session.get(Seat, int(seat_id))
                 if seat and not seat.assignment and seat.room.exam_id == exam.id \
                         and (ignore_restrictions_for_new or is_seat_valid_for_preference(seat, new_preference)) \
                         and seat_id not in new_assignment_ids:
                     new_assignment_ids.add(seat_id)
-                    student.assignment = SeatAssignment(student=student, seat=seat, emailed=emailed == 'true')
+                    student.assignment = SeatAssignment(seat=seat, emailed=emailed == 'true')
             else:
                 room_name = row.pop('session name', row.pop('room name', None))
                 seat_name = row.pop('seat name', None)
@@ -153,7 +153,7 @@ def prepare_students(exam, headers, rows, *, config: StudentImportConfig = Stude
                                 and (ignore_restrictions_for_new or is_seat_valid_for_preference(seat, new_preference))\
                                 and seat.id not in new_assignment_ids:
                             new_assignment_ids.add(seat.id)
-                            student.assignment = SeatAssignment(student=student, seat=seat, emailed=emailed == 'true')
+                            student.assignment = SeatAssignment(seat=seat, emailed=emailed == 'true')
                             break
 
         if is_new:
