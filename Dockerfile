@@ -21,6 +21,7 @@ COPY . .
 
 # Cloud Run listens on $PORT, default 8080
 ENV PORT=8080
+ENV PYTHONPATH=/app
 
 # Run gunicorn
 CMD exec gunicorn -b 0.0.0.0:$PORT server:app --timeout 120 --workers 4
