@@ -16,7 +16,7 @@ jobs:
 
       - name: Delete Cloud Run Preview Service
         run: |
-          gcloud run services delete preview-pr-${{ github.event.number }} \
+          gcloud run services delete preview-seating-pr-${{ github.event.number }} \
             --region=us-west1 \
             --quiet || true
 
@@ -41,7 +41,7 @@ jobs:
         id: deploy
         uses: google-github-actions/deploy-cloudrun@v3
         with:
-          service: preview-pr-${{ github.event.number }}
+          service: preview-seating-pr-${{ github.event.number }}
           region: us-west1
           source: .
           flags: '--allow-unauthenticated'
