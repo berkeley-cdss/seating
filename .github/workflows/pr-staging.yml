@@ -42,7 +42,7 @@ jobs:
           service: preview-pr-${{ github.event.number }}
           region: us-west1
           source: .
-          flags: '--allow-unauthenticated'
+          flags: '--allow-unauthenticated --no-cache'
 
       - name: Comment PR with Preview URL
         uses: actions/github-script@v7
