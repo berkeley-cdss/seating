@@ -27,7 +27,7 @@ jobs:
       - name: Checkout Code
         uses: actions/checkout@v7
         with:
-          ref: ${{ github.head.ref }}
+          ref: ${{ github.head_ref }}
 
       - id: auth
         uses: google-github-actions/auth@v3
