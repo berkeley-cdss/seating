@@ -121,6 +121,26 @@ class Exam(db.Model):
     def get_room(self, room_id):
         return Room.query.filter_by(id=room_id, exam_id=self.id).first()
 
+    def get_rooms(self, room_ids):
+        """
+        Return the rooms of this exam whose ids are in `room_ids` (ids may be ints or strings),
+        in the exam's room order. Ids that do not belong to this exam are silently skipped.
+        """
+        wanted_ids = {str(room_id) for room_id in room_ids}
+        return [room for room in self.rooms if str(room.id) in wanted_ids]
+
+    def remove_room_preferences(self, room_id):
+        """
+        Drop `room_id` from every student's room wants/avoids, so that deleting a room
+        does not leave dangling references behind. Does not commit.
+        """
+        room_id = str(room_id)
+        for student in self.students:
+            if room_id in student.room_wants:
+                student.room_wants = student.room_wants - {room_id}
+            if room_id in student.room_avoids:
+                student.room_avoids = student.room_avoids - {room_id}
+
     def __repr__(self):
         return '<Exam {}>'.format(self.name)
 
@@ -227,6 +247,16 @@ class Student(db.Model):
     @property
     def first_name(self):
         return self.name.rsplit(',', 1)[-1].strip().title()
+
+    @property
+    def wanted_rooms(self):
+        """Rooms of this exam the student wants; ids of rooms that no longer exist are skipped."""
+        return self.exam.get_rooms(self.room_wants)
+
+    @property
+    def avoided_rooms(self):
+        """Rooms of this exam the student avoids; ids of rooms that no longer exist are skipped."""
+        return self.exam.get_rooms(self.room_avoids)
 
     def __repr__(self):
         return '<Student {} ({})>'.format(self.name, self.canvas_id)
