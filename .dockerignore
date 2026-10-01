@@ -21,5 +21,4 @@ codecov.yml
 seating_app_*.db
 venv
 reports
-tests
 *.log
