@@ -24,4 +24,4 @@ ENV PORT=8080
 ENV PYTHONPATH=/app
 
 # Run gunicorn
-CMD exec gunicorn -b 0.0.0.0:$PORT server:app --timeout 120 --workers 4
+CMD exec gunicorn -b 0.0.0.0:$PORT server:app --timeout 300 --workers 4
