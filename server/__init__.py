@@ -1,8 +1,15 @@
 from flask import Flask, redirect
 import logging
 import flask.ctx
+import sys
+import os
 from werkzeug.exceptions import HTTPException
 from canvasapi.exceptions import InvalidAccessToken
+
+# Ensure the app directory is in the Python path for root-level module imports
+app_dir = os.path.dirname(os.path.dirname(__file__))
+if app_dir not in sys.path:
+    sys.path.insert(0, app_dir)
 
 from server.typings.enum import AppEnvironment
 from server.typings.exception import EnvironmentalVariableMissingError
