@@ -44,7 +44,7 @@ jobs:
           service: preview-seating-pr-${{ github.event.number }}
           region: us-west1
           source: .
-          flags: '--allow-unauthenticated --service-account=seating-run@staging-cdss-web-apps.iam.gserviceaccount.com'
+          flags: '--allow-unauthenticated --service-account=seating-run@staging-cdss-web-apps.iam.gserviceaccount.com --add-cloudsql-instances=staging-cdss-web-apps:us-west1:staging-cdss-web-apps-2'
           env_vars: |
             FLASK_APP=server
             FLASK_ENV=staging
