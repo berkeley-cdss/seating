@@ -43,3 +43,12 @@ README.md
 codecov.yml
 .flake8
 requirements-dev.txt
+
+# Other
+*.pyc
+*.pyo
+*.pyd
+.Python
+dist
+build
+*.log
