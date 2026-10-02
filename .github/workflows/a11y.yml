@@ -15,7 +15,7 @@ jobs:
   audit-a11y-with-axe:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v3
+      - uses: actions/checkout@v5
       - name: Bootstrap
         uses: ./.github/actions/bootstrap
       - name: Exports all GitHub Environment Secrets
