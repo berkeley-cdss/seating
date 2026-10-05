@@ -74,6 +74,13 @@ jobs:
             SECRET_KEY=seating-secret-key:latest
             GCP_SA_CRED_VALUE=seating-gcp-sa-cred-value:latest
 
+      - name: Allow Unauthenticated Access (allUsers)
+        run: |
+          gcloud run services add-iam-policy-binding preview-seating-pr-${{ github.event.number }} \
+            --region=us-west1 \
+            --member="allUsers" \
+            --role="roles/run.invoker"
+
       - name: Comment PR with Preview URL
         uses: actions/github-script@v7
         with:
