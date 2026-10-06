@@ -4,6 +4,20 @@ on:
   pull_request:
     types: [opened, synchronize, reopened, closed]
 
+permissions:
+  contents: read
+  # Lets google-github-actions/auth exchange GitHub's OIDC token for GCP credentials.
+  id-token: write
+  # Lets the deploy job comment the preview URL on the PR.
+  issues: write
+  pull-requests: write
+
+env:
+  # Keyless auth via Workload Identity Federation; only this repository may
+  # impersonate the deployer service account.
+  WORKLOAD_IDENTITY_PROVIDER: projects/137456085712/locations/global/workloadIdentityPools/github/providers/berkeley-cdss
+  DEPLOYER_SERVICE_ACCOUNT: seating-gh-actions-deployer@staging-cdss-web-apps.iam.gserviceaccount.com
+
 jobs:
   cleanup-preview-service:
     if: github.event.action == 'closed'
@@ -12,7 +26,8 @@ jobs:
       - id: auth
         uses: google-github-actions/auth@v3
         with:
-          credentials_json: ${{ secrets.GCP_STAGING_SA_KEY }}
+          workload_identity_provider: ${{ env.WORKLOAD_IDENTITY_PROVIDER }}
+          service_account: ${{ env.DEPLOYER_SERVICE_ACCOUNT }}
 
       - name: Delete Cloud Run Preview Service
         run: |
@@ -32,7 +47,8 @@ jobs:
       - id: auth
         uses: google-github-actions/auth@v3
         with:
-          credentials_json: ${{ secrets.GCP_STAGING_SA_KEY }}
+          workload_identity_provider: ${{ env.WORKLOAD_IDENTITY_PROVIDER }}
+          service_account: ${{ env.DEPLOYER_SERVICE_ACCOUNT }}
 
       - name: Set up Cloud SDK
         uses: google-github-actions/setup-gcloud@v3
