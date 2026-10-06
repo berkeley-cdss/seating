@@ -69,6 +69,19 @@ def prepare_students(exam, headers, rows, *, config: StudentImportConfig = Stude
     students_ids_to_remove = []
     new_assignment_ids = set()
 
+    # Load everything the per-row logic looks up once, up front, instead of
+    # 1 student query + 1 assignment query + 1-2 seat queries for every row.
+    existing_students_by_canvas_id = {
+        str(student.canvas_id): student for student in exam.get_students(with_seat=True)}
+    exam_seats = exam.get_seats() if config.assignment_import_strategy != AssignmentImportStrategy.IGNORE else []
+    seats_by_id = {seat.id: seat for seat in exam_seats}
+    seats_by_room_and_name = {}
+    for seat in exam_seats:
+        seats_by_room_and_name.setdefault((seat.room_id, seat.name), []).append(seat)
+    rooms_by_display_name = {}
+    for room in exam.rooms:
+        rooms_by_display_name.setdefault(room.name_and_start_at_time_display(), room)
+
     for row in rows:
         # get canvas id
         canvas_id = row.pop(
@@ -80,7 +93,7 @@ def prepare_students(exam, headers, rows, *, config: StudentImportConfig = Stude
             continue
 
         # try matching existing student (by canvas id)
-        student = Student.query.filter_by(exam_id=int(exam.id), canvas_id=str(canvas_id)).first()
+        student = existing_students_by_canvas_id.get(str(canvas_id))
         is_new = not student
         if is_new:
             student = Student(exam_id=exam.id, canvas_id=canvas_id)
@@ -128,8 +141,9 @@ def prepare_students(exam, headers, rows, *, config: StudentImportConfig = Stude
             ignore_restrictions_for_new = config.assignment_import_strategy == AssignmentImportStrategy.FORCE
             seat_id = row.pop('seat id', row.pop('assignment', None))
             if seat_id:
-                seat = Seat.query.get(int(seat_id))
-                if seat and not seat.assignment and seat.room.exam_id == exam.id \
+                # only this exam's seats are in the map, so a seat from another exam is simply not found
+                seat = seats_by_id.get(int(seat_id))
+                if seat and not seat.assignment \
                         and (ignore_restrictions_for_new or is_seat_valid_for_preference(seat, new_preference)) \
                         and seat_id not in new_assignment_ids:
                     new_assignment_ids.add(seat_id)
@@ -138,16 +152,12 @@ def prepare_students(exam, headers, rows, *, config: StudentImportConfig = Stude
                 room_name = row.pop('session name', row.pop('room name', None))
                 seat_name = row.pop('seat name', None)
                 if room_name and seat_name:
-                    room_inferred = None
-                    for room in exam.rooms:
-                        if room.name_and_start_at_time_display() == room_name:
-                            room_inferred = room
-                            break
+                    room_inferred = rooms_by_display_name.get(room_name)
                     seats_inferred: list[Seat] = []
                     if room_inferred:
-                        seats_inferred.extend(Seat.query.filter_by(room_id=room_inferred.id, name=seat_name).all())
+                        seats_inferred.extend(seats_by_room_and_name.get((room_inferred.id, seat_name), []))
                         if not seats_inferred and 'Movable Seat' in seat_name:
-                            seats_inferred.extend(Seat.query.filter_by(room_id=room_inferred.id, name=None).all())
+                            seats_inferred.extend(seats_by_room_and_name.get((room_inferred.id, None), []))
                     for seat in seats_inferred:
                         if not seat.assignment \
                                 and (ignore_restrictions_for_new or is_seat_valid_for_preference(seat, new_preference))\
@@ -163,7 +173,7 @@ def prepare_students(exam, headers, rows, *, config: StudentImportConfig = Stude
 
     if config.missing_student_import_strategy == MissingRowImportStrategy.DELETE:
         imported_canvas_ids = {student.canvas_id for student in new_students + updated_students}
-        for student in exam.students:
+        for student in existing_students_by_canvas_id.values():
             if student.canvas_id not in imported_canvas_ids:
                 students_ids_to_remove.append(student.id)
 

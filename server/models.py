@@ -6,7 +6,7 @@ import re
 from flask_login import UserMixin
 from flask_sqlalchemy import SQLAlchemy
 from sqlalchemy import PrimaryKeyConstraint, types
-from sqlalchemy.orm import backref
+from sqlalchemy.orm import backref, contains_eager, joinedload
 from sqlalchemy import UniqueConstraint, desc, text
 from sqlalchemy.ext.associationproxy import association_proxy
 
@@ -98,13 +98,42 @@ class Exam(db.Model):
         UniqueConstraint('offering_canvas_id', 'name', name='uq_offering_canvas_id_name'),
     )
 
+    def get_seats(self):
+        """
+        All seats of all rooms of this exam, in a single query.
+        Each seat comes with its room and its assignment (or None) already loaded,
+        so callers can check `seat.assignment` / `seat.room` without one query per seat.
+        """
+        return (
+            Seat.query
+            .join(Seat.room)
+            .filter(Room.exam_id == self.id)
+            .options(contains_eager(Seat.room), joinedload(Seat.assignment))
+            .order_by(Room.id, Seat.name)
+            .all()
+        )
+
+    def get_students(self, with_seat=False):
+        """
+        All students of this exam, in a single query, with their assignment (or None) already loaded.
+        With `with_seat=True`, the assigned seat and its room are loaded in the same query too,
+        which is what list/export/email views need.
+        """
+        query = Student.query.filter_by(exam_id=self.id).order_by(Student.name)
+        if with_seat:
+            query = query.options(
+                joinedload(Student.assignment).joinedload(SeatAssignment.seat).joinedload(Seat.room))
+        else:
+            query = query.options(joinedload(Student.assignment))
+        return query.all()
+
     @property
     def unassigned_seats(self):
-        return [seat for seat in itertools.chain(*self.seats) if seat.assignment == None]  # noqa
+        return [seat for seat in self.get_seats() if seat.assignment is None]
 
     @property
     def unassigned_students(self):
-        return [student for student in self.students if student.assignment == None]  # noqa
+        return [student for student in self.get_students() if student.assignment is None]
 
     def get_assignments(self, emailed=None, limit=None, offset=None):
         query = SeatAssignment.query.join(SeatAssignment.seat).join(Seat.room).filter(
@@ -119,7 +148,13 @@ class Exam(db.Model):
         return query.all()
 
     def get_room(self, room_id):
-        return Room.query.filter_by(id=room_id, exam_id=self.id).first()
+        """
+        Find one of this exam's rooms by id (int or str).
+        Uses the already-loaded `rooms` relationship instead of a query per call,
+        since this is called once per student room preference when rendering the student list.
+        """
+        room_id = str(room_id)
+        return next((room for room in self.rooms if str(room.id) == room_id), None)
 
     def __repr__(self):
         return '<Exam {}>'.format(self.name)
