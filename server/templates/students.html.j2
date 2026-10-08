@@ -59,8 +59,8 @@
         <i class="material-icons">search</i>
       </label>
       <div class="mdl-textfield__expandable-holder">
-        <input class="search mdl-textfield__input" type="text" id="search">
-        <label class="mdl-textfield__label" for="search-expandable">Search</label>
+        <input class="search mdl-textfield__input" type="text" id="search" aria-label="Search by name, email, or SID" title="Search by name, email, or SID">
+        <label class="mdl-textfield__label" for="search-expandable">Search by name, email, or SID</label>
       </div>
     </div>
       <div id="tt6" class="material-icons std" onclick="location.href = '{{ url_for('export_students_as_csv', exam=exam) }}';" style="float: right;">file_download</div>
