@@ -131,6 +131,9 @@ header a {
   text-align: center;
   font-weight: bold;
   font-size: 22px;
+  /* Seat names like "A 1" must stay on one line; the box is only 22px wide,
+     so a regular space would otherwise wrap the label onto a second line. */
+  white-space: nowrap;
 }
 
 .seat-tooltip:not(.is-active) {
