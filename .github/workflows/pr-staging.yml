@@ -67,7 +67,7 @@ jobs:
             SERVER_BASE_URL=https://preview-seating-pr-${{ github.event.number }}-137456085712.us-west1.run.app/
             WIKI_BASE_URL=https://github.com/berkeley-cdss/seating/wiki/
             LOCAL_TIMEZONE=US/Pacific
-            CANVAS_SERVER_URL=https://bcourses.berkeley.edu/
+            CANVAS_SERVER_URL=https://ucberkeley.test.instructure.com/
             MOCK_CANVAS=false
             C1C_API_DOMAIN=https://c1c-api.sait-west.berkeley.edu
             C1C_PHOTO_CACHE_LIFE=7776000
