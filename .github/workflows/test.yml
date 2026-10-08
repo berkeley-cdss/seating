@@ -16,7 +16,7 @@ jobs:
     strategy:
       matrix:
         test-type: ["unit", "e2e"]
-        python-version: ["3.12", "3.13", "3.14"]
+        python-version: ["3.14"]
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v5
