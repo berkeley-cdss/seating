@@ -18,9 +18,11 @@ env:
   WORKLOAD_IDENTITY_PROVIDER: projects/137456085712/locations/global/workloadIdentityPools/github/providers/berkeley-cdss
   DEPLOYER_SERVICE_ACCOUNT: seating-gh-actions-deployer@staging-cdss-web-apps.iam.gserviceaccount.com
 
+# Fork PRs get no OIDC token, and their code shouldn't run with staging secrets,
+# so previews only deploy for branches in this repository.
 jobs:
   cleanup-preview-service:
-    if: github.event.action == 'closed'
+    if: github.event.action == 'closed' && github.event.pull_request.head.repo.full_name == github.repository
     runs-on: ubuntu-latest
     steps:
       - id: auth
@@ -36,7 +38,7 @@ jobs:
             --quiet || true
 
   deploy-preview-service:
-    if: github.event.action != 'closed'
+    if: github.event.action != 'closed' && github.event.pull_request.head.repo.full_name == github.repository
     runs-on: ubuntu-latest
     steps:
       - name: Checkout Code
