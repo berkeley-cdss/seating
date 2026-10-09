@@ -2,6 +2,7 @@ import re
 import itertools
 import json
 import base64
+from functools import cache
 
 from apiclient import errors
 from server import app
@@ -12,6 +13,7 @@ from google.oauth2 import service_account
 from googleapiclient.discovery import build
 
 
+@cache
 def _get_spreadsheet_service():
     """
     Returns an authorized API client service for Google Sheets API.
@@ -34,9 +36,6 @@ def _get_spreadsheet_service():
     return build('sheets', 'v4', credentials=credentials)
 
 
-service = _get_spreadsheet_service()
-
-
 def _get_spreadsheet_id(sheet_url):
     m = re.search(r'/spreadsheets/d/([a-zA-Z0-9-_]+)', sheet_url)
     if not m or not m.group(1):
@@ -47,7 +46,7 @@ def _get_spreadsheet_id(sheet_url):
 def get_spreadsheet_tabs(sheet_url):
     spreadsheet_id = _get_spreadsheet_id(sheet_url)
     try:
-        sheet_metadata = service.spreadsheets().get(spreadsheetId=spreadsheet_id).execute()
+        sheet_metadata = _get_spreadsheet_service().spreadsheets().get(spreadsheetId=spreadsheet_id).execute()
         sheets = sheet_metadata.get('sheets', '')
         return [sheet['properties']['title'] for sheet in sheets]
     except errors.HttpError as e:
@@ -57,7 +56,7 @@ def get_spreadsheet_tabs(sheet_url):
 def get_spreadsheet_tab_content(sheet_url, tab_name):
     spreadsheet_id = _get_spreadsheet_id(sheet_url)
     try:
-        result = service.spreadsheets().values().get(
+        result = _get_spreadsheet_service().spreadsheets().values().get(
             spreadsheetId=spreadsheet_id, range=tab_name).execute()
     except errors.HttpError as e:
         raise GcpError(e._get_reason())
