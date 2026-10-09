@@ -102,21 +102,21 @@
         <div class="seat-label" style="left:{{ x + 30 }}px;top:{{ y }}px">{{ seat.name }}</div>
       {% endif %}
       {% if seat.id and seat.id == highlight_seat_id %}
-          {% set class = 's seat highlight' %}
-        {% elif staff and seat.assignment %}
-          {% set class = 's seat occupied' %}
-        {% else %}
-          {% set class = 's seat' %}
-        {% endif %}
-        {% if staff and seat.assignment and not remove_link %}
-        <a href="{{ url_for('student', exam_student=(exam, seat.assignment.student)) }}" target="_blank">
-        {% elif staff %}
-        <a href="{{ url_for('student_single_seat', seat_id=seat.id) }}" target="_blank">
-        {% endif %}
-          <div id="{{ seat.id }}" class="{{ class }}" style="left:{{ x }}px;top:{{ y }}px"></div>
-        {% if staff %}
-        </a>
-        {% endif %}
+        {% set class = 's seat highlight' %}
+      {% elif staff and seat.assignment %}
+        {% set class = 's seat occupied' %}
+      {% else %}
+        {% set class = 's seat' %}
+      {% endif %}
+      {# unsaved seats (room preview) have no id to link to #}
+      {% set linkable = staff and not remove_link and seat.id %}
+      {% if linkable %}
+      <a href="{{ url_for('student', exam_student=(exam, seat.assignment.student)) if seat.assignment else url_for('student_single_seat', seat_id=seat.id) }}" target="_blank">
+      {% endif %}
+        <div id="{{ seat.id }}" class="{{ class }}" style="left:{{ x }}px;top:{{ y }}px"></div>
+      {% if linkable %}
+      </a>
+      {% endif %}
       <div class="seat-tooltip mdl-tooltip mdl-tooltip--large" for="{{ seat.id }}">
         {{ seat.name }}
         {% if show_attributes %}
@@ -139,7 +139,7 @@
   </div>
   </div>
   <h6>Back</h6>
-  {% if staff %}
+  {% if staff and not remove_link and room.id %}
   <h6>Click on any assigned seat (blue) to view student details. Clicking on an unoccupied seat will lead you to a shareable link for that seat.</h6>
   {% endif %}
   {% endif %}
