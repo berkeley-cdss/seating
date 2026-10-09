@@ -79,6 +79,8 @@ def driver(start_flask_app):
 @pytest.fixture()
 def get_authed_driver(driver):
     from selenium.webdriver.common.by import By
+    from selenium.webdriver.support import expected_conditions as EC
+    from selenium.webdriver.support.ui import WebDriverWait
 
     def _get_authed_driver(some_user_id):
         driver.get('http://localhost:5000/login')
@@ -89,6 +91,11 @@ def get_authed_driver(driver):
         form_submit_btn = driver.find_element(By.CSS_SELECTOR, '#submit')
         assert form_submit_btn is not None
         form_submit_btn.click()
+        # The click kicks off a redirect chain (dev_login -> oauth -> /authorized/ -> / -> /offerings);
+        # wait for it to land on the offerings page before handing the driver to the test.
+        wait = WebDriverWait(driver, 10)
+        wait.until(EC.url_to_be('http://localhost:5000/offerings'))
+        wait.until(lambda d: d.execute_script('return document.readyState') == 'complete')
         return driver
 
     yield _get_authed_driver
@@ -105,3 +112,15 @@ def seeded_db(app):
         yield sqlalchemy_db
 
         sqlalchemy_db.session.expunge_all()
+
+
+@pytest.fixture()
+def login_as(client):
+    """Signs the test client in as the user with the given id, skipping Canvas OAuth."""
+    def _login_as(user_id):
+        with client.session_transaction() as sess:
+            sess['_user_id'] = str(user_id)
+            sess['_fresh'] = True
+        return client
+
+    return _login_as
