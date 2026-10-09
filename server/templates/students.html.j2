@@ -117,10 +117,8 @@
             {% endfor %}
             {% for room_want in student.room_wants %}
               {% set room = exam.get_room(room_want) %}
-                {% if room %}
-                  <div class="pref-card">{{ room.name_and_start_at_time_display(short=True) }}</div>
-                {% endif %}
-              {% endfor %}
+              <div class="pref-card">{{ room.name_and_start_at_time_display(short=True) if room else 'deleted room ' ~ room_want }}</div>
+            {% endfor %}
             </small>
           </td>
           <td class="avoids mdl-data-table__cell--non-numeric" style="text-align: center;">
@@ -130,9 +128,7 @@
             {% endfor %}
             {% for room_avoid in student.room_avoids %}
               {% set room = exam.get_room(room_avoid) %}
-              {% if room %}
-                <div class="pref-card">{{ room.name_and_start_at_time_display(short=True) }}</div>
-              {% endif %}
+              <div class="pref-card">{{ room.name_and_start_at_time_display(short=True) if room else 'deleted room ' ~ room_avoid }}</div>
             {% endfor %}
             </small>
           </td>
