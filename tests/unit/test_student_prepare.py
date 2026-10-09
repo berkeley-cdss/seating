@@ -1,6 +1,6 @@
 from random import seed
 from requests import head
-from server.models import Seat, SeatAssignment, User, Offering, Exam, Room, Student
+from server.models import db, Seat, SeatAssignment, User, Offering, Exam, Room, Student
 from server.services.core.data import prepare_students
 from server.services.core.student import StudentImportConfig, room_id_to_attr
 from server.typings.enum import AssignmentImportStrategy, MissingRowImportStrategy, NewRowImportStrategy, \
@@ -11,7 +11,7 @@ import pytest
 
 @pytest.fixture
 def exam169(seeded_db):
-    exam = Exam.query.get(1)
+    exam = db.session.get(Exam, 1)
     assert exam is not None
     assert len(exam.students) == 3
     yield exam
@@ -445,10 +445,10 @@ def test_update_student_assignment_ignore(seeded_db, exam169):
     some_seats = exam169.unassigned_seats
     first_seat = some_seats[0]
     second_seat = some_seats[1]
-    first_student.assignment = SeatAssignment(student=first_student, seat=first_seat, emailed=True)
+    first_student.assignment = SeatAssignment(seat=first_seat, emailed=True)
     seeded_db.session.commit()
     first_student_canvas_id = first_student.canvas_id
-    that_student = Student.query.get(first_student.id)
+    that_student = db.session.get(Student, first_student.id)
     assert that_student.assignment.seat.id == first_seat.id
     updated_student = {
         'canvas id': first_student_canvas_id,
@@ -519,7 +519,7 @@ def test_update_student_assignment_force_invalid_seat(seeded_db, exam169):
 def test_revalidate_existing_assignments_to_weed_out_existing_conflicts(seeded_db, exam169):
     first_student = exam169.students[0]
     first_seat = exam169.unassigned_seats[0]
-    first_student.assignment = SeatAssignment(student=first_student, seat=first_seat)
+    first_student.assignment = SeatAssignment(seat=first_seat)
     first_student.room_avoids = {str(first_seat.room.id)}
     seeded_db.session.commit()
     first_student_canvas_id = first_student.canvas_id
@@ -543,7 +543,7 @@ def test_revalidate_existing_assignments_to_weed_out_existing_conflicts(seeded_d
 def test_revalidate_existing_assignments_while_changing_prefs(seeded_db, exam169):
     first_student = exam169.students[0]
     first_seat = exam169.unassigned_seats[0]
-    first_student.assignment = SeatAssignment(student=first_student, seat=first_seat)
+    first_student.assignment = SeatAssignment(seat=first_seat)
     seeded_db.session.commit()
     headers = ['email', 'name', 'canvas id', room_id_to_attr(first_seat.room.id)]
     first_student_canvas_id = exam169.students[0].canvas_id
@@ -565,7 +565,7 @@ def test_revalidate_existing_assignments_while_changing_prefs(seeded_db, exam169
 def test_no_revalidate_existing_assignments_while_giving_conflicting_prefs(seeded_db, exam169):
     first_student = exam169.students[0]
     first_seat = exam169.unassigned_seats[0]
-    first_student.assignment = SeatAssignment(student=first_student, seat=first_seat)
+    first_student.assignment = SeatAssignment(seat=first_seat)
     seeded_db.session.commit()
     headers = ['email', 'name', 'canvas id', room_id_to_attr(first_seat.room.id)]
     first_student_canvas_id = exam169.students[0].canvas_id

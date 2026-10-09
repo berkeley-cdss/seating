@@ -19,6 +19,7 @@ db = SQLAlchemy(app=app)
 
 class StringSet(types.TypeDecorator):
     impl = types.Text
+    cache_ok = True
 
     def process_bind_param(self, value, engine):
         return ','.join(set(value))
