@@ -66,6 +66,16 @@ jobs:
           create-new-comment: true
           pytest-coverage-path: reports/pytest-coverage-${{ matrix.test-type }}.txt
           junitxml-path: reports/pytest-${{ matrix.test-type }}.xml
+      # fork PRs can't get the comment above, so show the report on the run's summary page instead
+      - name: Pytest coverage summary
+        if: ${{ !cancelled() && github.event_name == 'pull_request' && github.event.pull_request.head.repo.full_name != github.repository }}
+        run: |
+          {
+            echo "### Coverage for ${{ matrix.test-type }} tests for Python ${{ matrix.python-version }}"
+            echo '```'
+            cat reports/pytest-coverage-${{ matrix.test-type }}.txt
+            echo '```'
+          } >> "$GITHUB_STEP_SUMMARY"
       - name: Upload coverage reports to Codecov
         uses: codecov/codecov-action@v5
         with:
