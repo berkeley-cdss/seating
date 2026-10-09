@@ -22,6 +22,9 @@ class StringSet(types.TypeDecorator):
     cache_ok = True
 
     def process_bind_param(self, value, engine):
+        # set('123') would store each character as its own item
+        if isinstance(value, str):
+            raise TypeError('StringSet expects a collection of strings, not a str')
         return ','.join(set(value))
 
     def process_result_value(self, value, engine):

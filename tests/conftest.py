@@ -112,3 +112,15 @@ def seeded_db(app):
         yield sqlalchemy_db
 
         sqlalchemy_db.session.expunge_all()
+
+
+@pytest.fixture()
+def login_as(client):
+    """Signs the test client in as the user with the given id, skipping Canvas OAuth."""
+    def _login_as(user_id):
+        with client.session_transaction() as sess:
+            sess['_user_id'] = str(user_id)
+            sess['_fresh'] = True
+        return client
+
+    return _login_as
