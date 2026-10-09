@@ -79,6 +79,25 @@ class UploadRoomForm(RoomFormBase):
     display_name = StringField('display_name', [InputRequired()])
 
 
+class PreviewLayoutForm(FlaskForm):
+    """Upload or paste a room spreadsheet just to look at it - nothing is saved."""
+    file = FileField('Choose File', validators=[
+        FileAllowed(['csv', 'tsv', 'txt'], 'CSV or TSV files only!')
+    ])
+    text = TextAreaField('text', render_kw={
+        "placeholder": "row,seat,lefty,righty,broken\nA,1,TRUE,,\nA,2,,TRUE,TRUE\n..."})
+    submit = SubmitField('preview layout')
+
+    def validate(self, extra_validators=None):
+        if not super().validate(extra_validators):
+            return False
+        if not self.file.data and not (self.text.data or '').strip():
+            self.file.errors = list(self.file.errors) + \
+                ['Upload a file, or paste the rows from a spreadsheet.']
+            return False
+        return True
+
+
 class MovableSeatSubForm(NoCsrfForm):
     attributes = StringField('attributes', default='', render_kw={"placeholder": "Righty, Aisle"})
     count = IntegerField('count', [InputRequired()], default=1, render_kw={"placeholder": "1"})
@@ -198,5 +217,8 @@ class EmailForm(FlaskForm):
 
 
 class DevLoginForm(FlaskForm):
-    user_id = StringField('user_id', [InputRequired()], render_kw={"placeholder": "123456"})
+    # A pasted Canvas ID usually arrives with whitespace around it.
+    user_id = StringField('user_id', [InputRequired()],
+                          filters=[lambda value: value.strip() if value else value],
+                          render_kw={"placeholder": "123456"})
     submit = SubmitField('login')

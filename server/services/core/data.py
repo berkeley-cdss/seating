@@ -1,8 +1,9 @@
 from server.forms import ImportStudentFormBase
 from server.services.canvas import get_student_roster_for_offering
-from server.services.csv import parse_csv, parse_csv_str
+from server.services.csv import original_csv_headers, parse_csv, parse_csv_str, sniff_delimiter
 from server.services.google import get_spreadsheet_tab_content
 
+from server.services.core.layout_preview import build_layout_preview
 from server.services.core.room import prepare_room, prepare_seat
 from server.services.core.student import StudentImportConfig, prepare_students
 from server.typings.enum import AssignmentImportStrategy
@@ -52,6 +53,26 @@ def _get_seats_from_manual_input(manual_input_dict):
         row_dic['count'] = count
         rows.append(row_dic)
     return headers, rows
+
+
+def get_layout_preview_from_file(file):
+    """Parse an uploaded room file into a preview, without creating a room."""
+    # utf-8-sig so a spreadsheet export's byte order mark does not end up
+    # glued to the first column name.
+    return get_layout_preview_from_text(file.read().decode('utf-8-sig'))
+
+
+def get_layout_preview_from_text(text):
+    """
+    Parse room spreadsheet text into a preview, without creating a room.
+
+    Takes comma or tab separated text, so a range pasted straight out of Google
+    Sheets works as well as a downloaded CSV.
+    """
+    delimiter = sniff_delimiter(text)
+    headers, rows = parse_csv_str(text, delimiter=delimiter)
+    return build_layout_preview(prepare_seat(headers, rows),
+                                columns=original_csv_headers(text, delimiter=delimiter))
 
 
 def _get_config_from_form(student_form: ImportStudentFormBase):
