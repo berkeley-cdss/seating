@@ -59,7 +59,8 @@ jobs:
         uses: MishaKav/pytest-coverage-comment@main
         # no need to comment on merging to main; only need for pr
         # it will fail anyway because of branch protection rejects commit comments
-        if: github.event_name == 'pull_request'
+        # fork PRs get a read-only token that can't comment, so skip them too
+        if: github.event_name == 'pull_request' && github.event.pull_request.head.repo.full_name == github.repository
         with:
           title: Coverage for ${{ matrix.test-type }} tests for Python ${{ matrix.python-version }}
           create-new-comment: true
