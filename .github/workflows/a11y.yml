@@ -26,6 +26,15 @@ jobs:
         uses: oNaiPs/secrets-to-env-action@v1
         with:
           secrets: ${{ toJSON(vars) }}
+      # Secrets and vars aren't passed to pull requests from forks, so fall
+      # back to dummy values; tests mock Canvas and never call Google Sheets
+      - name: Default missing env for fork PRs
+        run: |
+          echo "FLASK_APP=${FLASK_APP:-server}" >> "$GITHUB_ENV"
+          echo "FLASK_ENV=${FLASK_ENV:-testing}" >> "$GITHUB_ENV"
+          echo "CANVAS_SERVER_URL=${CANVAS_SERVER_URL:-https://canvas.example.edu}" >> "$GITHUB_ENV"
+          echo "CANVAS_CLIENT_ID=${CANVAS_CLIENT_ID:-test}" >> "$GITHUB_ENV"
+          echo "CANVAS_CLIENT_SECRET=${CANVAS_CLIENT_SECRET:-test}" >> "$GITHUB_ENV"
       - name: Run A11y Audit
         run: |
           pytest -s tests/a11y
