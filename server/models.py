@@ -122,20 +122,23 @@ class Exam(db.Model):
             query = query.offset(offset)
         return query.all()
 
-    def get_room(self, room_id):
-        # Look up the room in the already-loaded relationship instead of issuing a
-        # query per call: the students page calls this once per room preference,
-        # which for a large exam is tens of thousands of queries.
-        room_id = str(room_id)
-        return next((room for room in self.rooms if str(room.id) == room_id), None)
-
     def get_rooms(self, room_ids):
         """
         Return the rooms of this exam whose ids are in `room_ids` (ids may be ints or strings),
         in the exam's room order. Ids that do not belong to this exam are silently skipped.
         """
+        # Use the already-loaded relationship instead of issuing a query per call: the
+        # students page calls this for every student, which for a large exam adds up fast.
         wanted_ids = {str(room_id) for room_id in room_ids}
         return [room for room in self.rooms if str(room.id) in wanted_ids]
+
+    def get_unknown_room_ids(self, room_ids):
+        """
+        Return the ids in `room_ids` that are not rooms of this exam (e.g. deleted rooms),
+        as sorted strings.
+        """
+        exam_room_ids = {str(room.id) for room in self.rooms}
+        return sorted({str(room_id) for room_id in room_ids} - exam_room_ids)
 
     def remove_room_preferences(self, room_id):
         """
@@ -265,6 +268,16 @@ class Student(db.Model):
     def avoided_rooms(self):
         """Rooms of this exam the student avoids; ids of rooms that no longer exist are skipped."""
         return self.exam.get_rooms(self.room_avoids)
+
+    @property
+    def unknown_room_wants(self):
+        """Wanted room ids that are not rooms of this exam, e.g. rooms that were deleted."""
+        return self.exam.get_unknown_room_ids(self.room_wants)
+
+    @property
+    def unknown_room_avoids(self):
+        """Avoided room ids that are not rooms of this exam, e.g. rooms that were deleted."""
+        return self.exam.get_unknown_room_ids(self.room_avoids)
 
     def __repr__(self):
         return '<Student {} ({})>'.format(self.name, self.canvas_id)
