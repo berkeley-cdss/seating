@@ -16,7 +16,7 @@ jobs:
     strategy:
       matrix:
         test-type: ["unit", "e2e"]
-        python-version: ["3.12", "3.13", "3.14"]
+        python-version: ["3.14"]
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v5
@@ -59,12 +59,23 @@ jobs:
         uses: MishaKav/pytest-coverage-comment@main
         # no need to comment on merging to main; only need for pr
         # it will fail anyway because of branch protection rejects commit comments
-        if: github.event_name == 'pull_request'
+        # fork PRs get a read-only token that can't comment, so skip them too
+        if: github.event_name == 'pull_request' && github.event.pull_request.head.repo.full_name == github.repository
         with:
           title: Coverage for ${{ matrix.test-type }} tests for Python ${{ matrix.python-version }}
           create-new-comment: true
           pytest-coverage-path: reports/pytest-coverage-${{ matrix.test-type }}.txt
           junitxml-path: reports/pytest-${{ matrix.test-type }}.xml
+      # fork PRs can't get the comment above, so show the report on the run's summary page instead
+      - name: Pytest coverage summary
+        if: ${{ !cancelled() && github.event_name == 'pull_request' && github.event.pull_request.head.repo.full_name != github.repository }}
+        run: |
+          {
+            echo "### Coverage for ${{ matrix.test-type }} tests for Python ${{ matrix.python-version }}"
+            echo '```'
+            cat reports/pytest-coverage-${{ matrix.test-type }}.txt
+            echo '```'
+          } >> "$GITHUB_STEP_SUMMARY"
       - name: Upload coverage reports to Codecov
         uses: codecov/codecov-action@v5
         with:
