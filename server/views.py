@@ -8,7 +8,7 @@ from server.models import SeatAssignment, db, Exam, Room, Seat, Student
 from server.forms import AssignSingleForm, EditExamForm, EditRoomForm, ExamForm, ImportStudentFromCsvUploadForm, \
     RoomForm, ChooseRoomForm, ImportStudentFromSheetForm, ImportStudentFromCanvasRosterForm, DeleteStudentForm, \
     AssignForm, EmailForm, EditStudentForm, UploadRoomForm, ChooseCourseOfferingForm, EditStudentsForm, \
-    ImportStudentFromManualInputForm
+    ImportStudentFromManualInputForm, RemoveDeletedRoomPreferencesForm
 from server.services.core.export import export_exam_student_info
 from server.services.email.templates import get_email
 from server.services.google import get_spreadsheet_tabs
@@ -722,7 +722,27 @@ def students(exam):
         .options(joinedload(Student.assignment))
         .all()
     )
-    return render_template('students.html.j2', exam=exam, students=students_list)
+    students_with_deleted_rooms = sum(
+        1 for student in students_list if student.unknown_room_wants or student.unknown_room_avoids)
+    return render_template('students.html.j2', exam=exam, students=students_list,
+                           students_with_deleted_rooms=students_with_deleted_rooms,
+                           remove_deleted_rooms_form=RemoveDeletedRoomPreferencesForm())
+
+
+@app.route('/<exam:exam>/students/remove_deleted_rooms/', methods=['POST'])
+def remove_deleted_room_preferences(exam):
+    """
+    Removes ids of deleted rooms from every student's room wants/avoids in this exam.
+    """
+    form = RemoveDeletedRoomPreferencesForm()
+    if form.validate_on_submit():
+        changed = exam.remove_unknown_room_preferences()
+        db.session.commit()
+        flash(f"Removed deleted rooms from the preferences of {changed} students.", 'success')
+    else:
+        flash("Failed to remove deleted rooms: the form expired, please try again.", 'error')
+    return redirect(url_for('students', exam=exam))
+
 
 @app.route('/<exam:exam>/students/export/csv')
 def export_students_as_csv(exam):

@@ -152,6 +152,21 @@ class Exam(db.Model):
             if room_id in student.room_avoids:
                 student.room_avoids = student.room_avoids - {room_id}
 
+    def remove_unknown_room_preferences(self):
+        """
+        Drop ids of rooms that are not in this exam (e.g. deleted rooms) from every student's
+        room wants/avoids. Returns the number of students changed. Does not commit.
+        """
+        exam_room_ids = {str(room.id) for room in self.rooms}
+        changed = 0
+        for student in self.students:
+            room_wants = student.room_wants & exam_room_ids
+            room_avoids = student.room_avoids & exam_room_ids
+            if room_wants != student.room_wants or room_avoids != student.room_avoids:
+                student.room_wants, student.room_avoids = room_wants, room_avoids
+                changed += 1
+        return changed
+
     def __repr__(self):
         return '<Exam {}>'.format(self.name)
 
