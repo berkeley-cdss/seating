@@ -129,7 +129,7 @@
           <br>
             <img class="photo" src="{{ url_for('student_photo', exam_student=(room.exam, seat.assignment.student)) }}" alt="photo for: {{ seat.assignment.student.name }}"/>
           <br>{{ seat.assignment.student.sid }}
-        {% endif %} -m 
+        {% endif %}
       </div>
       {% if loop.last %}
         <div class="seat-label" style="left:{{ x - 50 }}px;top:{{ y }}px">{{ seat.name }}</div>
