@@ -56,6 +56,10 @@ def _students_named(name):
     (None, None),
     ('234567.5', '234567.5'),
     ('ab.0', 'ab.0'),
+    # student ids are not always numbers: a student can be listed by their UID
+    ('UID:1234567', 'UID:1234567'),
+    (' UID:1234567 ', 'UID:1234567'),
+    ('UID:1234567.0', 'UID:1234567.0'),
 ])
 def test_normalize_id(value, expected):
     assert normalize_id(value) == expected
@@ -99,6 +103,22 @@ def test_student_id_is_tried_before_email(exam):
     # the student id is Jimmy's, the email Sharon's: the student id wins
     sharon = Student.query.filter_by(exam_id=1, canvas_id='345678').one()
     _, updated, _ = _import(exam, HEADER + f'{sharon.email},Someone,,3031000001\n')
+    assert updated[0].canvas_id == '234567'
+
+
+def test_uid_student_id_is_kept(exam):
+    new, _, invalid = _import(exam, HEADER + 'new@berkeley.edu,New Student,777777, UID:1234567 \n')
+    assert not invalid
+    assert new[0].sid == 'UID:1234567'
+    assert Student.query.filter_by(exam_id=1, canvas_id='777777').one().sid == 'UID:1234567'
+
+
+def test_row_without_canvas_id_matches_by_uid_student_id(exam):
+    jimmy = Student.query.filter_by(exam_id=1, canvas_id='234567').one()
+    jimmy.sid = 'UID:1234567'
+    db.session.commit()
+    new, updated, invalid = _import(exam, HEADER + 'other@berkeley.edu,Jimmy X,,UID:1234567\n')
+    assert (len(new), len(updated), len(invalid)) == (0, 1, 0)
     assert updated[0].canvas_id == '234567'
 
 
