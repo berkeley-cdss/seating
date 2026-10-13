@@ -1,3 +1,5 @@
+import re
+
 from server.services.core.assign import get_preference_from_student, is_seat_valid_for_preference
 from server.typings.enum import AssignmentImportStrategy, \
     MissingRowImportStrategy, NewRowImportStrategy, UpdatedRowImportStrategy
@@ -44,6 +46,60 @@ def attr_to_room_id(attr: str) -> None | str:
     return attr[5:]
 
 
+def normalize_id(value) -> str | None:
+    """
+    Clean up a canvas id or student id read from a spreadsheet, so it matches the stored one:
+    drop surrounding whitespace, and the '.0' a spreadsheet adds when it keeps the id as a
+    number (234567.0). Returns None when there is no id.
+    """
+    if value is None:
+        return None
+    value = re.sub(r'^(\d+)\.0+$', r'\1', str(value).strip())
+    return value or None
+
+
+class StudentMatcher:
+    """
+    Finds the student a spreadsheet row is about: by canvas id, falling back to student id,
+    then email (ignoring case). It knows the exam's students and the ones of rows seen so far,
+    so a student listed on several rows is not created twice.
+    """
+
+    def __init__(self, students):
+        self.by_canvas_id, self.by_sid, self.by_email = {}, {}, {}
+        self.listed = set()
+        for student in students:
+            self.add(student)
+
+    def add(self, student):
+        self.by_canvas_id[str(student.canvas_id)] = student
+        if normalize_id(student.sid):
+            self.by_sid.setdefault(normalize_id(student.sid), student)
+        if student.email:
+            self.by_email.setdefault(student.email.strip().lower(), student)
+
+    def find(self, canvas_id, sid, email):
+        """
+        Returns the matching student or None, and whether the row conflicts with a student:
+        it is someone we know by student id or email, but with another canvas id.
+        """
+        student = self.by_canvas_id.get(canvas_id) if canvas_id else None
+        if student:
+            return student, False
+        student = (sid and self.by_sid.get(sid)) or (email and self.by_email.get(email.lower())) or None
+        if student and canvas_id:
+            # we cannot tell which canvas id is right, and creating another student would duplicate them
+            return None, True
+        return student, False
+
+    def first_listing(self, student):
+        """Whether this is the first row for `student`, so it goes into the result lists once."""
+        if id(student) in self.listed:
+            return False
+        self.listed.add(id(student))
+        return True
+
+
 def is_normal_attr(attr: str):
     return not is_room_attr(attr) and attr not in SPECIAL_HEADERS
 
@@ -74,6 +130,7 @@ def prepare_students(exam, headers, rows, *, config: StudentImportConfig = Stude
     # 1 student query + 1 assignment query + 1-2 seat queries for every row.
     existing_students_by_canvas_id = {
         str(student.canvas_id): student for student in exam.get_students(with_seat=True)}
+    matcher = StudentMatcher(existing_students_by_canvas_id.values())
     exam_seats = exam.get_seats() if config.assignment_import_strategy != AssignmentImportStrategy.IGNORE else []
     seats_by_id = {seat.id: seat for seat in exam_seats}
     seats_by_room_and_name = {}
@@ -84,17 +141,15 @@ def prepare_students(exam, headers, rows, *, config: StudentImportConfig = Stude
         rooms_by_display_name.setdefault(room.name_and_start_at_time_display(), room)
 
     for row in rows:
-        # get canvas id
-        canvas_id = row.pop(
-            'bcourses id', row.pop('canvas id', None))
-        email = row.pop('email', None)
+        canvas_id = normalize_id(row.pop('bcourses id', row.pop('canvas id', None)))
+        sid = normalize_id(row.pop('student id', None))
+        email = (row.pop('email', None) or '').strip() or None
         name = row.pop('name', None)
-        if not canvas_id:
+
+        student, conflict = matcher.find(canvas_id, sid, email)
+        if conflict or (not student and not canvas_id):
             invalid_students.append(row)
             continue
-
-        # try matching existing student (by canvas id)
-        student = existing_students_by_canvas_id.get(str(canvas_id))
         is_new = not student
         if is_new:
             student = Student(exam_id=exam.id, canvas_id=canvas_id)
@@ -110,7 +165,6 @@ def prepare_students(exam, headers, rows, *, config: StudentImportConfig = Stude
             if not student.name or not student.email:
                 invalid_students.append(row)
                 continue
-            sid = row.pop('student id', None)
             student.sid = sid if overwrite else (sid or student.sid)
             emailed = row.pop('emailed', 'false')
 
@@ -172,6 +226,9 @@ def prepare_students(exam, headers, rows, *, config: StudentImportConfig = Stude
                             student.assignment = SeatAssignment(seat=seat, emailed=emailed == 'true')
                             break
 
+        matcher.add(student)
+        if not matcher.first_listing(student):
+            continue
         if is_new:
             new_students.append(student)
         else:
