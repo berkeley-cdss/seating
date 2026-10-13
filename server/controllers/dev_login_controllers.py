@@ -1,3 +1,5 @@
+from urllib.parse import urlsplit
+
 from flask import request, jsonify, abort, redirect, url_for, render_template
 import server.services.canvas as canvas_client
 
@@ -23,12 +25,25 @@ def dev_login_page():
     return redirect(url_for('index'))
 
 
+def _is_own_callback(redirect_uri):
+    """
+    Whether `redirect_uri` is this app's own OAuth callback, so the fake Canvas
+    cannot be used to send a browser to some other site.
+    """
+    url = urlsplit(redirect_uri)
+    return url.scheme in ('http', 'https') and url.netloc == request.host \
+        and url.path == url_for('auth.authorized')
+
+
 @dev_login_module.route('/oauth2/auth/', methods=['GET'])
 def mock_authorize():
+    # the fake Canvas endpoints must not be reachable when the real Canvas is used
+    if not canvas_client.is_mock_canvas():
+        abort(404)
     redirect_uri = request.args.get('redirect_uri', None)
     state = request.args.get('state', '')
     user_id = request.args.get('user_id', None)
-    if redirect_uri:
+    if redirect_uri and _is_own_callback(redirect_uri):
         sep = '&' if '?' in redirect_uri else '?'
         full_redirect_uri = \
             f"{redirect_uri}{sep}code={user_id}&state={state}"
@@ -39,6 +54,8 @@ def mock_authorize():
 
 @dev_login_module.route('/oauth2/token/', methods=['POST'])
 def mock_token():
+    if not canvas_client.is_mock_canvas():
+        abort(404)
     user_id = request.form.get('code')
     if not user_id:
         abort(400, 'Invalid dev user')
