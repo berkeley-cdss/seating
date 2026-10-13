@@ -27,6 +27,18 @@
     width: auto;
   }
 
+  .deleted-rooms-notice {
+    clear: both;
+    margin: 8px 0;
+    padding: 8px 12px;
+    border: 1px solid #ffb74d;
+    background-color: #fff3e0;
+  }
+
+  .deleted-rooms-notice span {
+    margin-right: 12px;
+  }
+
   .pref-card {
     display: inline-block;
     padding: 2px 4px;
@@ -80,6 +92,17 @@
 
       <div id="tt1" class="material-icons std" onclick="location.href = '{{ url_for('import_students', exam=exam) }}';" style="float: right;">person_add</div>
       <div class="mdl-tooltip" data-mdl-for="tt1">Add Students</div>
+    {% if students_with_deleted_rooms %}
+    <div class="deleted-rooms-notice">
+      {% call macros.form(remove_deleted_rooms_form, action=url_for('remove_deleted_room_preferences', exam=exam)) %}
+        <span>
+          {{ students_with_deleted_rooms }} {{ 'student has' if students_with_deleted_rooms == 1 else 'students have' }}
+          room preferences for deleted rooms. A student who only wants deleted rooms can't be assigned a seat.
+        </span>
+        {{ remove_deleted_rooms_form.submit(class="mdl-button mdl-js-button mdl-button--raised") }}
+      {% endcall %}
+    </div>
+    {% endif %}
     <div class="students-table-container">
     <table class="mdl-data-table mdl-js-data-table mdl-shadow--2dp">
       <thead>

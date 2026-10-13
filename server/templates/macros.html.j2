@@ -1,5 +1,5 @@
-{% macro form(form) %}
-<form method="POST">
+{% macro form(form, action=None) %}
+<form method="POST"{% if action %} action="{{ action }}"{% endif %}>
   {{ form.hidden_tag() }}
   {{ caller() }}
 </form>
