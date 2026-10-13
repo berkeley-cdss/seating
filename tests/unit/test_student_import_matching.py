@@ -7,6 +7,7 @@ import io
 import re
 
 import pytest
+from markupsafe import Markup
 from werkzeug.datastructures import FileStorage
 
 from server import app as flask_app
@@ -248,6 +249,8 @@ def test_invalid_row_that_wants_and_avoids_the_same(exam):
 def test_describe_invalid_rows_escapes_and_shortens():
     rows = [InvalidRow(n, 'no email', name='<b>x</b>') for n in range(2, 14)]
     message = describe_invalid_rows(rows)
+    # Markup, so a template that autoescapes leaves the already escaped rows alone
+    assert isinstance(message, Markup)
     lines = message.split('\n')
     assert lines[0] == 'Skipped 12 rows:'
     assert lines[1] == '- Row 2 (&lt;b&gt;x&lt;/b&gt;): no email'

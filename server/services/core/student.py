@@ -1,6 +1,6 @@
 import re
 
-from markupsafe import escape
+from markupsafe import Markup
 
 from server.services.core.assign import get_preference_from_student, is_seat_valid_for_preference
 from server.typings.enum import AssignmentImportStrategy, \
@@ -82,14 +82,15 @@ class InvalidRow:
 def describe_invalid_rows(invalid_rows, limit=10):
     """
     A message listing the skipped rows and why, for staff to fix the spreadsheet. The rows come
-    from an uploaded file and the message is shown as HTML, so each row is escaped.
+    from an uploaded file, so each is escaped, and the message is Markup so that templates
+    which autoescape do not escape it a second time.
     """
     count = len(invalid_rows)
-    lines = [f"Skipped {count} {'row' if count == 1 else 'rows'}:"]
-    lines += [f'- {escape(str(row))}' for row in invalid_rows[:limit]]
+    lines = [Markup(f"Skipped {count} {'row' if count == 1 else 'rows'}:")]
+    lines += [Markup('- {}').format(str(row)) for row in invalid_rows[:limit]]
     if count > limit:
-        lines.append(f'- and {count - limit} more')
-    return '\n'.join(lines)
+        lines.append(Markup(f'- and {count - limit} more'))
+    return Markup('\n').join(lines)
 
 
 class StudentMatcher:
