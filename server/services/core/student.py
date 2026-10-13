@@ -1,5 +1,7 @@
 import re
 
+from markupsafe import escape
+
 from server.services.core.assign import get_preference_from_student, is_seat_valid_for_preference
 from server.typings.enum import AssignmentImportStrategy, \
     MissingRowImportStrategy, NewRowImportStrategy, UpdatedRowImportStrategy
@@ -58,6 +60,38 @@ def normalize_id(value) -> str | None:
     return value or None
 
 
+class InvalidRow:
+    """
+    A spreadsheet row the import skipped: which row it is (counting the header as row 1),
+    who it is about, as far as the row says, and why it was skipped.
+    """
+
+    def __init__(self, number, reason, *, name=None, email=None, canvas_id=None, sid=None):
+        self.number = number
+        self.reason = reason
+        self.who = ', '.join(part for part in [
+            name, email,
+            f'canvas id {canvas_id}' if canvas_id else None,
+            f'student id {sid}' if sid else None,
+        ] if part) or 'no name, email or ids'
+
+    def __str__(self):
+        return f'Row {self.number} ({self.who}): {self.reason}'
+
+
+def describe_invalid_rows(invalid_rows, limit=10):
+    """
+    A message listing the skipped rows and why, for staff to fix the spreadsheet. The rows come
+    from an uploaded file and the message is shown as HTML, so each row is escaped.
+    """
+    count = len(invalid_rows)
+    lines = [f"Skipped {count} {'row' if count == 1 else 'rows'}:"]
+    lines += [f'- {escape(str(row))}' for row in invalid_rows[:limit]]
+    if count > limit:
+        lines.append(f'- and {count - limit} more')
+    return '\n'.join(lines)
+
+
 class StudentMatcher:
     """
     Finds the student a spreadsheet row is about: by canvas id, falling back to student id,
@@ -80,17 +114,25 @@ class StudentMatcher:
 
     def find(self, canvas_id, sid, email):
         """
-        Returns the matching student or None, and whether the row conflicts with a student:
-        it is someone we know by student id or email, but with another canvas id.
+        Returns the matching student or None, and if the row cannot be imported, why: it is someone
+        we know by student id or email, but with another canvas id, or it has no canvas id and
+        matches no one.
         """
         student = self.by_canvas_id.get(canvas_id) if canvas_id else None
         if student:
-            return student, False
-        student = (sid and self.by_sid.get(sid)) or (email and self.by_email.get(email.lower())) or None
+            return student, None
+        by_sid = self.by_sid.get(sid) if sid else None
+        by_email = self.by_email.get(email.lower()) if email else None
+        student, matched_on = (by_sid, 'student id') if by_sid else (by_email, 'email')
         if student and canvas_id:
             # we cannot tell which canvas id is right, and creating another student would duplicate them
-            return None, True
-        return student, False
+            return None, (f'its {matched_on} belongs to {student.name} (canvas id {student.canvas_id}), '
+                          f'who has a different canvas id')
+        if not student and not canvas_id:
+            if sid or email:
+                return None, 'no canvas id, and no student has its student id or email'
+            return None, 'no canvas id, student id or email'
+        return student, None
 
     def first_listing(self, student):
         """Whether this is the first row for `student`, so it goes into the result lists once."""
@@ -140,21 +182,24 @@ def prepare_students(exam, headers, rows, *, config: StudentImportConfig = Stude
     for room in exam.rooms:
         rooms_by_display_name.setdefault(room.name_and_start_at_time_display(), room)
 
-    for row in rows:
+    for row_number, row in enumerate(rows, start=2):
         canvas_id = normalize_id(row.pop('bcourses id', row.pop('canvas id', None)))
         sid = normalize_id(row.pop('student id', None))
         email = (row.pop('email', None) or '').strip() or None
         name = row.pop('name', None)
 
-        student, conflict = matcher.find(canvas_id, sid, email)
-        if conflict or (not student and not canvas_id):
-            invalid_students.append(row)
+        def invalid(reason):
+            invalid_students.append(InvalidRow(row_number, reason, name=name, email=email, canvas_id=canvas_id, sid=sid))
+
+        student, problem = matcher.find(canvas_id, sid, email)
+        if problem:
+            invalid(problem)
             continue
         is_new = not student
         if is_new:
             student = Student(exam_id=exam.id, canvas_id=canvas_id)
             if config.new_student_import_strategy == NewRowImportStrategy.IGNORE:
-                invalid_students.append(row)
+                invalid('new student, and the import is set to ignore new students')
                 continue
 
         # update name, email and sid, emailed
@@ -162,8 +207,9 @@ def prepare_students(exam, headers, rows, *, config: StudentImportConfig = Stude
             overwrite = not is_new and config.updated_student_info_import_strategy == UpdatedRowImportStrategy.OVERWRITE
             student.name = name if overwrite else (name or student.name)
             student.email = email if overwrite else (email or student.email)
-            if not student.name or not student.email:
-                invalid_students.append(row)
+            missing = [field for field, value in [('name', student.name), ('email', student.email)] if not value]
+            if missing:
+                invalid(f"no {' or '.join(missing)}")
                 continue
             student.sid = sid if overwrite else (sid or student.sid)
             emailed = row.pop('emailed', 'false')
@@ -184,9 +230,10 @@ def prepare_students(exam, headers, rows, *, config: StudentImportConfig = Stude
             room_avoids = {attr_to_room_id(k) for k, v in row.items() if is_room_attr(k) and v.lower() == 'false'}
             room_avoids = room_avoids if (is_new or overwrite_pref) else student.room_avoids.union(room_avoids)
             student.room_avoids = room_avoids & exam_room_ids
-            if not student.wants.isdisjoint(student.avoids) \
-                    or not student.room_wants.isdisjoint(student.room_avoids):
-                invalid_students.append(row)
+            both = sorted(student.wants & student.avoids) + [
+                room.name_and_start_at_time_display() for room in exam.get_rooms(student.room_wants & student.room_avoids)]
+            if both:
+                invalid(f"both wants and avoids {', '.join(both)}")
                 continue
 
         # revalidate existing assignments

@@ -11,7 +11,9 @@ from werkzeug.datastructures import FileStorage
 
 from server import app as flask_app
 from server.models import db, Exam, Student, User
-from server.services.core.student import normalize_id, prepare_students
+from server.services.core.student import InvalidRow, StudentImportConfig, describe_invalid_rows, normalize_id, \
+    prepare_students, room_id_to_attr
+from server.typings.enum import NewRowImportStrategy, UpdatedRowImportStrategy
 from server.services.csv import parse_csv, parse_csv_str
 
 EXAM_URL = '/offerings/1234567/exams/midterm1'
@@ -189,3 +191,87 @@ def test_upload_excel_utf8_csv(exam, login_as):
     assert 'Import done. 1 new students, 1 updated students 0 invalid students' in response.get_data(as_text=True)
     assert len(_students_named('Jimmy Xu')) == 1
     assert Student.query.filter_by(exam_id=1).count() == 4
+
+
+def _problems(exam, csv_text, **config):
+    headers, rows = parse_csv_str(csv_text)
+    _, _, invalid, _ = prepare_students(exam, headers, rows, config=StudentImportConfig(**config))
+    return [str(row) for row in invalid]
+
+
+def test_invalid_rows_say_who_and_why(exam):
+    assert _problems(exam, HEADER + 'new@berkeley.edu,New Student,777777,\n'
+                                    'jimmy@berkeley.edu,Jimmy Xu,999999,\n'
+                                    'someone@berkeley.edu,Someone,888888,3031000001\n'
+                                    'nobody@berkeley.edu,Nobody,,3039999999\n'
+                                    ',,,\n') == [
+        'Row 3 (Jimmy Xu, jimmy@berkeley.edu, canvas id 999999): '
+        'its email belongs to Jimmy Xu (canvas id 234567), who has a different canvas id',
+        'Row 4 (Someone, someone@berkeley.edu, canvas id 888888, student id 3031000001): '
+        'its student id belongs to Jimmy Xu (canvas id 234567), who has a different canvas id',
+        'Row 5 (Nobody, nobody@berkeley.edu, student id 3039999999): '
+        'no canvas id, and no student has its student id or email',
+        'Row 6 (no name, email or ids): no canvas id, student id or email',
+    ]
+
+
+def test_invalid_row_without_name_or_email(exam):
+    assert _problems(exam, HEADER + ',,777777,\nnew@berkeley.edu,,888888,\n') == [
+        'Row 2 (canvas id 777777): no name or email',
+        'Row 3 (new@berkeley.edu, canvas id 888888): no name',
+    ]
+
+
+def test_invalid_row_for_ignored_new_student(exam):
+    assert _problems(exam, HEADER + 'new@berkeley.edu,New Student,777777,\n',
+                     new_student_import_strategy=NewRowImportStrategy.IGNORE) == [
+        'Row 2 (New Student, new@berkeley.edu, canvas id 777777): '
+        'new student, and the import is set to ignore new students',
+    ]
+
+
+def test_invalid_row_that_wants_and_avoids_the_same(exam):
+    # merging keeps Jimmy's existing wants, which the row now avoids
+    jimmy = Student.query.filter_by(exam_id=1, canvas_id='234567').one()
+    room = exam.rooms[0]
+    jimmy.wants, jimmy.room_wants = {'lefty'}, {str(room.id)}
+    db.session.commit()
+    problems = _problems(exam, f'email,name,canvas id,lefty,{room_id_to_attr(room.id)}\n'
+                               'jimmy@berkeley.edu,Jimmy Xu,234567,false,false\n',
+                         updated_preference_import_strategy=UpdatedRowImportStrategy.MERGE)
+    assert problems == [
+        f'Row 2 (Jimmy Xu, jimmy@berkeley.edu, canvas id 234567): '
+        f'both wants and avoids lefty, {room.name_and_start_at_time_display()}',
+    ]
+
+
+def test_describe_invalid_rows_escapes_and_shortens():
+    rows = [InvalidRow(n, 'no email', name='<b>x</b>') for n in range(2, 14)]
+    message = describe_invalid_rows(rows)
+    lines = message.split('\n')
+    assert lines[0] == 'Skipped 12 rows:'
+    assert lines[1] == '- Row 2 (&lt;b&gt;x&lt;/b&gt;): no email'
+    assert len(lines) == 12  # header, 10 rows, and the rest summed up
+    assert lines[-1] == '- and 2 more'
+    assert describe_invalid_rows(rows[:1]).startswith('Skipped 1 row:')
+
+
+def test_upload_shows_why_rows_were_skipped(exam, login_as):
+    client = login_as(1)
+    page = client.get(f'{EXAM_URL}/students/import/').get_data(as_text=True)
+    csrf_token = re.search(r'name="csrf_token" type="hidden" value="([^"]+)"', page).group(1)
+    csv_bytes = (HEADER + 'jimmy@berkeley.edu,<script>alert(1)</script>,999999,\n').encode('utf-8')
+    response = client.post(f'{EXAM_URL}/students/import/from_csv_upload/', data={
+        'csrf_token': csrf_token,
+        'file': (io.BytesIO(csv_bytes), 'roster.csv'),
+        'revalidate_existing_assignments': 'y',
+        'assignment_import_strategy': 'revalidate',
+        'updated_student_info_import_strategy': 'merge',
+        'updated_preference_import_strategy': 'overwrite',
+        'new_student_import_strategy': 'append',
+        'missing_student_import_strategy': 'ignore',
+    }, content_type='multipart/form-data', follow_redirects=True)
+    page = response.get_data(as_text=True)
+    assert 'Skipped 1 row:<br>- Row 2 (&lt;script&gt;alert(1)&lt;/script&gt;, jimmy@berkeley.edu, canvas id 999999): ' \
+        'its email belongs to Jimmy Xu (canvas id 234567), who has a different canvas id' in page
+    assert '<script>alert(1)</script>' not in page

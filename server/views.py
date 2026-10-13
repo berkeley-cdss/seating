@@ -10,6 +10,7 @@ from server.forms import AssignSingleForm, EditExamForm, EditRoomForm, ExamForm,
     AssignForm, EmailForm, EditStudentForm, UploadRoomForm, ChooseCourseOfferingForm, EditStudentsForm, \
     ImportStudentFromManualInputForm, RemoveDeletedRoomPreferencesForm
 from server.services.core.export import export_exam_student_info
+from server.services.core.student import describe_invalid_rows
 from server.services.email.templates import get_email
 from server.services.google import get_spreadsheet_tabs
 import server.services.canvas as canvas_client
@@ -559,7 +560,7 @@ def import_students_from_custom_sheet(exam):
                     f"Updated students: {set_to_str([s.name for s in updated_students])}", 'warning')
             if invalid_students:
                 flash(
-                    f"Invalid students: {invalid_students}", 'error')
+                    describe_invalid_rows(invalid_students), 'error')
         except Exception as e:
             flash(f"Failed to import students due to an unexpected error: {str(e)}", 'error')
         return redirect(url_for('students', exam=exam))
@@ -598,7 +599,7 @@ def import_students_from_canvas_roster(exam):
                     f"Updated students: {set_to_str([s.name for s in updated_students])}", 'warning')
             if invalid_students:
                 flash(
-                    f"Invalid students: {invalid_students}", 'error')
+                    describe_invalid_rows(invalid_students), 'error')
         except Exception as e:
             flash(f"Failed to import students due to an unexpected error: {str(e)}", 'error')
         return redirect(url_for('students', exam=exam))
@@ -638,7 +639,7 @@ def import_students_from_csv_upload(exam):
                         f"Updated students: {set_to_str([s.name for s in updated_students])}", 'warning')
                 if invalid_students:
                     flash(
-                        f"Invalid students: {invalid_students}", 'error')
+                        describe_invalid_rows(invalid_students), 'error')
             except Exception as e:
                 flash(f"Failed to import students due to an unexpected error: {str(e)}", 'error')
         else:
@@ -679,7 +680,7 @@ def import_students_from_manual_input(exam):
                     f"Updated students: {set_to_str([s.name for s in updated_students])}", 'warning')
             if invalid_students:
                 flash(
-                    f"Invalid students: {invalid_students}", 'error')
+                    describe_invalid_rows(invalid_students), 'error')
         except Exception as e:
             flash(f"Failed to import students due to an unexpected error: {str(e)}", 'error')
         return redirect(url_for('students', exam=exam))
