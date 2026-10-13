@@ -1,3 +1,4 @@
+from selenium.webdriver.common.action_chains import ActionChains
 from selenium.webdriver.common.by import By
 from selenium.webdriver.support.ui import WebDriverWait
 
@@ -73,3 +74,21 @@ def test_assign_chosen_seat(get_authed_driver, seeded_db):
     db.session.commit()  # end the test's transaction to see the server's write
     student = Student.query.filter_by(canvas_id='234567').one()
     assert student.assignment.seat_id == 3
+
+
+def test_seat_photos_load_only_when_shown(get_authed_driver, seeded_db):
+    # seat 1 is taken in the seed data, so its tooltip carries the student's photo
+    driver = _open_assign_page(get_authed_driver)
+    WebDriverWait(driver, 5).until(lambda d: d.execute_script('return document.readyState') == 'complete')
+    photo_requests = """
+        return performance.getEntriesByType('resource').filter(e => e.name.includes('/photo/')).length
+    """
+    assert driver.execute_script(photo_requests) == 0
+
+    seat = driver.find_element(By.ID, '1')
+    driver.execute_script('arguments[0].scrollIntoView({block: "center"})', seat)
+    ActionChains(driver).move_to_element(seat).perform()
+    photo = driver.find_element(By.CSS_SELECTOR, '.seat-tooltip[for="1"] img.photo')
+    WebDriverWait(driver, 5).until(
+        lambda d: d.execute_script('return arguments[0].complete && arguments[0].naturalWidth > 0', photo))
+    assert driver.execute_script(photo_requests) == 1

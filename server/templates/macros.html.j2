@@ -67,7 +67,7 @@
           {% if staff and seat.assignment %}
             <br>{{ seat.assignment.student.name }}
             <br>
-              <img class="photo" src="{{ url_for('student_photo', exam_student=(room.exam, seat.assignment.student)) }}" alt="photo for: {{ seat.assignment.student.name }}"/>
+              <img class="photo" loading="lazy" src="{{ url_for('student_photo', exam_student=(room.exam, seat.assignment.student)) }}" alt="photo for: {{ seat.assignment.student.name }}"/>
             <br>{{ seat.assignment.student.sid }}
           {% endif %}
         </div>
@@ -127,7 +127,7 @@
         {% if staff and seat.assignment %}
           <br>{{ seat.assignment.student.name }}
           <br>
-            <img class="photo" src="{{ url_for('student_photo', exam_student=(room.exam, seat.assignment.student)) }}" alt="photo for: {{ seat.assignment.student.name }}"/>
+            <img class="photo" loading="lazy" src="{{ url_for('student_photo', exam_student=(room.exam, seat.assignment.student)) }}" alt="photo for: {{ seat.assignment.student.name }}"/>
           <br>{{ seat.assignment.student.sid }}
         {% endif %}
       </div>
