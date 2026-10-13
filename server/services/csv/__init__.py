@@ -16,7 +16,8 @@ def parse_csv(file):
     """
     Parse a CSV file and return a list of headers and rows.
     """
-    return parse_csv_str(file.read().decode('utf-8'))
+    # utf-8-sig also reads Excel's "CSV UTF-8" files, which start with a byte order mark
+    return parse_csv_str(file.read().decode('utf-8-sig'))
 
 
 def parse_csv_str(csv_str, delimiter=','):
