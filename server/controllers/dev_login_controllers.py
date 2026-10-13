@@ -34,7 +34,7 @@ def dev_login_page():
         from server.forms import DevLoginForm
         form = DevLoginForm()
         if form.validate_on_submit():
-          user_id = form.user_id.data
+            user_id = form.user_id.data
             # The fake Canvas only knows the seeded users, so anything else
             # would fail later on with a stack trace instead of an explanation.
             if user_id in FAKE_USERS:
