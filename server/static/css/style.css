@@ -115,6 +115,11 @@ header a {
   background-color: #ef5350;
 }
 
+/* a highlighted movable seat, which is drawn as a dot rather than a .seat */
+.s.highlight:not(.seat) {
+  color: #ef5350;
+}
+
 .seat.occupied {
   background-color: #64b5f6;
 }

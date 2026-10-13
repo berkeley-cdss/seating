@@ -43,16 +43,17 @@
 
       {% for seat in room.movable_seats_by_attribute[attr] %}
         {% if staff %}
+          {% set class = 's highlight' if seat.id and seat.id == highlight_seat_id else 's' %}
           {% if seat.assignment %}
             {% if not remove_link %}
             <a href="{{ url_for('student', exam_student=(exam, seat.assignment.student)) }}">
             {% endif %}
-              <span class="s" id={{ seat.id }} style="font-size: {{ circle_size }}px;">&#x25CF;</span>
+              <span class="{{ class }}" id={{ seat.id }} style="font-size: {{ circle_size }}px;">&#x25CF;</span>
             {% if not remove_link %}
             </a>
             {% endif %}
           {% else %}
-            <span class="s" id={{ seat.id }} style="font-size: {{ circle_size }}px;">
+            <span class="{{ class }}" id={{ seat.id }} style="font-size: {{ circle_size }}px;">
               &#x25CB;
             </span>
           {% endif %}
@@ -72,11 +73,14 @@
           {% endif %}
         </div>
       {% endfor %}
+      {# students do not see the individual movable seats, so tell them which kind is theirs #}
+      {% if not staff %}
       {% for seat in room.movable_seats_by_attribute[attr] %}
         {% if seat.id and seat.id == highlight_seat_id %}
-          <span><strong>(YOUR WILL USE A SEAT FROM THIS CATEGORY)</strong></span>
+          <span><strong>(YOU WILL USE A SEAT FROM THIS CATEGORY)</strong></span>
         {% endif %}
       {% endfor %}
+      {% endif %}
 
       </li>
     {% endfor %}

@@ -514,7 +514,8 @@ def room(exam, id):
     room = Room.query.options(
         joinedload(Room.seats).joinedload(Seat.assignment).joinedload(SeatAssignment.student)
     ).filter_by(exam_id=exam.id, id=id).first_or_404()
-    seat_id = request.args.get('seat')
+    # seat ids are ints: as a string, the seat to highlight never matched any seat
+    seat_id = request.args.get('seat', type=int)
     return render_template('room.html.j2', exam=exam, room=room, seat_id=seat_id)
 # endregion
 
