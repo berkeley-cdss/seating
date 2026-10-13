@@ -19,8 +19,12 @@ db = SQLAlchemy(app=app)
 
 class StringSet(types.TypeDecorator):
     impl = types.Text
+    cache_ok = True
 
     def process_bind_param(self, value, engine):
+        # set('123') would store each character as its own item
+        if isinstance(value, str):
+            raise TypeError('StringSet expects a collection of strings, not a str')
         return ','.join(set(value))
 
     def process_result_value(self, value, engine):
@@ -147,14 +151,50 @@ class Exam(db.Model):
             query = query.offset(offset)
         return query.all()
 
-    def get_room(self, room_id):
+    def get_rooms(self, room_ids):
         """
-        Find one of this exam's rooms by id (int or str).
-        Uses the already-loaded `rooms` relationship instead of a query per call,
-        since this is called once per student room preference when rendering the student list.
+        Return the rooms of this exam whose ids are in `room_ids` (ids may be ints or strings),
+        in the exam's room order. Ids that do not belong to this exam are silently skipped.
+        """
+        # Use the already-loaded relationship instead of issuing a query per call: the
+        # students page calls this for every student, which for a large exam adds up fast.
+        wanted_ids = {str(room_id) for room_id in room_ids}
+        return [room for room in self.rooms if str(room.id) in wanted_ids]
+
+    def get_unknown_room_ids(self, room_ids):
+        """
+        Return the ids in `room_ids` that are not rooms of this exam (e.g. deleted rooms),
+        as sorted strings.
+        """
+        exam_room_ids = {str(room.id) for room in self.rooms}
+        return sorted({str(room_id) for room_id in room_ids} - exam_room_ids)
+
+    def remove_room_preferences(self, room_id):
+        """
+        Drop `room_id` from every student's room wants/avoids, so that deleting a room
+        does not leave dangling references behind. Does not commit.
         """
         room_id = str(room_id)
-        return next((room for room in self.rooms if str(room.id) == room_id), None)
+        for student in self.students:
+            if room_id in student.room_wants:
+                student.room_wants = student.room_wants - {room_id}
+            if room_id in student.room_avoids:
+                student.room_avoids = student.room_avoids - {room_id}
+
+    def remove_unknown_room_preferences(self):
+        """
+        Drop ids of rooms that are not in this exam (e.g. deleted rooms) from every student's
+        room wants/avoids. Returns the number of students changed. Does not commit.
+        """
+        exam_room_ids = {str(room.id) for room in self.rooms}
+        changed = 0
+        for student in self.students:
+            room_wants = student.room_wants & exam_room_ids
+            room_avoids = student.room_avoids & exam_room_ids
+            if room_wants != student.room_wants or room_avoids != student.room_avoids:
+                student.room_wants, student.room_avoids = room_wants, room_avoids
+                changed += 1
+        return changed
 
     def __repr__(self):
         return '<Exam {}>'.format(self.name)
@@ -262,6 +302,26 @@ class Student(db.Model):
     @property
     def first_name(self):
         return self.name.rsplit(',', 1)[-1].strip().title()
+
+    @property
+    def wanted_rooms(self):
+        """Rooms of this exam the student wants; ids of rooms that no longer exist are skipped."""
+        return self.exam.get_rooms(self.room_wants)
+
+    @property
+    def avoided_rooms(self):
+        """Rooms of this exam the student avoids; ids of rooms that no longer exist are skipped."""
+        return self.exam.get_rooms(self.room_avoids)
+
+    @property
+    def unknown_room_wants(self):
+        """Wanted room ids that are not rooms of this exam, e.g. rooms that were deleted."""
+        return self.exam.get_unknown_room_ids(self.room_wants)
+
+    @property
+    def unknown_room_avoids(self):
+        """Avoided room ids that are not rooms of this exam, e.g. rooms that were deleted."""
+        return self.exam.get_unknown_room_ids(self.room_avoids)
 
     def __repr__(self):
         return '<Student {} ({})>'.format(self.name, self.canvas_id)

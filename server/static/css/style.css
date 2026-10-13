@@ -123,6 +123,30 @@ header a {
   background-color: #ef5350;
 }
 
+/* seat picked on the assign page; after :hover so it stays green under the cursor */
+.seat.selected {
+  background-color: #66bb6a;
+  border-color: #2e7d32;
+}
+
+.s.selected:not(.seat) {
+  color: #2e7d32;
+}
+
+/* keeps the seat field and buttons in view while scrolling long room maps */
+.assign-bar {
+  position: sticky;
+  top: 0;
+  z-index: 2;
+  background-color: #f7f7f7;
+  border-bottom: 1px solid #ccc;
+}
+
+.selected-seat {
+  padding-left: 40px;
+  font-weight: bold;
+}
+
 .seat-label {
   position: absolute;
   width: 22px;
@@ -131,6 +155,9 @@ header a {
   text-align: center;
   font-weight: bold;
   font-size: 22px;
+  /* Seat names like "A 1" must stay on one line; the box is only 22px wide,
+     so a regular space would otherwise wrap the label onto a second line. */
+  white-space: nowrap;
 }
 
 .seat-tooltip:not(.is-active) {

@@ -2,7 +2,7 @@ from server.services.core.assign import get_preference_from_student, is_seat_val
 from server.typings.enum import AssignmentImportStrategy, \
     MissingRowImportStrategy, NewRowImportStrategy, UpdatedRowImportStrategy
 from server.typings.exception import DataValidationError
-from server.models import Room, Seat, SeatAssignment, Student
+from server.models import db, Room, Seat, SeatAssignment, Student
 
 
 SPECIAL_HEADERS = ['email', 'name', 'bcourses id', 'canvas id', 'student id', 'emailed', 'seat id', 'assignment',
@@ -31,7 +31,7 @@ def room_to_attr(room: Room):
 
 def attr_to_room(attr: str) -> Room | None:
     room_id = attr_to_room_id(attr)
-    return Room.query.get(int(room_id)) if room_id else None
+    return db.session.get(Room, int(room_id)) if room_id else None
 
 
 def room_id_to_attr(room_id: int):
@@ -68,6 +68,7 @@ def prepare_students(exam, headers, rows, *, config: StudentImportConfig = Stude
     invalid_students = []
     students_ids_to_remove = []
     new_assignment_ids = set()
+    exam_room_ids = {str(room.id) for room in exam.rooms}
 
     # Load everything the per-row logic looks up once, up front, instead of
     # 1 student query + 1 assignment query + 1-2 seat queries for every row.
@@ -120,10 +121,15 @@ def prepare_students(exam, headers, rows, *, config: StudentImportConfig = Stude
             student.wants = wants if (is_new or overwrite_pref) else student.wants.union(wants)
             avoids = {k.lower() for k, v in row.items() if is_normal_attr(k) and v.lower() == 'false'}
             student.avoids = avoids if (is_new or overwrite_pref) else student.avoids.union(avoids)
+            # room preferences may only reference rooms of this exam: a CSV exported from another exam
+            # carries that exam's room ids, and merging keeps ids of rooms deleted since, so filter
+            # after merging to drop both
             room_wants = {attr_to_room_id(k) for k, v in row.items() if is_room_attr(k) and v.lower() == 'true'}
-            student.room_wants = room_wants if (is_new or overwrite_pref) else student.room_wants.union(room_wants)
+            room_wants = room_wants if (is_new or overwrite_pref) else student.room_wants.union(room_wants)
+            student.room_wants = room_wants & exam_room_ids
             room_avoids = {attr_to_room_id(k) for k, v in row.items() if is_room_attr(k) and v.lower() == 'false'}
-            student.room_avoids = room_avoids if (is_new or overwrite_pref) else student.room_avoids.union(room_avoids)
+            room_avoids = room_avoids if (is_new or overwrite_pref) else student.room_avoids.union(room_avoids)
+            student.room_avoids = room_avoids & exam_room_ids
             if not student.wants.isdisjoint(student.avoids) \
                     or not student.room_wants.isdisjoint(student.room_avoids):
                 invalid_students.append(row)
@@ -147,7 +153,7 @@ def prepare_students(exam, headers, rows, *, config: StudentImportConfig = Stude
                         and (ignore_restrictions_for_new or is_seat_valid_for_preference(seat, new_preference)) \
                         and seat_id not in new_assignment_ids:
                     new_assignment_ids.add(seat_id)
-                    student.assignment = SeatAssignment(student=student, seat=seat, emailed=emailed == 'true')
+                    student.assignment = SeatAssignment(seat=seat, emailed=emailed == 'true')
             else:
                 room_name = row.pop('session name', row.pop('room name', None))
                 seat_name = row.pop('seat name', None)
@@ -163,7 +169,7 @@ def prepare_students(exam, headers, rows, *, config: StudentImportConfig = Stude
                                 and (ignore_restrictions_for_new or is_seat_valid_for_preference(seat, new_preference))\
                                 and seat.id not in new_assignment_ids:
                             new_assignment_ids.add(seat.id)
-                            student.assignment = SeatAssignment(student=student, seat=seat, emailed=emailed == 'true')
+                            student.assignment = SeatAssignment(seat=seat, emailed=emailed == 'true')
                             break
 
         if is_new:

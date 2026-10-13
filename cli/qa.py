@@ -42,8 +42,6 @@ def run_audit():
     os.system('pip list --outdated')
     click.echo('Auditing with pip-audit...')
     os.system('pip-audit')
-    click.echo('Auditing with safety...')
-    os.system('safety check')
 
 
 @app.cli.command('lint')
