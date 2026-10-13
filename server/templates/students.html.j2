@@ -94,7 +94,7 @@
       <div class="mdl-tooltip" data-mdl-for="tt1">Add Students</div>
     {% if students_with_deleted_rooms %}
     <div class="deleted-rooms-notice">
-      {% call macros.form(remove_deleted_rooms_form) %}
+      {% call macros.form(remove_deleted_rooms_form, action=url_for('remove_deleted_room_preferences', exam=exam)) %}
         <span>
           {{ students_with_deleted_rooms }} {{ 'student has' if students_with_deleted_rooms == 1 else 'students have' }}
           room preferences for deleted rooms. A student who only wants deleted rooms can't be assigned a seat.
