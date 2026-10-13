@@ -515,7 +515,10 @@ def room(exam, id):
         joinedload(Room.seats).joinedload(Seat.assignment).joinedload(SeatAssignment.student)
     ).filter_by(exam_id=exam.id, id=id).first_or_404()
     seat_id = request.args.get('seat')
-    return render_template('room.html.j2', exam=exam, room=room, seat_id=seat_id)
+    # this page is staff only (the exam converter sends students to their own seat), so the
+    # proctor view, which shows the room from the front, is never offered to students
+    proctor = request.args.get('view') == 'proctor'
+    return render_template('room.html.j2', exam=exam, room=room, seat_id=seat_id, proctor=proctor)
 # endregion
 
 # region Student CRUDI

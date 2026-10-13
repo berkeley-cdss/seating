@@ -16,7 +16,9 @@
   {% endif %}
 {% endmacro %}
 
-{% macro room(room, highlight_seat_id=none, show_attributes=false, staff=true, remove_link=false) %}
+{% macro room(room, highlight_seat_id=none, show_attributes=false, staff=true, remove_link=false, proctor=false) %}
+{# the proctor view turns the fixed seats 180 degrees, to show the room as seen from the front; staff only #}
+{% set proctor = proctor and staff %}
 {% if room.seats %}
 <div class="room">
   <h4>{{ room.display_name }}
@@ -86,7 +88,7 @@
 
   {% if room.fixed_seats %}
   <h5>Fixed Seats</h5>
-  <h6>Front</h6>
+  <h6>{{ 'Back' if proctor else 'Front' }}</h6>
   {% set x_min = room.fixed_seats|map(attribute='x')|min %}
   {% set x_max = room.fixed_seats|map(attribute='x')|max %}
   {% set y_min = room.fixed_seats|map(attribute='y')|min %}
@@ -96,10 +98,16 @@
   <div class="seats" style="width:{{ scale * (x_max - x_min + 1) }}px;height:{{ scale * (y_max - y_min + 1) }}px">
   {% for row in room.rows %}
     {% for seat in row %}
-      {% set x = scale * (x_max - seat.x) %}
-      {% set y = scale * (seat.y - y_min) %}
+      {% if proctor %}
+        {% set x = scale * (seat.x - x_min) %}
+        {% set y = scale * (y_max - seat.y) %}
+      {% else %}
+        {% set x = scale * (x_max - seat.x) %}
+        {% set y = scale * (seat.y - y_min) %}
+      {% endif %}
+      {# row labels sit beside the row's ends, which the proctor view swaps #}
       {% if loop.first %}
-        <div class="seat-label" style="left:{{ x + 30 }}px;top:{{ y }}px">{{ seat.name }}</div>
+        <div class="seat-label" style="left:{{ x - 50 if proctor else x + 30 }}px;top:{{ y }}px">{{ seat.name }}</div>
       {% endif %}
       {% if seat.id and seat.id == highlight_seat_id %}
         {% set class = 's seat highlight' %}
@@ -132,13 +140,13 @@
         {% endif %}
       </div>
       {% if loop.last %}
-        <div class="seat-label" style="left:{{ x - 50 }}px;top:{{ y }}px">{{ seat.name }}</div>
+        <div class="seat-label" style="left:{{ x + 30 if proctor else x - 50 }}px;top:{{ y }}px">{{ seat.name }}</div>
       {% endif %}
     {% endfor %}
   {% endfor %}
   </div>
   </div>
-  <h6>Back</h6>
+  <h6>{{ 'Front' if proctor else 'Back' }}</h6>
   {% if staff and not remove_link and room.id %}
   <h6>Click on any assigned seat (blue) to view student details. Clicking on an unoccupied seat will lead you to a shareable link for that seat.</h6>
   {% endif %}
