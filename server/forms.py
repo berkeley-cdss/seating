@@ -192,6 +192,10 @@ class DeleteStudentForm(FlaskForm):
     submit = SubmitField('delete by emails')
 
 
+class RemoveDeletedRoomPreferencesForm(FlaskForm):
+    submit = SubmitField('remove deleted rooms')
+
+
 class AssignForm(FlaskForm):
     submit = SubmitField('assign')
     delete_all = SubmitField('delete all assignments')
