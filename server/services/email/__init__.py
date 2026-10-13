@@ -42,7 +42,8 @@ def email_about_assignment(exam, form, to_addrs):
     if not to_addrs:
         return set(), set()
     success_addrs, failure_addrs = set(), set()
-    email_student_map = {s.email: s for s in exam.students}
+    # substitution reads assignment -> seat -> room for every student: load them in one query
+    email_student_map = {s.email: s for s in exam.get_students(with_seat=True)}
     email_messages = []
     for to_addr in to_addrs:
         student = email_student_map.get(to_addr, None)
