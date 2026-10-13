@@ -34,7 +34,7 @@ def count_queries():
 def exam(seeded_db):
     # start from a clean identity map so nothing seeded is already cached in the session
     seeded_db.session.expunge_all()
-    exam = Exam.query.get(1)
+    exam = db.session.get(Exam, 1)
     assert exam is not None
     return exam
 
@@ -105,10 +105,11 @@ def test_prepare_students_is_constant_queries(exam, seeded_db):
     seeded_db.session.rollback()
 
 
-def test_get_room_uses_loaded_rooms(exam, seeded_db):
+def test_get_rooms_uses_loaded_rooms(exam, seeded_db):
     room = exam.rooms[0]
     with count_queries() as c:
-        assert exam.get_room(room.id) is room
-        assert exam.get_room(str(room.id)) is room
-        assert exam.get_room(999999) is None
+        assert exam.get_rooms({room.id}) == [room]
+        assert exam.get_rooms({str(room.id)}) == [room]
+        assert exam.get_rooms({999999}) == []
+        assert exam.get_unknown_room_ids({room.id, 999999}) == ['999999']
     assert c['n'] == 0
