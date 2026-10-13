@@ -1,7 +1,7 @@
 import importlib
-import os
 
 import pytest
+from flask import redirect
 
 import config
 from server import app as flask_app
@@ -110,7 +110,19 @@ class TestDevLoginPage:
         assert '/dev_login' not in response.headers['Location']
 
     def test_login_redirects_to_real_canvas_when_canvas_is_real(self, client, monkeypatch):
+        # The OAuth client is registered once at import time, for the fake Canvas under
+        # testing, so flipping MOCK_CANVAS here cannot swap in the real one. Check that
+        # /login/ hands off to the OAuth client instead of the dev login page.
+        from server.controllers import auth_controllers
+        redirect_uris = []
+
+        def authorize_redirect(redirect_uri):
+            redirect_uris.append(redirect_uri)
+            return redirect('https://canvas.example.edu/login/oauth2/auth')
+
         monkeypatch.setitem(flask_app.config, 'MOCK_CANVAS', False)
+        monkeypatch.setattr(auth_controllers.oauth_provider, 'authorize_redirect', authorize_redirect)
         response = client.get('/login/')
         assert response.status_code == 302
-        assert os.environ.get('CANVAS_SERVER_URL', 'https://') in response.headers['Location']
+        assert response.headers['Location'] == 'https://canvas.example.edu/login/oauth2/auth'
+        assert redirect_uris == ['https://localhost/authorized/']
