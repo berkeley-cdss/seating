@@ -23,8 +23,6 @@ class StudentImportConfig:
     def __init__(self, *, revalidate_existing_assignments=True,
                  assignment_import_strategy: AssignmentImportStrategy = AssignmentImportStrategy.REVALIDATE,
                  updated_student_info_import_strategy: UpdatedRowImportStrategy = UpdatedRowImportStrategy.MERGE,
-                 # merge, not overwrite: a Canvas roster has no preference columns, so overwriting would
-                 # clear every student's preferences on each roster import
                  updated_preference_import_strategy: UpdatedRowImportStrategy = UpdatedRowImportStrategy.MERGE,
                  new_student_import_strategy: NewRowImportStrategy = NewRowImportStrategy.APPEND,
                  missing_student_import_strategy: MissingRowImportStrategy = MissingRowImportStrategy.IGNORE
