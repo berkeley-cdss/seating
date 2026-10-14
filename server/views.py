@@ -1030,8 +1030,11 @@ def email_students_batch(exam):
     return jsonify(sent=sorted(successful_emails), failed=sorted(failed_emails))
 
 
-@app.route('/<exam:exam>/students/email/<string:student_id>/', methods=['GET', 'POST'])
+@app.route('/<exam:exam>/students/email/<int:student_id>/', methods=['GET', 'POST'])
 def email_single_student(exam, student_id):
+    # the staff check is on the exam in the url, so the student must be one of its own: looked up by
+    # id alone, any student of any course could be loaded here, email and seat included
+    student = Student.query.filter_by(id=student_id, exam_id=exam.id).first_or_404()
     form = _email_form(exam)
     if form.validate_on_submit():
         if form.send_test.data:
@@ -1047,7 +1050,6 @@ def email_single_student(exam, student_id):
     elif form.is_submitted():
         _flash_form_errors(form)
     else:
-        student = Student.query.get_or_404(student_id)
         email_prefill = get_email(EmailTemplate.ASSIGNMENT_INFORM_EMAIL)
         form.subject.data = email_prefill.subject
         form.body.data = email_prefill.body
