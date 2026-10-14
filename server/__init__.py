@@ -27,9 +27,11 @@ class App(Flask):
         return UrlRequestContext(self, environ)
 
     def select_jinja_autoescape(self, filename):
-        # Flask only autoescapes .html/.htm/.xml/.xhtml templates, and ours are named *.html.j2:
-        # without this, student names and other imported data would be rendered as raw HTML
-        return super().select_jinja_autoescape(filename) or filename.endswith('.html.j2')
+        # Flask decides by extension (.html, .htm, .xml, .xhtml, .svg), and ours are named *.html.j2:
+        # judge them by the extension before .j2, so HTML is escaped and a .txt.j2 or .csv.j2 is not
+        if filename and filename.endswith('.j2'):
+            filename = filename[:-len('.j2')]
+        return super().select_jinja_autoescape(filename)
 
 
 app = App(__name__)
