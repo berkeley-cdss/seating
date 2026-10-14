@@ -259,3 +259,19 @@ header a {
 .room-view-toggle span {
   margin-left: 12px;
 }
+
+.test-email {
+  margin-top: 24px;
+  border-top: 1px solid #ccc;
+}
+
+.test-email-fields {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 12px;
+}
+
+.test-email-fields select {
+  max-width: 100%;
+}
