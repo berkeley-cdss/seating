@@ -6,11 +6,6 @@ on:
 
 permissions:
   contents: read
-  # Lets google-github-actions/auth exchange GitHub's OIDC token for GCP credentials.
-  id-token: write
-  # Lets the deploy job comment the preview URL on the PR.
-  issues: write
-  pull-requests: write
 
 env:
   # Keyless auth via Workload Identity Federation; only this repository may
@@ -24,9 +19,12 @@ jobs:
   cleanup-preview-service:
     if: github.event.action == 'closed' && github.event.pull_request.head.repo.full_name == github.repository
     runs-on: ubuntu-latest
+    permissions:
+      # Lets google-github-actions/auth exchange GitHub's OIDC token for GCP credentials.
+      id-token: write
     steps:
       - id: auth
-        uses: google-github-actions/auth@v3
+        uses: google-github-actions/auth@7c6bc770dae815cd3e89ee6cdf493a5fab2cc093 # v3.0.0
         with:
           workload_identity_provider: ${{ env.WORKLOAD_IDENTITY_PROVIDER }}
           service_account: ${{ env.DEPLOYER_SERVICE_ACCOUNT }}
@@ -40,6 +38,13 @@ jobs:
   deploy-preview-service:
     if: github.event.action != 'closed' && github.event.pull_request.head.repo.full_name == github.repository
     runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      # Lets google-github-actions/auth exchange GitHub's OIDC token for GCP credentials.
+      id-token: write
+      # Lets the deploy job comment the preview URL on the PR.
+      issues: write
+      pull-requests: write
     steps:
       - name: Checkout Code
         uses: actions/checkout@v7
@@ -47,17 +52,17 @@ jobs:
           ref: ${{ github.head_ref }}
 
       - id: auth
-        uses: google-github-actions/auth@v3
+        uses: google-github-actions/auth@7c6bc770dae815cd3e89ee6cdf493a5fab2cc093 # v3.0.0
         with:
           workload_identity_provider: ${{ env.WORKLOAD_IDENTITY_PROVIDER }}
           service_account: ${{ env.DEPLOYER_SERVICE_ACCOUNT }}
 
       - name: Set up Cloud SDK
-        uses: google-github-actions/setup-gcloud@v3
+        uses: google-github-actions/setup-gcloud@aa5489c8933f4cc7a4f7d45035b3b1440c9c10db # v3.0.1
 
       - name: Deploy to Cloud Run (Preview)
         id: deploy
-        uses: google-github-actions/deploy-cloudrun@v3
+        uses: google-github-actions/deploy-cloudrun@2028e2d7d30a78c6910e0632e48dd561b064884d # v3.0.1
         with:
           service: preview-seating-pr-${{ github.event.number }}
           region: us-west1
