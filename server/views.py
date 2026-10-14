@@ -14,7 +14,7 @@ from server.services.core.student import describe_invalid_rows
 from server.services.email.templates import get_email
 from server.services.google import get_spreadsheet_tabs
 import server.services.canvas as canvas_client
-from server.services.email import email_about_assignment, substitute_about_assignment
+from server.services.email import email_about_assignment, send_test_email, substitute_about_assignment
 from server.services.core.data import get_room_from_csv, get_room_from_google_spreadsheet, get_room_from_manual_input, \
     get_students_from_canvas, get_students_from_csv, get_students_from_google_spreadsheet, update_room_from_manual_input, \
     get_students_from_manual_input, get_layout_preview_from_file, get_layout_preview_from_text
@@ -945,10 +945,45 @@ def assign_student(exam_student):
     return render_template('assign_single.html.j2', exam=exam, rooms=rooms, form=form)
 
 
+def _email_form(exam):
+    """The email form, with the seated students offered for a test email."""
+    form = EmailForm()
+    form.test_student.choices = [
+        (student.id, f'{student.name} ({student.assignment.seat.room.display_name} {student.assignment.seat.display_name})')
+        for student in exam.get_students(with_seat=True) if student.assignment]
+    return form
+
+
+def _send_test_email(exam, form):
+    """
+    Handles the "send test" button of the email pages, then shows the page again with the
+    subject and body as they were, so staff can keep editing and send for real.
+    """
+    if not form.test_to_addr.data:
+        flash("Enter the address to send the test email to.", 'error')
+    else:
+        student = Student.query.filter_by(id=form.test_student.data, exam_id=exam.id).one_or_none()
+        if not student or not student.assignment:
+            flash("Pick a student with a seat to fill in the test email.", 'error')
+        elif send_test_email(exam, form, student, form.test_to_addr.data):
+            flash(f"Sent a test email to {form.test_to_addr.data}, filled in with {student.name}'s seat.", 'success')
+        else:
+            flash("Failed to send the test email.", 'error')
+    return render_template('email.html.j2', exam=exam, form=form)
+
+
+def _flash_form_errors(form):
+    for field, errors in form.errors.items():
+        for error in errors:
+            flash("{}: {}".format(field, error), 'error')
+
+
 @app.route('/<exam:exam>/students/email/', methods=['GET', 'POST'])
 def email_all_students(exam):
-    form = EmailForm()
+    form = _email_form(exam)
     if form.validate_on_submit():
+        if form.send_test.data:
+            return _send_test_email(exam, form)
         successful_emails, failed_emails = email_about_assignment(exam, form, form.to_addr.data)
         if successful_emails:
             flash(f"Successfully emailed {len(successful_emails)} students.", 'success')
@@ -957,6 +992,9 @@ def email_all_students(exam):
         if not successful_emails and not failed_emails:
             flash("No email sent.", 'warning')
         return redirect(url_for('students', exam=exam))
+    elif form.is_submitted():
+        # keep what was typed, rather than starting over from the template
+        _flash_form_errors(form)
     else:
         email_prefill = get_email(EmailTemplate.ASSIGNMENT_INFORM_EMAIL)
         form.subject.data = email_prefill.subject
@@ -970,8 +1008,10 @@ def email_single_student(exam, student_id):
     # the staff check is on the exam in the url, so the student must be one of its own: looked up by
     # id alone, any student of any course could be loaded here, email and seat included
     student = Student.query.filter_by(id=student_id, exam_id=exam.id).first_or_404()
-    form = EmailForm()
+    form = _email_form(exam)
     if form.validate_on_submit():
+        if form.send_test.data:
+            return _send_test_email(exam, form)
         successful_emails, failed_emails = email_about_assignment(exam, form, form.to_addr.data)
         if successful_emails:
             flash(f"Successfully emailed {len(successful_emails)} students.", 'success')
@@ -980,6 +1020,8 @@ def email_single_student(exam, student_id):
         if not successful_emails and not failed_emails:
             flash("No email sent.", 'warning')
         return redirect(url_for('students', exam=exam))
+    elif form.is_submitted():
+        _flash_form_errors(form)
     else:
         email_prefill = get_email(EmailTemplate.ASSIGNMENT_INFORM_EMAIL)
         form.subject.data = email_prefill.subject
@@ -988,6 +1030,7 @@ def email_single_student(exam, student_id):
         form.subject.data = subject
         form.body.data = body
         form.to_addr.data = student.email
+        form.test_student.data = student.id
     return render_template('email.html.j2', exam=exam, form=form)
 
 

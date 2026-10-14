@@ -55,6 +55,24 @@
     {{ form.submit(class="mdl-button mdl-js-button mdl-button--raised") }}
   </div>
 
+  <div class="mdl-cell mdl-cell--12-col test-email">
+    <h6>Send a test</h6>
+    {% if form.test_student.choices %}
+    <p>Fill in this email with one student's seat and send it to yourself instead. The student is not emailed, and nobody is CC'd or BCC'd.</p>
+    <div class="test-email-fields">
+      <label for="test_student">Student:</label>
+      {{ form.test_student(id="test_student") }}
+      <div class="mdl-textfield mdl-js-textfield mdl-textfield--floating-label">
+        {{ form.test_to_addr(class="mdl-textfield__input", type="email", id="test_to_addr") }}
+        <label class="mdl-textfield__label" for="test_to_addr">Send test to:</label>
+      </div>
+      {{ form.send_test(class="mdl-button mdl-js-button mdl-button--raised") }}
+    </div>
+    {% else %}
+    <p>No student has a seat yet, so there is nothing to fill in a test email with.</p>
+    {% endif %}
+  </div>
+
   <script>
       function updatePreview() {
           var htmlContent = document.getElementById('body').value;

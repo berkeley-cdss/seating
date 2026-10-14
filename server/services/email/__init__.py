@@ -71,3 +71,23 @@ def email_about_assignment(exam, form, to_addrs):
             student.assignment.emailed = True
     db.session.commit()
     return success_addrs, failure_addrs
+
+
+def send_test_email(exam, form, student, to_addr):
+    """
+    Sends the email `student` would get to `to_addr` instead, with "[TEST]" before the subject, so
+    staff can check it before emailing everyone. Nobody is CC'd or BCC'd, and the student is
+    neither emailed nor marked as emailed. Returns whether it was sent.
+    """
+    subject, body = substitute_about_assignment(exam, form, student)
+    if not subject or not body:
+        return False
+    message = construct_email(
+        from_addr=form.from_addr.data,
+        to_addr=to_addr,
+        subject=f'[TEST] {subject}',
+        body=body,
+        body_html=body if form.body_html.data else None,
+    )
+    successful_emails, _ = send_emails(smtp=_email_config, messages=[message])
+    return bool(successful_emails)
