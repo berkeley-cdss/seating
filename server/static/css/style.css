@@ -275,3 +275,9 @@ header a {
 .test-email-fields select {
   max-width: 100%;
 }
+
+/* MDL's grey for an empty field's label is too light to read (1.87:1 on this background);
+   once the label floats, MDL's more specific focused/filled rules make it blue */
+.test-email .mdl-textfield__label {
+  color: #616161;
+}
