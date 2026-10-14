@@ -124,11 +124,6 @@
                   status.textContent = 'Emailing students: ' + sent.length + ' of ' + recipients.length + ' sent…';
                   var data = new FormData(form);
                   data.set('to_addr', recipients.slice(start, start + BATCH_SIZE).join(','));
-                  if (start > 0) {
-                      // CC and BCC go with the first batch only, not once per batch
-                      data.set('cc_addr', '');
-                      data.set('bcc_addr', '');
-                  }
                   try {
                       var response = await fetch({{ batch_url|tojson }}, {method: 'POST', body: data});
                       var result = await response.json();

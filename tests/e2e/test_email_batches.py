@@ -42,8 +42,10 @@ def test_email_page_sends_to_a_large_class_in_batches(get_authed_driver, seeded_
     progress = driver.find_element(By.ID, 'send-progress')
     WebDriverWait(driver, 30).until(lambda d: progress.text.startswith('Emailed'))
     assert driver.current_url == EMAIL_URL
+    # every batch carries the CC, so every student's email does (staff see a student's reply-all)
     assert driver.execute_script('return window.batches') == [
-        {'to': 50, 'cc': 'head-ta@berkeley.edu'}, {'to': 50, 'cc': ''}, {'to': 21, 'cc': ''}]
+        {'to': 50, 'cc': 'head-ta@berkeley.edu'}, {'to': 50, 'cc': 'head-ta@berkeley.edu'},
+        {'to': 21, 'cc': 'head-ta@berkeley.edu'}]
     # the test server has no SMTP server, so every email fails, and the page says so
     lines = progress.text.split('\n')
     assert lines[0] == 'Emailed 0 of 121 students.'
