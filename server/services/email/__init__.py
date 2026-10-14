@@ -19,6 +19,7 @@ def substitute_about_assignment(exam, form, student):
     if not student or not student.assignment:
         return None, None
     assignment = student.assignment
+    # the subject is plain text; the body is HTML when the form says so, and then gets escaped values
     subject = templates.make_substitutions(form.subject.data, {"EXAM": exam.display_name})
     body = templates.make_substitutions(form.body.data,
                                         {"NAME": assignment.student.first_name,
@@ -32,7 +33,8 @@ def substitute_about_assignment(exam, form, student):
                                              app.config.get('SERVER_BASE_URL'),
                                              url_for('student_single_seat',
                                                      seat_id=assignment.seat.id)),
-                                         })
+                                         },
+                                        html=form.body_html.data)
     return subject, body
 
 
@@ -56,7 +58,8 @@ def email_about_assignment(exam, form, to_addrs):
             to_addr=to_addr,
             subject=subject,
             body=body,
-            body_html=body if form.body_html else None,
+            # the checkbox's value, not the field: the field object is always truthy
+            body_html=body if form.body_html.data else None,
             cc_addr=form.cc_addr.data,
             bcc_addr=form.bcc_addr.data
         )
