@@ -4,5 +4,17 @@
 {% block title %}{{ room.display_name }} | {{ super() }}{% endblock %}
 
 {% block body %}
-{{ macros.room(room, highlight_seat_id=seat_id, show_attributes=True) }}
+{% if room.fixed_seats %}
+<div class="room-view-toggle">
+  {% set url_args = {'seat': seat_id} if seat_id else {} %}
+  {% if proctor %}
+    <a class="mdl-button mdl-js-button mdl-button--raised" href="{{ url_for('room', exam=exam, id=room.id, **url_args) }}">Student view</a>
+    <span>Showing the room from the front, as a proctor sees it.</span>
+  {% else %}
+    <a class="mdl-button mdl-js-button mdl-button--raised" href="{{ url_for('room', exam=exam, id=room.id, view='proctor', **url_args) }}">Proctor view</a>
+    <span>Showing the room from the seats, facing the front.</span>
+  {% endif %}
+</div>
+{% endif %}
+{{ macros.room(room, highlight_seat_id=seat_id, show_attributes=True, proctor=proctor) }}
 {% endblock %}

@@ -39,6 +39,20 @@ header a {
   min-height: 0px;
 }
 
+/* The "opens a menu" chevron. Drawn in CSS rather than set as a Material Icons
+   ligature, which renders as the literal word "expand_more" whenever the icon
+   font is slow, blocked or unavailable. */
+.dropdown-caret {
+  display: inline-block;
+  width: 0;
+  height: 0;
+  margin-left: 6px;
+  vertical-align: middle;
+  border-top: 5px solid currentColor;
+  border-right: 4px solid transparent;
+  border-left: 4px solid transparent;
+}
+
 .errormsg {
   color: #ff0000;
 }
@@ -113,6 +127,11 @@ header a {
 
 .seat.highlight {
   background-color: #ef5350;
+}
+
+/* a highlighted movable seat, which is drawn as a dot rather than a .seat */
+.s.highlight:not(.seat) {
+  color: #ef5350;
 }
 
 .seat.occupied {
@@ -230,4 +249,13 @@ header a {
   .mdl-layout__header-row {
     padding: 0 16px 0 16px;
   }
+}
+
+.room-view-toggle {
+  margin: 16px;
+  text-align: center;
+}
+
+.room-view-toggle span {
+  margin-left: 12px;
 }
