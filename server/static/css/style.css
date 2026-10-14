@@ -281,3 +281,12 @@ header a {
 .test-email .mdl-textfield__label {
   color: #616161;
 }
+
+.send-progress {
+  margin: 0 8px;
+}
+
+.send-progress a {
+  display: block;
+  margin-top: 8px;
+}
