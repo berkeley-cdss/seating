@@ -45,8 +45,6 @@ def email_about_assignment(exam, form, to_addrs):
     # substitution reads assignment -> seat -> room for every student: load them in one query
     email_student_map = {s.email: s for s in exam.get_students(with_seat=True)}
     email_messages = []
-    # CC and BCC get one copy, along with the first student's email, not a copy of every student's
-    copy_to = {'cc_addr': form.cc_addr.data, 'bcc_addr': form.bcc_addr.data}
     for to_addr in to_addrs:
         student = email_student_map.get(to_addr, None)
         subject, body = substitute_about_assignment(exam, form, student)
@@ -59,10 +57,10 @@ def email_about_assignment(exam, form, to_addrs):
             subject=subject,
             body=body,
             body_html=body if form.body_html else None,
-            **copy_to
+            cc_addr=form.cc_addr.data,
+            bcc_addr=form.bcc_addr.data
         )
         email_messages.append(email_message)
-        copy_to = {}
     successful_emails, failed_emails = send_emails(smtp=_email_config, messages=email_messages)
     for msg, _ in failed_emails:
         failure_addrs.add(msg['To'])

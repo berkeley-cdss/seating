@@ -1,7 +1,7 @@
 """
-CC and BCC on assignment emails: BCC'd addresses get the email without anyone seeing them, a field
-can list several addresses, and in a send to many students CC and BCC get one copy, not one per
-student. The SMTP checks go through a real (local) SMTP server, to see what is actually sent.
+CC and BCC on assignment emails: every student's email is CC'd and BCC'd (CC is how course staff see
+a student's reply-all), BCC'd addresses get the email without anyone seeing them, and a field can
+list several addresses. The SMTP checks go through a real (local) SMTP server, to see what is sent.
 """
 import pytest
 
@@ -73,27 +73,12 @@ def sent(monkeypatch):
     yield sent_messages
 
 
-def test_bulk_send_copies_cc_and_bcc_once(seated, sent):
+def test_every_student_email_is_copied(seated, sent):
     with flask_app.test_request_context():
         form = EmailForm(formdata=None, data={
             'from_addr': 'staff@berkeley.edu', 'subject': 'Seat', 'body': 'Dear {{NAME}}', 'body_html': False,
-            'cc_addr': 'ta@berkeley.edu', 'bcc_addr': 'hidden@berkeley.edu'})
+            'cc_addr': 'ta1@berkeley.edu, ta2@berkeley.edu', 'bcc_addr': 'hidden@berkeley.edu'})
         email_about_assignment(db.session.get(Exam, 1), form, [student.email for student in seated])
     assert [message['To'] for message in sent] == [student.email for student in seated]
-    assert [(message['Cc'], message['Bcc']) for message in sent] == [
-        ('ta@berkeley.edu', 'hidden@berkeley.edu'), (None, None), (None, None)]
-
-
-def test_cc_goes_with_the_first_email_that_is_sent(seated, sent):
-    # an address that is not a student's gets no email, so the copy goes with the next one
-    with flask_app.test_request_context():
-        form = EmailForm(formdata=None, data={
-            'from_addr': 'staff@berkeley.edu', 'subject': 'Seat', 'body': 'Dear {{NAME}}', 'body_html': False,
-            'cc_addr': 'ta@berkeley.edu'})
-        email_about_assignment(db.session.get(Exam, 1), form, ['nobody@berkeley.edu', seated[0].email])
-    assert [(message['To'], message['Cc']) for message in sent] == [(seated[0].email, 'ta@berkeley.edu')]
-
-
-def test_email_page_explains_cc_and_bcc(seeded_db, login_as):
-    page = login_as(1).get('/offerings/1234567/exams/midterm1/students/email/').get_data(as_text=True)
-    assert 'CC and BCC get one copy' in page
+    assert {(message['Cc'], message['Bcc']) for message in sent} == {
+        ('ta1@berkeley.edu, ta2@berkeley.edu', 'hidden@berkeley.edu')}
