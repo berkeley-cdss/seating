@@ -250,3 +250,12 @@ header a {
     padding: 0 16px 0 16px;
   }
 }
+
+.room-view-toggle {
+  margin: 16px;
+  text-align: center;
+}
+
+.room-view-toggle span {
+  margin-left: 12px;
+}
