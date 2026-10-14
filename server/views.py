@@ -515,7 +515,8 @@ def room(exam, id):
     room = Room.query.options(
         joinedload(Room.seats).joinedload(Seat.assignment).joinedload(SeatAssignment.student)
     ).filter_by(exam_id=exam.id, id=id).first_or_404()
-    seat_id = request.args.get('seat')
+    # seat ids are ints: as a string, the seat to highlight never matched any seat
+    seat_id = request.args.get('seat', type=int)
     # this page is staff only (the exam converter sends students to their own seat), so the
     # proctor view, which shows the room from the front, is never offered to students
     proctor = request.args.get('view') == 'proctor'
