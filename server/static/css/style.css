@@ -281,3 +281,12 @@ header a {
 .test-email .mdl-textfield__label {
   color: #616161;
 }
+
+.import-strategies label {
+  margin-right: 8px;
+}
+
+.import-strategy-help {
+  margin: 4px 0 0;
+  color: #616161;
+}

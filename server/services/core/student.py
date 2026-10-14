@@ -14,19 +14,27 @@ SPECIAL_HEADERS = ['email', 'name', 'bcourses id', 'canvas id', 'student id', 'e
 
 
 class StudentImportConfig:
+    """
+    How an import treats the students it matches, adds and leaves out. Each strategy may be given as
+    its enum or as its value: the import form's choices arrive as strings ('delete', 'merge', ...),
+    which never compare equal to the enums, so every choice made on the page used to be ignored.
+    """
+
     def __init__(self, *, revalidate_existing_assignments=True,
                  assignment_import_strategy: AssignmentImportStrategy = AssignmentImportStrategy.REVALIDATE,
                  updated_student_info_import_strategy: UpdatedRowImportStrategy = UpdatedRowImportStrategy.MERGE,
-                 updated_preference_import_strategy: UpdatedRowImportStrategy = UpdatedRowImportStrategy.OVERWRITE,
+                 # merge, not overwrite: a Canvas roster has no preference columns, so overwriting would
+                 # clear every student's preferences on each roster import
+                 updated_preference_import_strategy: UpdatedRowImportStrategy = UpdatedRowImportStrategy.MERGE,
                  new_student_import_strategy: NewRowImportStrategy = NewRowImportStrategy.APPEND,
                  missing_student_import_strategy: MissingRowImportStrategy = MissingRowImportStrategy.IGNORE
                  ):
-        self.revalidate_existing_assignments = revalidate_existing_assignments
-        self.assignment_import_strategy = assignment_import_strategy
-        self.updated_preference_import_strategy = updated_preference_import_strategy
-        self.updated_student_info_import_strategy = updated_student_info_import_strategy
-        self.new_student_import_strategy = new_student_import_strategy
-        self.missing_student_import_strategy = missing_student_import_strategy
+        self.revalidate_existing_assignments = bool(revalidate_existing_assignments)
+        self.assignment_import_strategy = AssignmentImportStrategy(assignment_import_strategy)
+        self.updated_preference_import_strategy = UpdatedRowImportStrategy(updated_preference_import_strategy)
+        self.updated_student_info_import_strategy = UpdatedRowImportStrategy(updated_student_info_import_strategy)
+        self.new_student_import_strategy = NewRowImportStrategy(new_student_import_strategy)
+        self.missing_student_import_strategy = MissingRowImportStrategy(missing_student_import_strategy)
 
 
 def room_to_attr(room: Room):
@@ -203,43 +211,58 @@ def prepare_students(exam, headers, rows, *, config: StudentImportConfig = Stude
                 invalid('new student, and the import is set to ignore new students')
                 continue
 
-        # update name, email and sid, emailed
-        if not config.updated_student_info_import_strategy == UpdatedRowImportStrategy.IGNORE:
-            overwrite = not is_new and config.updated_student_info_import_strategy == UpdatedRowImportStrategy.OVERWRITE
-            student.name = name if overwrite else (name or student.name)
-            student.email = email if overwrite else (email or student.email)
-            missing = [field for field, value in [('name', student.name), ('email', student.email)] if not value]
+        # work out the row's info and preferences first, and change the student only once the row is
+        # known to be valid: a skipped row must leave an existing student as it was. The update
+        # strategies are about existing students; a new student always takes the row's values.
+        changes = {}
+        info_strategy = config.updated_student_info_import_strategy
+        if is_new or info_strategy != UpdatedRowImportStrategy.IGNORE:
+            overwrite = not is_new and info_strategy == UpdatedRowImportStrategy.OVERWRITE
+            changes.update(name=name if overwrite else (name or student.name),
+                           email=email if overwrite else (email or student.email),
+                           sid=sid if overwrite else (sid or student.sid))
+            missing = [field for field in ('name', 'email') if not changes[field]]
             if missing:
                 invalid(f"no {' or '.join(missing)}")
                 continue
-            student.sid = sid if overwrite else (sid or student.sid)
-            emailed = row.pop('emailed', 'false')
 
-        # parse out preferences: wants and avoids should be mutually exclusive
-        if not config.updated_preference_import_strategy == UpdatedRowImportStrategy.IGNORE:
-            overwrite_pref = not is_new and config.updated_preference_import_strategy == UpdatedRowImportStrategy.OVERWRITE
-            wants = {k.lower() for k, v in row.items() if is_normal_attr(k) and v.lower() == 'true'}
-            student.wants = wants if (is_new or overwrite_pref) else student.wants.union(wants)
-            avoids = {k.lower() for k, v in row.items() if is_normal_attr(k) and v.lower() == 'false'}
-            student.avoids = avoids if (is_new or overwrite_pref) else student.avoids.union(avoids)
-            # room preferences may only reference rooms of this exam: a CSV exported from another exam
-            # carries that exam's room ids, and merging keeps ids of rooms deleted since, so filter
-            # after merging to drop both
-            room_wants = {attr_to_room_id(k) for k, v in row.items() if is_room_attr(k) and v.lower() == 'true'}
-            room_wants = room_wants if (is_new or overwrite_pref) else student.room_wants.union(room_wants)
-            student.room_wants = room_wants & exam_room_ids
-            room_avoids = {attr_to_room_id(k) for k, v in row.items() if is_room_attr(k) and v.lower() == 'false'}
-            room_avoids = room_avoids if (is_new or overwrite_pref) else student.room_avoids.union(room_avoids)
-            student.room_avoids = room_avoids & exam_room_ids
-            both = sorted(student.wants & student.avoids) + [
-                room.name_and_start_at_time_display() for room in exam.get_rooms(student.room_wants & student.room_avoids)]
+        # wants and avoids must not overlap
+        pref_strategy = config.updated_preference_import_strategy
+        if is_new or pref_strategy != UpdatedRowImportStrategy.IGNORE:
+            merge = not is_new and pref_strategy == UpdatedRowImportStrategy.MERGE
+
+            def preference(new, old):
+                return (old | new) if merge else new
+
+            changes.update(
+                wants=preference({k.lower() for k, v in row.items() if is_normal_attr(k) and v.lower() == 'true'},
+                                 student.wants),
+                avoids=preference({k.lower() for k, v in row.items() if is_normal_attr(k) and v.lower() == 'false'},
+                                  student.avoids),
+                # room preferences may only reference rooms of this exam: a CSV exported from another exam
+                # carries that exam's room ids, and merging keeps ids of rooms deleted since, so filter
+                # after merging to drop both
+                room_wants=preference(
+                    {attr_to_room_id(k) for k, v in row.items() if is_room_attr(k) and v.lower() == 'true'},
+                    student.room_wants) & exam_room_ids,
+                room_avoids=preference(
+                    {attr_to_room_id(k) for k, v in row.items() if is_room_attr(k) and v.lower() == 'false'},
+                    student.room_avoids) & exam_room_ids,
+            )
+            both = sorted(changes['wants'] & changes['avoids']) + [
+                room.name_and_start_at_time_display()
+                for room in exam.get_rooms(changes['room_wants'] & changes['room_avoids'])]
             if both:
                 invalid(f"both wants and avoids {', '.join(both)}")
                 continue
 
+        for field, value in changes.items():
+            setattr(student, field, value)
+        emailed = row.pop('emailed', 'false')
+
         # revalidate existing assignments
+        new_preference = get_preference_from_student(student)
         if config.revalidate_existing_assignments:
-            new_preference = get_preference_from_student(student)
             if student.assignment and not is_seat_valid_for_preference(student.assignment.seat, new_preference):
                 student.assignment = None
 
