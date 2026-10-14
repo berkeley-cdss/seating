@@ -18,32 +18,25 @@ jobs:
         test-type: ["unit", "e2e"]
         python-version: ["3.14"]
     runs-on: ubuntu-latest
+    # map only the secrets/vars the flask app reads; fork PRs get no secrets
+    # or vars, so fall back to dummy values (tests mock Canvas and never call
+    # Google Sheets)
+    env:
+      FLASK_APP: ${{ vars.FLASK_APP || 'server' }}
+      FLASK_ENV: ${{ vars.FLASK_ENV || 'testing' }}
+      MOCK_CANVAS: ${{ vars.MOCK_CANVAS }}
+      CANVAS_SERVER_URL: ${{ vars.CANVAS_SERVER_URL || 'https://canvas.example.edu' }}
+      CANVAS_CLIENT_ID: ${{ secrets.CANVAS_CLIENT_ID || 'test' }}
+      CANVAS_CLIENT_SECRET: ${{ secrets.CANVAS_CLIENT_SECRET || 'test' }}
+      GCP_SA_CRED_TYPE: ${{ vars.GCP_SA_CRED_TYPE }}
+      GCP_SA_CRED_VALUE: ${{ secrets.GCP_SA_CRED_VALUE }}
+      MASTER_ROOM_SHEET_URL: ${{ vars.MASTER_ROOM_SHEET_URL }}
     steps:
       - uses: actions/checkout@v5
       - name: Bootstrap
         uses: ./.github/actions/bootstrap
         with:
           python-version: ${{ matrix.python-version }}
-      # values set in GitHub repo vars/secrets are available as env vars in os
-      # but flask app expects them from os (flask uses os.getenv to fetech them)
-      # so we need to export them to os
-      - name: Exports all GitHub Environment Secrets
-        uses: oNaiPs/secrets-to-env-action@v1
-        with:
-          secrets: ${{ toJSON(secrets) }}
-      - name: Exports all GitHub Environment Variables
-        uses: oNaiPs/secrets-to-env-action@v1
-        with:
-          secrets: ${{ toJSON(vars) }}
-      # Secrets and vars aren't passed to pull requests from forks, so fall
-      # back to dummy values; tests mock Canvas and never call Google Sheets
-      - name: Default missing env for fork PRs
-        run: |
-          echo "FLASK_APP=${FLASK_APP:-server}" >> "$GITHUB_ENV"
-          echo "FLASK_ENV=${FLASK_ENV:-testing}" >> "$GITHUB_ENV"
-          echo "CANVAS_SERVER_URL=${CANVAS_SERVER_URL:-https://canvas.example.edu}" >> "$GITHUB_ENV"
-          echo "CANVAS_CLIENT_ID=${CANVAS_CLIENT_ID:-test}" >> "$GITHUB_ENV"
-          echo "CANVAS_CLIENT_SECRET=${CANVAS_CLIENT_SECRET:-test}" >> "$GITHUB_ENV"
       - name: Prepare reports directory
         run: |
           mkdir -p reports
@@ -56,7 +49,7 @@ jobs:
           pytest --junitxml=reports/pytest-${{ matrix.test-type }}.xml --cov-report=term-missing:skip-covered --cov=server tests/${{ matrix.test-type }}/ | tee reports/pytest-coverage-${{ matrix.test-type }}.txt
           set +o pipefail
       - name: Pytest coverage comment
-        uses: MishaKav/pytest-coverage-comment@main
+        uses: MishaKav/pytest-coverage-comment@9ee59af31bd7bcada1cc496f086b407122602dbd # v1.12.3
         # no need to comment on merging to main; only need for pr
         # it will fail anyway because of branch protection rejects commit comments
         # fork PRs get a read-only token that can't comment, so skip them too
