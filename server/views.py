@@ -965,8 +965,11 @@ def email_all_students(exam):
     return render_template('email.html.j2', exam=exam, form=form)
 
 
-@app.route('/<exam:exam>/students/email/<string:student_id>/', methods=['GET', 'POST'])
+@app.route('/<exam:exam>/students/email/<int:student_id>/', methods=['GET', 'POST'])
 def email_single_student(exam, student_id):
+    # the staff check is on the exam in the url, so the student must be one of its own: looked up by
+    # id alone, any student of any course could be loaded here, email and seat included
+    student = Student.query.filter_by(id=student_id, exam_id=exam.id).first_or_404()
     form = EmailForm()
     if form.validate_on_submit():
         successful_emails, failed_emails = email_about_assignment(exam, form, form.to_addr.data)
@@ -978,7 +981,6 @@ def email_single_student(exam, student_id):
             flash("No email sent.", 'warning')
         return redirect(url_for('students', exam=exam))
     else:
-        student = Student.query.get_or_404(student_id)
         email_prefill = get_email(EmailTemplate.ASSIGNMENT_INFORM_EMAIL)
         form.subject.data = email_prefill.subject
         form.body.data = email_prefill.body
