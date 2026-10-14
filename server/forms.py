@@ -218,6 +218,11 @@ class EmailForm(FlaskForm):
     body = TextAreaField('body', [InputRequired()])
     body_html = BooleanField('body_html', default=True)
     submit = SubmitField('send')
+    # a test fills in the email with one student's seat and sends it to a staff member instead
+    # only checked when sending a test, so a regular send works even when no student has a seat
+    test_student = SelectField('test_student', coerce=int, validate_choice=False)
+    test_to_addr = StringField('test_to_addr', [Optional(), Email()])
+    send_test = SubmitField('send test')
 
 
 class DevLoginForm(FlaskForm):
