@@ -107,6 +107,18 @@
               progress.appendChild(p);
           }
 
+          function warnBeforeLeaving(event) {
+              event.preventDefault();
+              event.returnValue = '';
+          }
+
+          // estimated from how long the batches so far took; empty until the first one is back
+          function timeLeft(done, total, elapsedMs) {
+              if (!done) { return ''; }
+              var minutes = Math.round(elapsedMs / done * (total - done) / 60000);
+              return minutes < 1 ? ', less than a minute left' : ', about ' + minutes + ' min left';
+          }
+
           form.addEventListener('submit', async function (event) {
               // other buttons (send test) submit the form as usual
               if (event.submitter !== sendButton) { return; }
@@ -119,9 +131,22 @@
               progress.textContent = '';
               var status = document.createElement('p');
               progress.appendChild(status);
+              // only shown while sending: the page sends each batch, so closing it stops the rest
+              var bar = document.createElement('progress');
+              bar.max = recipients.length;
+              bar.value = 0;
+              progress.appendChild(bar);
+              var keepOpen = document.createElement('p');
+              keepOpen.textContent = 'Keep this page open until sending finishes. Closing it stops the students not emailed yet from being emailed.';
+              progress.appendChild(keepOpen);
+              window.addEventListener('beforeunload', warnBeforeLeaving);
               var sent = [], failed = [], stopped = null;
+              var startedAt = Date.now();
               for (var start = 0; start < recipients.length; start += BATCH_SIZE) {
-                  status.textContent = 'Emailing students: ' + sent.length + ' of ' + recipients.length + ' sent…';
+                  var done = sent.length + failed.length;
+                  bar.value = done;
+                  status.textContent = 'Emailing students: ' + done + ' of ' + recipients.length + ' done' +
+                      timeLeft(done, recipients.length, Date.now() - startedAt) + '…';
                   var data = new FormData(form);
                   data.set('to_addr', recipients.slice(start, start + BATCH_SIZE).join(','));
                   try {
@@ -139,6 +164,9 @@
                       break;
                   }
               }
+              window.removeEventListener('beforeunload', warnBeforeLeaving);
+              bar.remove();
+              keepOpen.remove();
               status.textContent = 'Emailed ' + sent.length + ' of ' + recipients.length + ' students.';
               if (failed.length) { line('Failed to email: ' + failed.join(', ')); }
               if (stopped) {

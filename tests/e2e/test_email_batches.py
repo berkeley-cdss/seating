@@ -25,13 +25,18 @@ def test_email_page_sends_to_a_large_class_in_batches(get_authed_driver, seeded_
     _seat_a_class(seeded_db)
     driver = get_authed_driver("123456")
     driver.get(EMAIL_URL)
-    # record what the page sends in each request
+    # record what the page sends in each request, what it shows meanwhile, and whether leaving
+    # the page would ask first (a cancelled beforeunload is what makes the browser ask)
     driver.execute_script("""
         window.batches = [];
+        window.leaveBlocked = () => !window.dispatchEvent(new Event('beforeunload', {cancelable: true}));
         const realFetch = window.fetch;
         window.fetch = function (url, options) {
             window.batches.push({to: options.body.get('to_addr').split(',').length,
-                                 cc: options.body.get('cc_addr')});
+                                 cc: options.body.get('cc_addr'),
+                                 shown: document.getElementById('send-progress').innerText.split('\\n')[0],
+                                 bar: document.querySelector('#send-progress progress').value,
+                                 leaveBlocked: window.leaveBlocked()});
             return realFetch(url, options);
         };
     """)
@@ -43,9 +48,18 @@ def test_email_page_sends_to_a_large_class_in_batches(get_authed_driver, seeded_
     WebDriverWait(driver, 30).until(lambda d: progress.text.startswith('Emailed'))
     assert driver.current_url == EMAIL_URL
     # every batch carries the CC, so every student's email does (staff see a student's reply-all)
-    assert driver.execute_script('return window.batches') == [
-        {'to': 50, 'cc': 'head-ta@berkeley.edu'}, {'to': 50, 'cc': 'head-ta@berkeley.edu'},
-        {'to': 21, 'cc': 'head-ta@berkeley.edu'}]
+    batches = driver.execute_script('return window.batches')
+    assert [(b['to'], b['cc']) for b in batches] == [
+        (50, 'head-ta@berkeley.edu'), (50, 'head-ta@berkeley.edu'), (21, 'head-ta@berkeley.edu')]
+    # while sending: the count so far, a time estimate once a batch is back, and closing the page asks first
+    assert batches[0]['shown'] == 'Emailing students: 0 of 121 done…'
+    assert batches[1]['shown'] == 'Emailing students: 50 of 121 done, less than a minute left…'
+    assert [b['bar'] for b in batches] == [0, 50, 100]
+    assert all(b['leaveBlocked'] for b in batches)
+    # once done, the page can be left freely and the in-progress bar and note are gone
+    assert not driver.execute_script('return window.leaveBlocked()')
+    assert not driver.find_elements(By.CSS_SELECTOR, '#send-progress progress')
+    assert 'Keep this page open' not in progress.text
     # the test server has no SMTP server, so every email fails, and the page says so
     lines = progress.text.split('\n')
     assert lines[0] == 'Emailed 0 of 121 students.'
