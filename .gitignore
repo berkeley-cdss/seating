@@ -111,7 +111,11 @@ gcp-service-account-credentials.json
 # bootstrap
 setup*.sh
 
-# cache
-.cache/
-
 **/.DS_Store
+
+.vscode/
+.claude/
+.idea/
+mypy_cache/
+.ruff_cache/
+*.swp
