@@ -402,7 +402,7 @@ def import_room_from_csv_upload(exam):
 
 
 @app.route('/<exam:exam>/rooms/import/from_manual/', methods=['GET', 'POST'])
-def import_room_manually(exam):
+def import_room_manually(exam):  # noqa: C901
     form = EditRoomForm()
     if request.method == 'GET':
         if not form.movable_seats.entries:
@@ -454,7 +454,7 @@ def delete_room(exam, id):
 
 
 @app.route('/<exam:exam>/rooms/<int:id>/edit', methods=['GET', 'POST'])
-def edit_room(exam, id):
+def edit_room(exam, id):  # noqa: C901
     """
     Path: /offerings/<canvas_id>/exams/<exam_name>/rooms/<room_name>/edit
     Edits a room for an exam.
@@ -540,7 +540,7 @@ def import_students(exam):
 
 
 @app.route('/<exam:exam>/students/import/from_custom_sheet/', methods=['GET', 'POST'])
-def import_students_from_custom_sheet(exam):
+def import_students_from_custom_sheet(exam):  # noqa: C901
     from_sheet_form = ImportStudentFromSheetForm()
     from_canvas_form = ImportStudentFromCanvasRosterForm()
     from_csv_form = ImportStudentFromCsvUploadForm()
@@ -579,7 +579,7 @@ def import_students_from_custom_sheet(exam):
 
 
 @app.route('/<exam:exam>/students/import/from_canvas_roster/', methods=['GET', 'POST'])
-def import_students_from_canvas_roster(exam):
+def import_students_from_canvas_roster(exam):  # noqa: C901
     from_sheet_form = ImportStudentFromSheetForm()
     from_canvas_form = ImportStudentFromCanvasRosterForm()
     from_csv_form = ImportStudentFromCsvUploadForm()
@@ -618,7 +618,7 @@ def import_students_from_canvas_roster(exam):
 
 
 @app.route('/<exam:exam>/students/import/from_csv_upload/', methods=['GET', 'POST'])
-def import_students_from_csv_upload(exam):
+def import_students_from_csv_upload(exam):  # noqa: C901
     from_sheet_form = ImportStudentFromSheetForm()
     from_canvas_form = ImportStudentFromCanvasRosterForm()
     from_csv_form = ImportStudentFromCsvUploadForm()
@@ -660,7 +660,7 @@ def import_students_from_csv_upload(exam):
 
 
 @app.route('/<exam:exam>/students/import/from_manual_input/', methods=['GET', 'POST'])
-def import_students_from_manual_input(exam):
+def import_students_from_manual_input(exam):  # noqa: C901
     from_sheet_form = ImportStudentFromSheetForm()
     from_canvas_form = ImportStudentFromCanvasRosterForm()
     from_csv_form = ImportStudentFromCsvUploadForm()
@@ -812,7 +812,7 @@ def edit_student(exam_student):
 
 
 @app.route('/<exam:exam>/students/edit', methods=['GET', 'POST'])
-def edit_students(exam):
+def edit_students(exam):  # noqa: C901
     form = EditStudentsForm(room_list=exam.rooms)
     edited, did_not_exist = set(), set()
     if form.validate_on_submit():

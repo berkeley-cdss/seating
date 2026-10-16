@@ -165,7 +165,7 @@ def is_room_attr(attr: str):
     return attr.startswith('room:') and attr not in SPECIAL_HEADERS
 
 
-def prepare_students(exam, headers, rows, *, config: StudentImportConfig = StudentImportConfig()):
+def prepare_students(exam, headers, rows, *, config: StudentImportConfig = StudentImportConfig()):  # noqa: C901
     """
     Prepare a list of students from the spreadsheet data, for the given exam.
     """
