@@ -143,6 +143,20 @@ class StudentMatcher:
         return True
 
 
+def canvas_id_problem(canvas_id: str) -> str | None:
+    """
+    Why `canvas_id`, cleaned up by normalize_id, cannot be a Canvas id, or None if it can. Canvas ids
+    are whole numbers, and the app's student urls only match digits, so a student stored with
+    anything else could never be opened, edited or deleted, nor find their seat on logging in.
+    """
+    if re.fullmatch(r'[0-9]+', canvas_id):
+        return None
+    if re.fullmatch(r'[0-9]+(\.[0-9]+)?[eE][+-]?[0-9]+', canvas_id):
+        return (f'canvas id {canvas_id} is in scientific notation, which a spreadsheet uses for long numbers '
+                f'and which loses their last digits: format the column as text and export again')
+    return f'canvas id {canvas_id} is not a number'
+
+
 def is_normal_attr(attr: str):
     return not is_room_attr(attr) and attr not in SPECIAL_HEADERS
 
@@ -192,7 +206,9 @@ def prepare_students(exam, headers, rows, *, config: StudentImportConfig = Stude
         def invalid(reason):
             invalid_students.append(InvalidRow(row_number, reason, name=name, email=email, canvas_id=canvas_id, sid=sid))
 
-        student, problem = matcher.find(canvas_id, sid, email)
+        problem = canvas_id and canvas_id_problem(canvas_id)
+        if not problem:
+            student, problem = matcher.find(canvas_id, sid, email)
         if problem:
             invalid(problem)
             continue

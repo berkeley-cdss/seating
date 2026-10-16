@@ -954,7 +954,7 @@ def _email_form(exam):
     return form
 
 
-def _send_test_email(exam, form):
+def _send_test_email(exam, form, **page):
     """
     Handles the "send test" button of the email pages, then shows the page again with the
     subject and body as they were, so staff can keep editing and send for real.
@@ -969,7 +969,7 @@ def _send_test_email(exam, form):
             flash(f"Sent a test email to {form.test_to_addr.data}, filled in with {student.name}'s seat.", 'success')
         else:
             flash("Failed to send the test email.", 'error')
-    return render_template('email.html.j2', exam=exam, form=form)
+    return render_template('email.html.j2', exam=exam, form=form, **page)
 
 
 def _flash_form_errors(form):
@@ -981,9 +981,11 @@ def _flash_form_errors(form):
 @app.route('/<exam:exam>/students/email/', methods=['GET', 'POST'])
 def email_all_students(exam):
     form = _email_form(exam)
+    # the page sends to the students in batches, through this url (see email_students_batch)
+    page = {'batch_url': url_for('email_students_batch', exam=exam)}
     if form.validate_on_submit():
         if form.send_test.data:
-            return _send_test_email(exam, form)
+            return _send_test_email(exam, form, **page)
         successful_emails, failed_emails = email_about_assignment(exam, form, form.to_addr.data)
         if successful_emails:
             flash(f"Successfully emailed {len(successful_emails)} students.", 'success')
@@ -999,8 +1001,33 @@ def email_all_students(exam):
         email_prefill = get_email(EmailTemplate.ASSIGNMENT_INFORM_EMAIL)
         form.subject.data = email_prefill.subject
         form.body.data = email_prefill.body
-        form.to_addr.data = set_to_str([email for (email,) in db.session.query(Student.email).filter_by(exam_id=exam.id)])
-    return render_template('email.html.j2', exam=exam, form=form)
+        # only students with a seat have anything to be told; leave out those already emailed, so that
+        # after a send that stopped partway the page picks up with the rest
+        include_emailed = request.args.get('include_emailed') == '1'
+        students = exam.get_students(with_seat=True)
+        seated = [student for student in students if student.assignment]
+        form.to_addr.data = set_to_str(
+            [student.email for student in seated if include_emailed or not student.assignment.emailed])
+        page['recipients'] = {
+            'include_emailed': include_emailed,
+            'already_emailed': sum(1 for student in seated if student.assignment.emailed),
+            'unseated': len(students) - len(seated),
+        }
+    return render_template('email.html.j2', exam=exam, form=form, **page)
+
+
+@app.route('/<exam:exam>/students/email/send/', methods=['POST'])
+def email_students_batch(exam):
+    """
+    Emails the students in `to_addr` and returns who was emailed, as JSON. The email page sends a
+    class in several of these, a batch of students each, so that no request runs into a server
+    timeout however large the class is.
+    """
+    form = _email_form(exam)
+    if not form.validate_on_submit():
+        return jsonify(errors=form.errors), 400
+    successful_emails, failed_emails = email_about_assignment(exam, form, form.to_addr.data)
+    return jsonify(sent=sorted(successful_emails), failed=sorted(failed_emails))
 
 
 @app.route('/<exam:exam>/students/email/<int:student_id>/', methods=['GET', 'POST'])
