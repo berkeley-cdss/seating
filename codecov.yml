@@ -1,2 +1,5 @@
 ignore:
   - "*/tests/*"
+# the PR comment's flags table shows unit and e2e coverage separately
+comment:
+  layout: "condensed_header, diff, flags, condensed_files, condensed_footer"
