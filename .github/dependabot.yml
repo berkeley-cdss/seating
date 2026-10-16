@@ -5,3 +5,6 @@ updates:
     directory: "/"
     schedule:
       interval: "weekly"
+    # skip releases newer than this, so a malicious one is more likely to be caught first
+    cooldown:
+      default-days: 7

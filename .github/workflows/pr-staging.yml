@@ -14,10 +14,12 @@ env:
   DEPLOYER_SERVICE_ACCOUNT: seating-gh-actions-deployer@staging-cdss-web-apps.iam.gserviceaccount.com
 
 # Fork PRs get no OIDC token, and their code shouldn't run with staging secrets,
-# so previews only deploy for branches in this repository.
+# so previews only deploy for branches in this repository. Dependabot PRs are
+# skipped too: they run their own changed workflows before review, so a bumped
+# action pin would otherwise get the deployer's GCP access unreviewed.
 jobs:
   cleanup-preview-service:
-    if: github.event.action == 'closed' && github.event.pull_request.head.repo.full_name == github.repository
+    if: github.event.action == 'closed' && github.event.pull_request.head.repo.full_name == github.repository && github.event.pull_request.user.login != 'dependabot[bot]'
     runs-on: ubuntu-latest
     permissions:
       # Lets google-github-actions/auth exchange GitHub's OIDC token for GCP credentials.
@@ -36,7 +38,7 @@ jobs:
             --quiet || true
 
   deploy-preview-service:
-    if: github.event.action != 'closed' && github.event.pull_request.head.repo.full_name == github.repository
+    if: github.event.action != 'closed' && github.event.pull_request.head.repo.full_name == github.repository && github.event.pull_request.user.login != 'dependabot[bot]'
     runs-on: ubuntu-latest
     permissions:
       contents: read
