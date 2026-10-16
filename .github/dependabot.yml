@@ -1,4 +1,5 @@
-# Keeps the SHA-pinned actions in .github/workflows up to date
+# Keeps the SHA-pinned actions in .github/workflows and the pinned Python
+# packages in requirements.txt and requirements-dev.txt up to date
 version: 2
 updates:
   - package-ecosystem: "github-actions"
@@ -6,5 +7,14 @@ updates:
     schedule:
       interval: "weekly"
     # skip releases newer than this, so a malicious one is more likely to be caught first
+    cooldown:
+      default-days: 7
+  # reads every requirements .txt file in the directory, so both requirements files
+  - package-ecosystem: "pip"
+    directory: "/"
+    schedule:
+      interval: "weekly"
+    # only delays these weekly version bumps; Dependabot security updates (a repo
+    # setting, off for now) would not be delayed
     cooldown:
       default-days: 7
