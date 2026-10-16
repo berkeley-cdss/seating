@@ -20,7 +20,7 @@ class NotEnoughSeatError(SeatAssignmentError):
         self.exam = exam
         self.students = students
         self.preference = preference
-        
+
         pref_str = """\
         wants: {}
         avoids: {}

@@ -66,6 +66,7 @@ def filter_seats_by_preference(seats, preference: Preference):
 def get_preference_from_student(student):
     return Preference(student.wants, student.avoids, student.room_wants, student.room_avoids)
 
+
 def assign_students(exam):
     """
     Optimized Strategy:
@@ -132,7 +133,7 @@ def assign_students(exam):
         # Always convert to list in a consistent way to ensure predictable mock calls
         min_students_list = list(min_students)
         min_seats_list = list(min_seats)
-        
+
         student = random.choice(min_students_list)
         seat = random.choice(min_seats_list)
 
@@ -153,8 +154,8 @@ def assign_single_student(exam, student, seat=None, ignore_restrictions=False):
     Assign a single student to a seat.
     If a seat is not provided, try to find a seat that meets the student's requirements (if ignore_restrictions is False),
     or just any seat that is available (if ignore_restrictions is True).
-    If a seat is provided, check if the seat is available and meets the student's requirements (if ignore_restrictions is False),
-    or only check if the seat is available (if ignore_restrictions is True).
+    If a seat is provided, check if the seat is available and meets the student's requirements
+    (if ignore_restrictions is False), or only check if the seat is available (if ignore_restrictions is True).
     Then, the chosen seat is assigned to the student.
 
     The original assignment will NOT be removed! It is the caller's responsibility to remove the original assignment if needed.
@@ -165,8 +166,9 @@ def assign_single_student(exam, student, seat=None, ignore_restrictions=False):
 
     # if a seat is provided, check it
     if seat and seat not in seats:
-        raise SeatOverrideError(student, seat,
-                                "Seat is already taken or does exist in the exam, or does not meet the student's requirements.")
+        raise SeatOverrideError(
+            student, seat,
+            "Seat is already taken or does exist in the exam, or does not meet the student's requirements.")
 
     # if seat is not provided, try getting a seat that meets the student's requirements
     if not seat:

@@ -38,7 +38,7 @@ class TestPreferenceClass(unittest.TestCase):
         p1 = Preference(wants={'a'}, avoids={'b'}, room_wants={'1'}, room_avoids={'2'})
         p2 = Preference(wants={'a'}, avoids={'b'}, room_wants={'1'}, room_avoids={'2'})
         p3 = Preference(wants={'c'}, avoids={'b'}, room_wants={'1'}, room_avoids={'2'})
-        
+
         pref_set = {p1, p2, p3}
         # p1 and p2 are duplicates, so the set should only have 2 unique items
         self.assertEqual(len(pref_set), 2)
@@ -102,9 +102,9 @@ class TestSeatPreferenceLogic(unittest.TestCase):
         seats = [self.seat_a_window, self.seat_b_aisle, self.seat_c_window]
         # Pref: wants 'window'
         pref = Preference(wants={'window'}, avoids=set(), room_wants=set(), room_avoids=set())
-        
+
         filtered = filter_seats_by_preference(seats, pref)
-        
+
         self.assertEqual(len(filtered), 2)
         self.assertIn(self.seat_a_window, filtered)
         self.assertIn(self.seat_c_window, filtered)
@@ -115,9 +115,10 @@ class TestSeatPreferenceLogic(unittest.TestCase):
             wants={'a'}, avoids={'b'}, room_wants={'1'}, room_avoids={'2'}
         )
         pref = get_preference_from_student(student)
-        
+
         expected_pref = Preference(wants={'a'}, avoids={'b'}, room_wants={'1'}, room_avoids={'2'})
         self.assertEqual(pref, expected_pref)
+
 
 @patch('server.services.core.assign.SeatAssignment', MockSeatAssignment)
 @patch('server.services.core.assign.arr_to_dict')
@@ -153,16 +154,16 @@ class TestAssignStudents(unittest.TestCase):
         self.seat_b1.__repr__ = lambda s: f"<MockSeat name={s.name}>"
         self.seat_ab = MockSeat(name='seat_ab', attributes={'A', 'B'}, room=self.room2)
         self.seat_ab.__repr__ = lambda s: f"<MockSeat name={s.name}>"
-        
+
         self.exam = MockExam()
         self.exam.__repr__ = lambda s: "<MockExam>"
 
     def test_assign_no_students(self, mock_random_choice, mock_arr_to_dict):
         self.exam.unassigned_students = set()
         self.exam.unassigned_seats = {self.seat_a1}
-        
+
         assignments = assign_students(self.exam)
-        
+
         self.assertEqual(assignments, [])
         mock_arr_to_dict.assert_not_called()
 
@@ -170,7 +171,7 @@ class TestAssignStudents(unittest.TestCase):
         # 1 student, 1 seat, 1 preference
         self.exam.unassigned_students = {self.s_a1}
         self.exam.unassigned_seats = {self.seat_a1}
-        
+
         # Mock the grouping functions
         mock_arr_to_dict.return_value = {self.pref_a: [self.s_a1]}
         # Mock random.choice to be deterministic
@@ -194,11 +195,11 @@ class TestAssignStudents(unittest.TestCase):
     def test_assign_restrictive_logic(self, mock_random_choice, mock_arr_to_dict):
         """
         Tests the core logic: "assign most restrictive preference first".
-        
+
         Scenario:
         - Pref A: 1 student (s_a1), 2 seats match (seat_a1, seat_ab)
         - Pref B: 1 student (s_b1), 1 seat matches (seat_ab)
-        
+
         Expected:
         1. `seats_by_pref[pref_a]` has length 2.
         2. `seats_by_pref[pref_b]` has length 1.
@@ -210,22 +211,22 @@ class TestAssignStudents(unittest.TestCase):
         """
         self.exam.unassigned_students = {self.s_a1, self.s_b1}
         self.exam.unassigned_seats = {self.seat_a1, self.seat_ab}
-        
+
         mock_arr_to_dict.return_value = {
             self.pref_a: [self.s_a1],
             self.pref_b: [self.s_b1]
         }
-        
+
         # Mock random.choice selections
         # Loop 1 (Pref B): picks s_b1, then seat_ab
         # Loop 2 (Pref A): picks s_a1, then seat_a1
         mock_random_choice.side_effect = [
             self.s_b1,  # 1. choice from min_students [s_b1]
-            self.seat_ab, # 2. choice from min_seats {seat_ab}
+            self.seat_ab,   # 2. choice from min_seats {seat_ab}
             self.s_a1,  # 3. choice from min_students [s_a1]
             self.seat_a1  # 4. choice from min_seats {seat_a1} (seat_ab was removed)
         ]
-        
+
         assignments = assign_students(self.exam)
 
         self.assertEqual(len(assignments), 2)
@@ -237,10 +238,10 @@ class TestAssignStudents(unittest.TestCase):
         """
         Tests that NotEnoughSeatError is raised if a preference group
         runs out of seats.
-        
+
         Scenario:
         - Pref B: 2 students (s_b1, s_b2), 1 seat (seat_b1)
-        
+
         Expected:
         1. `min_preference` is `pref_b` (1 seat).
         2. s_b1 is assigned seat_b1.
@@ -250,21 +251,21 @@ class TestAssignStudents(unittest.TestCase):
         """
         self.exam.unassigned_students = {self.s_b1, self.s_b2}
         self.exam.unassigned_seats = {self.seat_b1}
-        
+
         # Mock the initial grouping
         mock_arr_to_dict.side_effect = [
             # First call inside assign_students
             {self.pref_b: [self.s_b1, self.s_b2]},
             # Second call inside the error-raising block
-            {self.pref_b: [self.s_b1, self.s_b2]} 
+            {self.pref_b: [self.s_b1, self.s_b2]}
         ]
-        
+
         # Loop 1: picks s_b1, then seat_b1
         mock_random_choice.side_effect = [self.s_b1, self.seat_b1]
-        
+
         with self.assertRaises(NotEnoughSeatError) as cm:
             assign_students(self.exam)
-        
+
         # Check that the error was raised with the correct info
         self.assertEqual(cm.exception.preference, self.pref_b)
         self.assertIn(self.s_b1, cm.exception.students)
@@ -289,7 +290,7 @@ class TestAssignSingleStudent(unittest.TestCase):
         )
         # make mock printable
         self.student_c.__repr__ = lambda s: f"<MockStudent name={s.name}>"
-        
+
         # A valid seat for student_c
         self.seat_c1 = MockSeat(name='seat_c1', attributes={'C'}, room=self.room1)
         self.seat_c1.__repr__ = lambda s: f"<MockSeat name={s.name}>"
@@ -307,32 +308,32 @@ class TestAssignSingleStudent(unittest.TestCase):
 
     def test_assign_single_auto_success(self, mock_random_choice):
         # Auto-assign, no seat specified, respects restrictions
-        
+
         # `filter_seats_by_preference` will return [self.seat_c1]
         # mock random.choice to pick it
         mock_random_choice.return_value = self.seat_c1
-        
+
         assignment = assign_single_student(self.exam, self.student_c, ignore_restrictions=False)
-        
+
         self.assertEqual(assignment, (self.student_c, self.seat_c1))
         mock_random_choice.assert_called_once_with([self.seat_c1])
 
     def test_assign_single_auto_no_valid_seats_error(self, mock_random_choice):
         # Auto-assign, but no seats meet preference
         self.exam.unassigned_seats = [self.seat_c2_wrong_room, self.seat_d1]
-        
+
         with self.assertRaises(NotEnoughSeatError):
             assign_single_student(self.exam, self.student_c, ignore_restrictions=False)
-        
+
         mock_random_choice.assert_not_called()
 
     def test_assign_single_auto_ignore_restrictions(self, mock_random_choice):
         # Auto-assign, ignoring restrictions. Should pick from *all* unassigned seats.
         self.exam.unassigned_seats = [self.seat_c1, self.seat_c2_wrong_room, self.seat_d1]
-        mock_random_choice.return_value = self.seat_d1 # Pick an otherwise invalid seat
-        
+        mock_random_choice.return_value = self.seat_d1   # Pick an otherwise invalid seat
+
         assignment = assign_single_student(self.exam, self.student_c, ignore_restrictions=True)
-        
+
         self.assertEqual(assignment, (self.student_c, self.seat_d1))
         # Verifies it's choosing from all 3 seats
         mock_random_choice.assert_called_once_with(
@@ -344,9 +345,9 @@ class TestAssignSingleStudent(unittest.TestCase):
         assignment = assign_single_student(
             self.exam, self.student_c, seat=self.seat_c1, ignore_restrictions=False
         )
-        
+
         self.assertEqual(assignment, (self.student_c, self.seat_c1))
-        mock_random_choice.assert_not_called() # No random choice needed
+        mock_random_choice.assert_not_called()   # No random choice needed
 
     def test_assign_single_specific_seat_override_error(self, mock_random_choice):
         # Assign to a specific seat that is NOT valid (wrong room)
@@ -354,12 +355,12 @@ class TestAssignSingleStudent(unittest.TestCase):
             assign_single_student(
                 self.exam, self.student_c, seat=self.seat_c2_wrong_room, ignore_restrictions=False
             )
-            
+
     def test_assign_single_specific_seat_not_in_exam_error(self, mock_random_choice):
         # Assign to a specific seat that is not in the unassigned list
         seat_taken = MockSeat(name='seat_taken', attributes={'C'}, room=self.room1)
         # Note: seat_taken is not in self.exam.unassigned_seats
-        
+
         with self.assertRaises(SeatOverrideError):
             assign_single_student(
                 self.exam, self.student_c, seat=seat_taken, ignore_restrictions=False
@@ -370,7 +371,7 @@ class TestAssignSingleStudent(unittest.TestCase):
         assignment = assign_single_student(
             self.exam, self.student_c, seat=self.seat_d1, ignore_restrictions=True
         )
-        
+
         self.assertEqual(assignment, (self.student_c, self.seat_d1))
         mock_random_choice.assert_not_called()
 
