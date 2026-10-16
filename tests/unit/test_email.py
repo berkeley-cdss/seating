@@ -45,17 +45,17 @@ def test_send_plain_text_email(mock_smtp):
     mock_smtp.assert_called_with(_email_config.smtp_server, _email_config.smtp_port)
     mock_smtp.return_value.starttls.assert_called_once()
     mock_smtp.return_value.login.assert_called_once_with(_email_config.username, _email_config.password)
-    mock_smtp.return_value.sendmail.assert_called_once() 
+    mock_smtp.return_value.sendmail.assert_called_once()
     mock_smtp.return_value.quit.assert_called_once()
 
     # check email meta
     call_args = mock_smtp.return_value.sendmail.call_args
-    kwargs = call_args[1] 
-    msg_string = kwargs['msg'] 
-    
+    kwargs = call_args[1]
+    msg_string = kwargs['msg']
+
     # Re-parse the message string back into an EmailMessage object for easy header checking
     from email import message_from_string
-    msg = message_from_string(msg_string) 
+    msg = message_from_string(msg_string)
 
     assert msg['From'] == TEST_FROM_EMAIL
     assert msg['To'] == TEST_TO_EMAIL
@@ -81,11 +81,11 @@ def test_send_html_email(mock_smtp):
     assert success[0]
 
     call_args = mock_smtp.return_value.sendmail.call_args
-    kwargs = call_args[1] 
-    msg_string = kwargs['msg'] 
+    kwargs = call_args[1]
+    msg_string = kwargs['msg']
 
     from email import message_from_string
-    msg = message_from_string(msg_string) 
+    msg = message_from_string(msg_string)
 
     html = _get_content(msg, 'text/html')
     assert html is not None

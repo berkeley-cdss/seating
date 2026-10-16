@@ -1,13 +1,14 @@
 import re
 
 from flask_wtf import FlaskForm
-from wtforms import FieldList, FormField, SelectField, ValidationError, BooleanField, FileField, SelectMultipleField, StringField, \
-    SubmitField, TextAreaField, DateTimeField, IntegerField, widgets
+from wtforms import FieldList, FormField, SelectField, ValidationError, BooleanField, FileField, SelectMultipleField, \
+    StringField, SubmitField, TextAreaField, DateTimeField, IntegerField, widgets
 from wtforms import Form as NoCsrfForm
 from flask_wtf.file import FileRequired, FileAllowed
 from wtforms.validators import Email, InputRequired, URL, Optional, DataRequired
 from server.controllers import exam_regex
-from server.typings.enum import AssignmentImportStrategy, NewRowImportStrategy, UpdatedRowImportStrategy, MissingRowImportStrategy
+from server.typings.enum import AssignmentImportStrategy, NewRowImportStrategy, UpdatedRowImportStrategy, \
+    MissingRowImportStrategy
 
 
 class MultiCheckboxField(SelectMultipleField):
