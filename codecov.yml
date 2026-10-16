@@ -1,5 +1,13 @@
+# wait for both test jobs' uploads (unit and e2e) before posting checks or the
+# PR comment, so neither ever reflects just one of them
+codecov:
+  notify:
+    after_n_builds: 2
+
 ignore:
   - "*/tests/*"
+
 # the PR comment's flags table shows unit and e2e coverage separately
 comment:
   layout: "condensed_header, diff, flags, condensed_files, condensed_footer"
+  after_n_builds: 2
