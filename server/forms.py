@@ -113,23 +113,32 @@ class EditRoomForm(RoomFormBase):
 class ImportStudentFormBase(FlaskForm):
     revalidate_existing_assignments = BooleanField('revalidate_existing_assignments', default=True)
     assignment_import_strategy = SelectField('assignment_import_strategy', choices=[
-        (e.value, e.name) for e in AssignmentImportStrategy],
+        (AssignmentImportStrategy.REVALIDATE.value, "Use it if it fits the student's preferences"),
+        (AssignmentImportStrategy.FORCE.value, "Always use it, even if it doesn't fit"),
+        (AssignmentImportStrategy.IGNORE.value, "Ignore it")],
         default=AssignmentImportStrategy.REVALIDATE.value,
         validators=[DataRequired()])
     updated_student_info_import_strategy = SelectField('updated_student_info_import_strategy', choices=[
-        (e.value, e.name) for e in UpdatedRowImportStrategy],
+        (UpdatedRowImportStrategy.MERGE.value, "Update from the import, keeping what it leaves blank"),
+        (UpdatedRowImportStrategy.OVERWRITE.value, "Replace with the import, blanks included"),
+        (UpdatedRowImportStrategy.IGNORE.value, "Keep as they are")],
         default=UpdatedRowImportStrategy.MERGE.value,
         validators=[DataRequired()])
+    # merge by default: a Canvas roster has no preference columns, so replacing would clear them all
     updated_preference_import_strategy = SelectField('updated_preference_import_strategy', choices=[
-        (e.value, e.name) for e in UpdatedRowImportStrategy],
-        default=UpdatedRowImportStrategy.OVERWRITE.value,
+        (UpdatedRowImportStrategy.MERGE.value, "Add the import's preferences to theirs"),
+        (UpdatedRowImportStrategy.OVERWRITE.value, "Replace theirs with the import's, blanks included"),
+        (UpdatedRowImportStrategy.IGNORE.value, "Keep theirs as they are")],
+        default=UpdatedRowImportStrategy.MERGE.value,
         validators=[DataRequired()])
     new_student_import_strategy = SelectField('new_student_import_strategy', choices=[
-        (e.value, e.name) for e in NewRowImportStrategy],
+        (NewRowImportStrategy.APPEND.value, "Add them"),
+        (NewRowImportStrategy.IGNORE.value, "Skip them")],
         default=NewRowImportStrategy.APPEND.value,
         validators=[DataRequired()])
     missing_student_import_strategy = SelectField('missing_student_import_strategy', choices=[
-        (e.value, e.name) for e in MissingRowImportStrategy],
+        (MissingRowImportStrategy.IGNORE.value, "Keep them"),
+        (MissingRowImportStrategy.DELETE.value, "Remove them, and their seats")],
         default=MissingRowImportStrategy.IGNORE.value,
         validators=[DataRequired()])
     submit = SubmitField('import')

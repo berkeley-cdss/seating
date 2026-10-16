@@ -145,11 +145,26 @@ def test_student_listed_twice_is_created_once(exam):
     assert len(_students_named('New Student')) == 1
 
 
-def test_later_row_of_a_new_student_updates_it(exam):
-    new, _, _ = _import(exam, 'email,name,canvas id,lefty\n'
-                              'new@berkeley.edu,New Student,777777,false\n'
-                              'new@berkeley.edu,New Student,777777,true\n')
+CONTRADICTING_ROWS = ('email,name,canvas id,lefty\n'
+                      'new@berkeley.edu,New Student,777777,false\n'
+                      'new@berkeley.edu,New Student,777777,true\n')
+
+
+def test_later_row_of_a_new_student_merges_into_it(exam):
+    # merging (the default) adds the later row's wants to the earlier row's avoids: a contradiction,
+    # so the later row is skipped and the student keeps the first row's preferences
+    new, _, invalid = _import(exam, CONTRADICTING_ROWS)
     assert len(new) == 1
+    assert new[0].wants == set()
+    assert new[0].avoids == {'lefty'}
+    assert len(invalid) == 1
+
+
+def test_later_row_of_a_new_student_overwrites_it(exam):
+    headers, rows = parse_csv_str(CONTRADICTING_ROWS)
+    new, _, invalid, _ = prepare_students(exam, headers, rows, config=StudentImportConfig(
+        updated_preference_import_strategy=UpdatedRowImportStrategy.OVERWRITE))
+    assert len(new) == 1 and not invalid
     assert new[0].wants == {'lefty'}
     assert new[0].avoids == set()
 
