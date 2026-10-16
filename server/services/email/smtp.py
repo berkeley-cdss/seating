@@ -1,6 +1,8 @@
+import copy
 from flask import current_app
 from smtplib import SMTP, SMTPException
 from email.message import EmailMessage
+from email.utils import getaddresses
 from time import sleep
 
 
@@ -27,16 +29,25 @@ def construct_email(*, from_addr, to_addr, subject, body, body_html=None, bcc_ad
     msg['From'], msg['To'], msg['Subject'] = from_addr, to_addr, subject
     if bcc_addr:
         if isinstance(bcc_addr, str):
-            bcc_addr = bcc_addr.split(',')
+            bcc_addr = [address.strip() for address in bcc_addr.split(',') if address.strip()]
         msg['Bcc'] = bcc_addr
     if cc_addr:
         if isinstance(cc_addr, str):
-            cc_addr = cc_addr.split(',')
+            cc_addr = [address.strip() for address in cc_addr.split(',') if address.strip()]
         msg['Cc'] = cc_addr
     msg.set_content(body)
     if body_html:
         msg.add_alternative(body_html, subtype='html')
     return msg
+
+
+def message_recipients(msg: EmailMessage) -> list[str]:
+    """
+    Every address `msg` goes to, from its To, Cc and Bcc headers. A header can list several
+    addresses ("a@x.edu, b@x.edu"), which each have to be given to the SMTP server separately.
+    """
+    headers = msg.get_all('To', []) + msg.get_all('Cc', []) + msg.get_all('Bcc', [])
+    return [address for _, address in getaddresses([str(header) for header in headers]) if address]
 
 
 def construct_smtp_server(smtp: SMTPConfig):
@@ -57,12 +68,17 @@ def send_email_batch(*, smtp_server: SMTP, batch=list[EmailMessage], envelope_se
     successful_emails = []
     failed_emails = []
     for msg in batch:
+        recipients = message_recipients(msg)
+        # Bcc recipients get the message, but the Bcc header itself must not be sent along, or every
+        # recipient could see who was BCC'd
+        transmitted = copy.copy(msg)
+        del transmitted['Bcc']
         for attempt in range(max_retries):
             try:
                 smtp_server.sendmail(
                     from_addr=envelope_sender_addr, # The authorized sender email
-                    to_addrs=[msg['To']] + (msg.get_all('Bcc', []) or []) + (msg.get_all('Cc', []) or []),
-                    msg=msg.as_string())
+                    to_addrs=recipients,
+                    msg=transmitted.as_string())
                 successful_emails.append((msg, None))
                 break
             except Exception as e:
