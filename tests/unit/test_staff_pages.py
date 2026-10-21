@@ -41,6 +41,8 @@ def test_students_page_as_staff(seeded_db, login_as):
     page = response.get_data(as_text=True)
     for student in Student.query.filter_by(exam_id=1):
         assert student.name in page
+    # the import page also updates students already in the exam
+    assert '<div class="mdl-tooltip" data-mdl-for="tt1">Add/Update Students</div>' in page
 
 
 def test_students_page_redirects_student_to_their_seat(seeded_db, login_as):
