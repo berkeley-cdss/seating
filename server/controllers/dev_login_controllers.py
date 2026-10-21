@@ -47,7 +47,7 @@ def dev_login_page():
         for field, errors in form.errors.items():
             for error in errors:
                 flash("{}: {}".format(field, error), 'error')
-        return render_template('dev_login.html.j2', mock_users=_mock_user_roster(),
+        return render_template('dev_login.html', mock_users=_mock_user_roster(),
                                form=form, title="Dev Login")
     return redirect(url_for('index'))
 

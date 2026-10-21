@@ -1,6 +1,7 @@
 """
-Templates are named *.html.j2, which Flask does not autoescape by default, so student names and
-other imported or typed-in data used to be rendered as raw HTML. They must come out escaped.
+Templates used to be named *.html.j2, which Flask does not autoescape, so student names and other
+imported or typed-in data were rendered as raw HTML. They are named *.html now, which Flask escapes
+by default; these tests make sure they stay escaped.
 """
 import os
 import re
@@ -30,21 +31,22 @@ NOT_HTML_TEMPLATES = set()
 
 
 @pytest.mark.parametrize('filename, escaped', [
-    ('students.html.j2', True),
-    ('feed.xml.j2', True),
-    ('icon.svg.j2', True),
-    ('email.txt.j2', False),
-    ('export.csv.j2', False),
     ('students.html', True),
+    ('feed.xml', True),
+    ('icon.svg', True),
+    ('email.txt', False),
+    ('export.csv', False),
+    ('students.html.j2', False),  # why templates are named by their real extension
     (None, True),  # render_template_string
 ])
-def test_autoescape_follows_the_extension_before_j2(filename, escaped):
+def test_autoescape_follows_flasks_rule(filename, escaped):
+    # Flask escapes templates whose name ends in .html, .htm, .xml, .xhtml or .svg
     assert flask_app.select_jinja_autoescape(filename) is escaped
 
 
 def test_every_template_is_autoescaped():
-    # an HTML template named so that it is not escaped (say foo.j2) would print imported data as
-    # raw HTML: name it *.html.j2, or list it in NOT_HTML_TEMPLATES if it really is not HTML
+    # an HTML template named so that Flask does not escape it (say foo.j2 or foo.html.j2) would print
+    # imported data as raw HTML: name it *.html, or list it in NOT_HTML_TEMPLATES if it really is not HTML
     templates_dir = os.path.join(flask_app.root_path, flask_app.template_folder)
     templates = sorted(os.listdir(templates_dir))
     assert templates

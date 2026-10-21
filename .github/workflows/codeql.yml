@@ -33,8 +33,9 @@ jobs:
         with:
           languages: ${{ matrix.language }}
           build-mode: none
-          # third-party minified libraries we don't maintain; inline <script> blocks in
-          # the .j2 templates aren't scanned either, since CodeQL doesn't read Jinja
+          # third-party minified libraries we don't maintain. The templates in server/templates
+          # are named .html, so their inline <script> blocks are scanned as HTML; the Jinja
+          # in them is plain text to CodeQL
           config: |
             paths-ignore:
               - server/static/vendor

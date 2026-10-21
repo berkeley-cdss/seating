@@ -90,6 +90,6 @@ def test_seat_map_never_turns_around_for_students(seeded_db):
     with flask_app.test_request_context():
         room = db.session.get(Room, 1)
         html = render_template_string(
-            "{% import 'macros.html.j2' as macros with context %}"
+            "{% import 'macros.html' as macros with context %}"
             "{{ macros.room(room, staff=false, proctor=true) }}", room=room)
     assert _headings(html) == ['Front', 'Back']
