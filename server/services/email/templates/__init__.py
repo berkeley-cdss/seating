@@ -3,6 +3,8 @@ import os
 import json
 import re
 
+from markupsafe import escape
+
 
 class EmailContent:
     def __init__(self, subject: str, body: str, body_html: bool):
@@ -14,7 +16,7 @@ class EmailContent:
         if subject_substitutions:
             self.subject = make_substitutions(self.subject, subject_substitutions)
         if body_substitutions:
-            self.body = make_substitutions(self.body, body_substitutions)
+            self.body = make_substitutions(self.body, body_substitutions, html=self.body_html)
 
     def __repr__(self) -> str:
         return f'EmailContent(subject={self.subject}, body={self.body}, body_type={self.body_html})'
@@ -41,7 +43,14 @@ def get_email(
     return content
 
 
-def make_substitutions(text: str, substitutions: dict[str, str]) -> str:
+def make_substitutions(text: str, substitutions: dict[str, str], html: bool = False) -> str:
+    """
+    Fill in the {{KEY}} placeholders of `text`. With `html`, the values are HTML-escaped, since
+    names and other values come from imports and staff input; plain text gets them as they are.
+    """
     for key, value in substitutions.items():
-        text = re.sub(r'\{\{\s*' + key + r'\s*\}\}', value, text)
+        value = str(escape(value)) if html else str(value)
+        # a function as the replacement takes the value literally: as a string, re.sub would read
+        # backslashes in it (a name like "Jo\hn") as escapes and fail
+        text = re.sub(r'\{\{\s*' + re.escape(key) + r'\s*\}\}', lambda _: value, text)
     return text
