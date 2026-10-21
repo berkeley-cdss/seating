@@ -97,7 +97,7 @@
   document.querySelectorAll('select.missing-students').forEach(function (select) {
     select.form.addEventListener('submit', function (event) {
       if (select.value === 'delete' && !confirm(
-          'Remove every student of this exam who is not in this import, along with their seat? ' +
+          'Remove every student of this exam who is not in this import, along with their seat assignment? ' +
           'This includes students added by CSV who are not in the import.')) {
         event.preventDefault();
       }

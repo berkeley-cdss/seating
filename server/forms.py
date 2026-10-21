@@ -114,22 +114,22 @@ class EditRoomForm(RoomFormBase):
 class ImportStudentFormBase(FlaskForm):
     revalidate_existing_assignments = BooleanField('revalidate_existing_assignments', default=True)
     assignment_import_strategy = SelectField('assignment_import_strategy', choices=[
-        (AssignmentImportStrategy.REVALIDATE.value, "Use it if it fits the student's preferences"),
-        (AssignmentImportStrategy.FORCE.value, "Always use it, even if it doesn't fit"),
+        (AssignmentImportStrategy.REVALIDATE.value, "Use seat if it fits the student's preferences"),
+        (AssignmentImportStrategy.FORCE.value, "Always use imported seat, even if it doesn't fit"),
         (AssignmentImportStrategy.IGNORE.value, "Ignore it")],
         default=AssignmentImportStrategy.REVALIDATE.value,
         validators=[DataRequired()])
     updated_student_info_import_strategy = SelectField('updated_student_info_import_strategy', choices=[
-        (UpdatedRowImportStrategy.MERGE.value, "Update from the import, keeping what it leaves blank"),
-        (UpdatedRowImportStrategy.OVERWRITE.value, "Replace with the import, blanks included"),
+        (UpdatedRowImportStrategy.MERGE.value, "Merge with the import, skipping blanks from the import"),
+        (UpdatedRowImportStrategy.OVERWRITE.value, "Replace with the import, including blanks"),
         (UpdatedRowImportStrategy.IGNORE.value, "Keep as they are")],
         default=UpdatedRowImportStrategy.MERGE.value,
         validators=[DataRequired()])
     # merge by default: a Canvas roster has no preference columns, so replacing would clear them all
     updated_preference_import_strategy = SelectField('updated_preference_import_strategy', choices=[
-        (UpdatedRowImportStrategy.MERGE.value, "Add the import's preferences to theirs"),
-        (UpdatedRowImportStrategy.OVERWRITE.value, "Replace theirs with the import's, blanks included"),
-        (UpdatedRowImportStrategy.IGNORE.value, "Keep theirs as they are")],
+        (UpdatedRowImportStrategy.MERGE.value, "Add the import's preferences to theirs (merge)"),
+        (UpdatedRowImportStrategy.OVERWRITE.value, "Replace their preferences with the import's, blanks included (overwrite)"),
+        (UpdatedRowImportStrategy.IGNORE.value, "Keep their preferences as they are (ignore)")],
         default=UpdatedRowImportStrategy.MERGE.value,
         validators=[DataRequired()])
     new_student_import_strategy = SelectField('new_student_import_strategy', choices=[
@@ -139,7 +139,7 @@ class ImportStudentFormBase(FlaskForm):
         validators=[DataRequired()])
     missing_student_import_strategy = SelectField('missing_student_import_strategy', choices=[
         (MissingRowImportStrategy.IGNORE.value, "Keep them"),
-        (MissingRowImportStrategy.DELETE.value, "Remove them, and their seats")],
+        (MissingRowImportStrategy.DELETE.value, "Remove them, and their seat assignment")],
         default=MissingRowImportStrategy.IGNORE.value,
         validators=[DataRequired()])
     submit = SubmitField('import')

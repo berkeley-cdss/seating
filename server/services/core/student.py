@@ -240,7 +240,7 @@ def prepare_students(exam, headers, rows, *, config: StudentImportConfig = Stude
                 invalid(f"no {' or '.join(missing)}")
                 continue
 
-        # wants and avoids must not overlap
+        # parse out preferences: wants and avoids should be mutually exclusive
         pref_strategy = config.updated_preference_import_strategy
         if is_new or pref_strategy != UpdatedRowImportStrategy.IGNORE:
             merge = not is_new and pref_strategy == UpdatedRowImportStrategy.MERGE
