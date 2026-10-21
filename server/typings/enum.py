@@ -13,8 +13,9 @@ class EmailTemplate(Enum):
 
 
 class GcpSaCredType(Enum):
-    FILE = 'file'
-    ENV = 'env'
+    FILE = 'file'  # a service account key file, at GCP_SA_CRED_FILE
+    ENV = 'env'  # a service account key, base64-encoded in GCP_SA_CRED_VALUE
+    RUNTIME = 'runtime'  # no key: the account the app runs as (on Cloud Run, the service's own account)
 
 
 class AssignmentImportStrategy(Enum):

@@ -14,7 +14,7 @@ jobs:
     runs-on: ubuntu-latest
     # map only the secrets/vars the flask app reads; fork PRs get no secrets
     # or vars, so fall back to dummy values (tests mock Canvas and never call
-    # Google Sheets)
+    # Google Sheets, so no Google credentials are passed)
     env:
       FLASK_APP: ${{ vars.FLASK_APP || 'server' }}
       FLASK_ENV: ${{ vars.FLASK_ENV || 'testing' }}
@@ -22,8 +22,6 @@ jobs:
       CANVAS_SERVER_URL: ${{ vars.CANVAS_SERVER_URL || 'https://canvas.example.edu' }}
       CANVAS_CLIENT_ID: ${{ secrets.CANVAS_CLIENT_ID || 'test' }}
       CANVAS_CLIENT_SECRET: ${{ secrets.CANVAS_CLIENT_SECRET || 'test' }}
-      GCP_SA_CRED_TYPE: ${{ vars.GCP_SA_CRED_TYPE }}
-      GCP_SA_CRED_VALUE: ${{ secrets.GCP_SA_CRED_VALUE }}
       MASTER_ROOM_SHEET_URL: ${{ vars.MASTER_ROOM_SHEET_URL }}
     steps:
       - uses: actions/checkout@v7

@@ -70,6 +70,8 @@ jobs:
           region: us-west1
           source: .
           flags: '--allow-unauthenticated --service-account=seating-run@staging-cdss-web-apps.iam.gserviceaccount.com --add-cloudsql-instances=staging-cdss-web-apps:us-west1:staging-cdss-web-apps-2 --max-instances=3'
+          # GCP_SA_CRED_TYPE=runtime: Google Sheets are read as the account the preview runs as
+          # (seating-run, set by --service-account above), so no key is stored or passed
           env_vars: |
             FLASK_APP=server
             FLASK_ENV=staging
@@ -85,7 +87,7 @@ jobs:
             EMAIL_PORT=587
             EMAIL_SENDER=seamless-learning@berkeley.edu
             EMAIL_USERNAME=svc-bcop-seamless-learning
-            GCP_SA_CRED_TYPE=env
+            GCP_SA_CRED_TYPE=runtime
             MASTER_ROOM_SHEET_URL=https://docs.google.com/spreadsheets/d/16a1uZJl54A5_J2XpyzIBblH7LPlFCKc5Cx86CFTbZTA/edit?usp=sharing
           secrets: |
             CANVAS_CLIENT_ID=seating-canvas-client-id:latest
@@ -97,7 +99,6 @@ jobs:
             EMAIL_PASSWORD=seating-email-password:latest
             DATABASE_URL=seating-database-url:latest
             SECRET_KEY=seating-secret-key:latest
-            GCP_SA_CRED_VALUE=seating-gcp-sa-cred-value:latest
 
       - name: Allow Unauthenticated Access (allUsers)
         run: |
