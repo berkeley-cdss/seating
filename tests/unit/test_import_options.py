@@ -187,7 +187,7 @@ def test_new_student_gets_the_import_values_whatever_the_update_options(staff):
 def test_page_explains_the_options_and_confirms_removing(staff):
     page = staff.get(f'{EXAM_URL}/students/import/').get_data(as_text=True)
     assert 'Students in this exam but not in the import:' in page
-    assert 'Remove them, and their seats' in page
+    assert 'Remove them, and their seat assignment' in page
     assert "select.value === 'delete' &amp;&amp; !confirm(" in page or "select.value === 'delete' && !confirm(" in page
 
 
