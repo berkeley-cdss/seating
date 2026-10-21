@@ -5,7 +5,7 @@ from server import app
 from server.models import Room, Seat
 
 EXAM_URL = '/offerings/1234567/exams/midterm1'
-STUDENT_URL = f'{EXAM_URL}/students/234567'
+STUDENT_URL = f'{EXAM_URL}/students/1'  # Jimmy Xu's database id
 
 
 def _seat_links(response):
@@ -16,7 +16,7 @@ def _seat_links(response):
 
 
 def test_room_page_links_assigned_seat_to_student(seeded_db, login_as):
-    # seat 1 is assigned to the student with canvas id 234567
+    # seat 1 is assigned to Jimmy Xu, database id 1
     response = login_as(1).get(f'{EXAM_URL}/rooms/1/')
     assert response.status_code == 200
     assert _seat_links(response)['1'] == STUDENT_URL

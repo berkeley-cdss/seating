@@ -55,8 +55,8 @@ def test_every_template_is_autoescaped():
 @pytest.mark.parametrize('path', [
     '/students/',  # students table
     '/rooms/1/',  # seat map tooltip
-    '/students/234567',  # student page
-    '/students/345678/assign/',  # seat maps of the assign page
+    '/students/1',  # student page (Jimmy Xu's database id)
+    '/students/2/assign/',  # seat maps of the assign page
 ])
 def test_student_name_is_escaped(jimmy, login_as, path):
     page = login_as(1).get(EXAM_URL + path).get_data(as_text=True)

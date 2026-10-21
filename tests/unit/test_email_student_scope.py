@@ -39,29 +39,29 @@ def other_exam_student(seeded_db):
 
 def test_own_student_is_prefilled(seeded_db, login_as):
     jimmy = Student.query.filter_by(exam_id=1, canvas_id='234567').one()
-    page = login_as(1).get(f'{EXAM_URL}/students/email/{jimmy.id}/').get_data(as_text=True)
+    page = login_as(1).get(f'{EXAM_URL}/students/{jimmy.id}/email/').get_data(as_text=True)
     assert re.search(rf'id="to_addr"[^>]*value="{re.escape(jimmy.email)}"', page)
 
 
 def test_students_page_link_opens_the_email_page(seeded_db, login_as):
     client = login_as(1)
     page = client.get(f'{EXAM_URL}/students/').get_data(as_text=True)
-    url = re.search(r"location.href = '([^']*/students/email/\d+/)'", page).group(1)
+    url = re.search(r"location.href = '([^']*/students/\d+/email/)'", page).group(1)
     assert client.get(url).status_code == 200
 
 
 @pytest.mark.parametrize('fixture', ['other_course_student', 'other_exam_student'])
 def test_student_of_another_exam_is_not_found(request, login_as, fixture):
     student = request.getfixturevalue(fixture)
-    response = login_as(1).get(f'{EXAM_URL}/students/email/{student.id}/')
+    response = login_as(1).get(f'{EXAM_URL}/students/{student.id}/email/')
     assert response.status_code == 404
     assert student.email not in response.get_data(as_text=True)
 
 
 def test_posting_for_a_student_of_another_course_is_not_found(other_course_student, login_as):
-    response = login_as(1).post(f'{EXAM_URL}/students/email/{other_course_student.id}/', data={'subject': 'x'})
+    response = login_as(1).post(f'{EXAM_URL}/students/{other_course_student.id}/email/', data={'subject': 'x'})
     assert response.status_code == 404
 
 
 def test_non_numeric_id_is_not_found(seeded_db, login_as):
-    assert login_as(1).get(f'{EXAM_URL}/students/email/abc/').status_code == 404
+    assert login_as(1).get(f'{EXAM_URL}/students/abc/email/').status_code == 404
