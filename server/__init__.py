@@ -26,6 +26,13 @@ class App(Flask):
     def request_context(self, environ):
         return UrlRequestContext(self, environ)
 
+    def select_jinja_autoescape(self, filename):
+        # Flask decides by extension (.html, .htm, .xml, .xhtml, .svg), and ours are named *.html.j2:
+        # judge them by the extension before .j2, so HTML is escaped and a .txt.j2 or .csv.j2 is not
+        if filename and filename.endswith('.j2'):
+            filename = filename[:-len('.j2')]
+        return super().select_jinja_autoescape(filename)
+
 
 app = App(__name__)
 
