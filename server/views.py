@@ -744,7 +744,9 @@ def edit_student(exam_student):
                 "Wants and avoids should not overlap.\n"
                 f"Want: {new_wants_set}\nAvoid: {new_avoids_set}\n"
                 f"Room Want: {new_room_wants_set}\nRoom Avoid: {new_room_avoids_set}", 'error')
-            return render_template('edit_student.html', exam=exam, form=form, student=student)
+            # the single- and multi-student edit pages share one template (edit_student.html is long gone)
+            return render_template('edit_students.html', exam=exam, form=form, edited=edited,
+                                   did_not_exist=did_not_exist, student=student)
         student.wants = new_wants_set
         student.avoids = new_avoids_set
         student.room_wants = new_room_wants_set
