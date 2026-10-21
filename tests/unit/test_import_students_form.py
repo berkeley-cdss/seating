@@ -153,8 +153,7 @@ def test_page_says_which_options_the_canvas_roster_ignores(staff):
                          page.split('<div class="mdl-grid import-strategies">')[1], re.S)
     ignored = [re.search(r'name="(\w+)"', option).group(1) for option in options
                if 'Not used when importing the Canvas roster.' in option]
-    assert ignored == ['revalidate_existing_assignments', 'assignment_import_strategy',
-                       'updated_preference_import_strategy']
+    assert ignored == ['assignment_import_strategy']
 
 
 @pytest.mark.parametrize('email, shown', [

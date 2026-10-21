@@ -167,13 +167,12 @@
 {% endmacro %}
 
 {% macro render_import_strategies_choices(form, canvas_notes=False) %}
-{# canvas_notes: the options sit in a form that can also import the Canvas roster, which has no seats
-   or preferences, so say which options that import doesn't use #}
+{# canvas_notes: the options sit in a form that can also import the Canvas roster, which has no seats,
+   so say which option that import doesn't use #}
 {% set canvas_note %}{% if canvas_notes %}<p class="import-strategy-help">Not used when importing the Canvas roster.</p>{% endif %}{% endset %}
 <div class="mdl-grid import-strategies">
   <div class="mdl-cell mdl-cell--12-col">
     {{ render_checkbox(form, 'revalidate_existing_assignments', 'Unseat students whose seat no longer fits their updated preferences') }}
-    {{ canvas_note }}
   </div>
   <div class="mdl-cell mdl-cell--12-col">
     <label for="{{ form.assignment_import_strategy.id }}">Seats listed in the import:</label>
@@ -187,7 +186,6 @@
   <div class="mdl-cell mdl-cell--12-col">
     <label for="{{ form.updated_preference_import_strategy.id }}">Preferences of students already in this exam:</label>
     {{ form.updated_preference_import_strategy() }}
-    {{ canvas_note }}
   </div>
   <div class="mdl-cell mdl-cell--12-col">
     <label for="{{ form.new_student_import_strategy.id }}">Students in the import but not yet in this exam:</label>
@@ -197,7 +195,7 @@
     <label for="{{ form.missing_student_import_strategy.id }}">Students in this exam but not in the import:</label>
     {{ form.missing_student_import_strategy(class="missing-students") }}
     <p class="import-strategy-help">Choose "Remove them" with the Canvas roster to drop students who have left the course in bCourses.
-      It removes every student of this exam missing from the import, including ones added by CSV.</p>
+      It removes every student of this exam missing from the import.</p>
   </div>
 </div>
 {% endmacro %}

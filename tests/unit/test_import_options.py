@@ -96,20 +96,20 @@ def test_roster_import_keeps_preferences(staff):
     assert (_student('345678').wants, _student('345678').avoids) == ({'lefty'}, {'broken'})
 
 
-@pytest.mark.parametrize('strategy', ['merge', 'overwrite', 'ignore'])
-def test_roster_import_ignores_the_preference_option(staff, strategy):
-    # the roster has no preferences: replacing students' with its none used to clear them all
+@pytest.mark.parametrize('strategy, wants', [('merge', {'Lefty'}), ('overwrite', set()), ('ignore', {'Lefty'})])
+def test_roster_import_uses_the_preference_option(staff, strategy, wants):
+    # the roster has no preferences, so replacing clears them: the page says so
     _post(staff, 'canvas_roster', updated_preference_import_strategy=strategy)
-    assert _student('345678').wants == {'Lefty'}
+    assert _student('345678').wants == wants
 
 
-def test_roster_import_ignores_revalidating(staff, sharon_wants_the_impossible):
-    # Sharon was given seat 2 on purpose though it doesn't fit; the roster changes no preferences,
-    # so it has no reason to unseat her
+@pytest.mark.parametrize('revalidate, seated', [('y', False), (None, True)])
+def test_roster_import_uses_the_unseat_option(staff, sharon_wants_the_impossible, revalidate, seated):
+    # Sharon sits in seat 2, which doesn't fit what she wants
     _student('345678').assignment = SeatAssignment(seat=db.session.get(Seat, 2))
     db.session.commit()
-    _post(staff, 'canvas_roster', revalidate_existing_assignments='y')
-    assert _student('345678').assignment.seat_id == 2
+    _post(staff, 'canvas_roster', revalidate_existing_assignments=revalidate)
+    assert (_student('345678').assignment is not None) == seated
 
 
 def test_basic_info_keep(staff):

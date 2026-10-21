@@ -6,7 +6,7 @@ from server.services.google import get_spreadsheet_tab_content, get_spreadsheet_
 from server.services.core.layout_preview import build_layout_preview
 from server.services.core.room import prepare_room, prepare_seat
 from server.services.core.student import StudentImportConfig, prepare_students
-from server.typings.enum import AssignmentImportStrategy, UpdatedRowImportStrategy
+from server.typings.enum import AssignmentImportStrategy
 from server.typings.exception import DataValidationError
 
 
@@ -114,14 +114,5 @@ def get_students_from_import_form(exam, form):
 
 
 def get_students_from_canvas(exam, student_form):
-    """
-    The Canvas roster has names, emails and ids, but no seats or preferences, so the options about
-    those are ignored (the page says which): replacing preferences with the roster's none would clear
-    everyone's, and revalidating would unseat students given a seat that doesn't fit on purpose.
-    """
     headers, rows = get_student_roster_for_offering(exam.offering_canvas_id)
-    config = _get_config_from_form(student_form)
-    config.revalidate_existing_assignments = False
-    config.assignment_import_strategy = AssignmentImportStrategy.IGNORE
-    config.updated_preference_import_strategy = UpdatedRowImportStrategy.IGNORE
-    return prepare_students(exam, headers, rows, config=config)
+    return prepare_students(exam, headers, rows, config=_get_config_from_form(student_form))

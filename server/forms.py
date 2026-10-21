@@ -153,7 +153,7 @@ class ImportStudentsForm(ImportStudentFormBase):
     file = FileField('file', validators=[
         Optional(), FileAllowed(['csv', 'tsv', 'txt', 'xlsx'], 'Choose a CSV, TSV or Excel (.xlsx) file')])
     text = TextAreaField('text', [Optional()], render_kw={
-        "placeholder": "canvas id,email,name\n123456,x@y.z,John\n...\n\nor paste rows straight from a spreadsheet"})
+        "placeholder": "canvas id,email,name\n123456,x@y.z,John\n..."})
     sheet_url = StringField('sheet_url', [Optional(), URL()])
     sheet_range = StringField('sheet_range', [Optional()])
 

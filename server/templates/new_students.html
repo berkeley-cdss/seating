@@ -5,7 +5,7 @@
 <div class="mdl-grid import-students">
   <div class="mdl-cell mdl-cell--12-col">
     <h4>Import students</h4>
-    <p>Upload a file, paste rows, or link a Google Sheet: one of the three. Or import the course's Canvas roster.</p>
+    <p>Import Canvas/bCourses roster (below), or import students via a file, pasting rows, or a Google Sheet URL. See below for formatting.</p>
     <form id="import-students" action="{{ url_for('import_students', exam=exam) }}" method="post" enctype="multipart/form-data">
       {{ form.hidden_tag() }}
       <div class="import-source">
@@ -21,7 +21,7 @@
         <label for="import_sheet_url">Or link a Google Sheet:</label>
         {{ form.sheet_url(id="import_sheet_url", type="url", size=60, placeholder="https://docs.google.com/spreadsheets/d/...") }}
         <label for="import_sheet_range">tab:</label>
-        {{ form.sheet_range(id="import_sheet_range", size=16, placeholder="first tab") }}
+        {{ form.sheet_range(id="import_sheet_range", size=16, placeholder="Sheet1") }}
         {% if config.GCP_SA_EMAIL %}
         <p class="import-strategy-help">The sheet stays private: share it with <strong class="share-email">{{ config.GCP_SA_EMAIL }}</strong> as a Viewer.</p>
         {% else %}
@@ -37,7 +37,7 @@
         <input id="import-canvas-roster" class="mdl-button mdl-js-button mdl-button--raised" type="submit" value="Import Canvas roster"
                formaction="{{ url_for('import_students_from_canvas_roster', exam=exam) }}">
       </div>
-      <p class="import-strategy-help">Import Canvas roster takes the course's students from bCourses: names, emails and ids, but no seats or preferences.</p>
+      <p class="import-strategy-help">Import Canvas roster takes the course's students from bCourses: names, emails and ids, but no seats or preferences, so replacing preferences clears them.</p>
     </form>
 
     <h5>Format</h5>
