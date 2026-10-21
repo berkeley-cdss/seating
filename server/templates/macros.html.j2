@@ -167,39 +167,31 @@
 {% endmacro %}
 
 {% macro render_import_strategies_choices(form) %}
-<div class="mdl-grid">
+<div class="mdl-grid import-strategies">
   <div class="mdl-cell mdl-cell--12-col">
-    {{ render_checkbox(form, 'revalidate_existing_assignments', 'Revalidate Existing Seat Assignments') }}
+    {{ render_checkbox(form, 'revalidate_existing_assignments', 'Unseat students whose seat no longer fits their updated preferences') }}
   </div>
   <div class="mdl-cell mdl-cell--12-col">
-    <div id="assignment_import_strategy">
-      <label class="" for="assignment_import_strategy">Seat Assignment Import Strategy</label>
-      {{ form.assignment_import_strategy() }}
-    </div>
+    <label for="{{ form.assignment_import_strategy.id }}">Seats listed in the import:</label>
+    {{ form.assignment_import_strategy() }}
   </div>
   <div class="mdl-cell mdl-cell--12-col">
-    <div id="updated_student_info_import_strategy">
-      <label class="" for="updated_student_info_import_strategy">Student Basic Info Update Import Strategy</label>
-      {{ form.updated_student_info_import_strategy() }}
-    </div>
+    <label for="{{ form.updated_student_info_import_strategy.id }}">Name, email and student id of students already in this exam:</label>
+    {{ form.updated_student_info_import_strategy() }}
   </div>
   <div class="mdl-cell mdl-cell--12-col">
-    <div id="updated_preference_import_strategy">
-      <label class="" for="updated_preference_import_strategy">Student Preference Update Import Strategy</label>
-      {{ form.updated_preference_import_strategy() }}
-    </div>
+    <label for="{{ form.updated_preference_import_strategy.id }}">Preferences of students already in this exam:</label>
+    {{ form.updated_preference_import_strategy() }}
   </div>
   <div class="mdl-cell mdl-cell--12-col">
-    <div id="new_student_import_strategy">
-      <label class="" for="new_student_import_strategy">New Row Strategy</label>
-      {{ form.new_student_import_strategy() }}
-    </div>
+    <label for="{{ form.new_student_import_strategy.id }}">Students in the import but not yet in this exam:</label>
+    {{ form.new_student_import_strategy() }}
   </div>
   <div class="mdl-cell mdl-cell--12-col">
-    <div id="missing_student_import_strategy">
-      <label class="" for="missing_student_import_strategy">Missing row Strategy</label>
-      {{ form.missing_student_import_strategy() }}
-    </div>
+    <label for="{{ form.missing_student_import_strategy.id }}">Students in this exam but not in the import:</label>
+    {{ form.missing_student_import_strategy(class="missing-students") }}
+    <p class="import-strategy-help">Choose "Remove them" with the Canvas roster to drop students who have left the course in bCourses.
+      It removes every student of this exam missing from the import, including ones added by CSV.</p>
   </div>
 </div>
 {% endmacro %}

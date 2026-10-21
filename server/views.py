@@ -539,6 +539,30 @@ def import_students(exam):
                            from_manual_input_form=from_manual_input_form)
 
 
+def _save_student_import(exam, new_students, updated_students, invalid_students, students_ids_to_remove):
+    """
+    Saves what a student import prepared, and says what it did: who was added, updated and
+    removed, and which rows were skipped and why.
+    """
+    removed_students = Student.query.filter(Student.id.in_(students_ids_to_remove), Student.exam_id == exam.id) \
+        .order_by(Student.name).all() if students_ids_to_remove else []
+    # one by one rather than in a single DELETE, so that their seat assignments go with them
+    for student in removed_students:
+        db.session.delete(student)
+    db.session.add_all(new_students + updated_students)
+    db.session.commit()
+    flash(
+        f"Import done. {len(new_students)} new students, {len(updated_students)} updated students"
+        f" {len(invalid_students)} invalid students. {len(removed_students)} students removed.", 'success')
+    if removed_students:
+        flash(f"Removed students not in the import: {', '.join(student.name for student in removed_students)}",
+              'warning')
+    if updated_students:
+        flash(f"Updated students: {set_to_str([s.name for s in updated_students])}", 'warning')
+    if invalid_students:
+        flash(describe_invalid_rows(invalid_students), 'error')
+
+
 @app.route('/<exam:exam>/students/import/from_custom_sheet/', methods=['GET', 'POST'])
 def import_students_from_custom_sheet(exam):  # noqa: C901
     from_sheet_form = ImportStudentFromSheetForm()
@@ -547,24 +571,7 @@ def import_students_from_custom_sheet(exam):  # noqa: C901
     from_manual_input_form = ImportStudentFromManualInputForm()
     if from_sheet_form.validate_on_submit():
         try:
-            new_students, updated_students, invalid_students, students_ids_to_remove = get_students_from_google_spreadsheet(
-                exam, from_sheet_form)
-            to_commit = new_students + updated_students
-            if students_ids_to_remove:
-                Student.query.filter(Student.id.in_(students_ids_to_remove)).delete(synchronize_session=False)
-            if to_commit:
-                db.session.add_all(to_commit)
-            if students_ids_to_remove or to_commit:
-                db.session.commit()
-            flash(
-                f"Import done. {len(new_students)} new students, {len(updated_students)} updated students"
-                f" {len(invalid_students)} invalid students. {len(students_ids_to_remove)} students removed.", 'success')
-            if updated_students:
-                flash(
-                    f"Updated students: {set_to_str([s.name for s in updated_students])}", 'warning')
-            if invalid_students:
-                flash(
-                    describe_invalid_rows(invalid_students), 'error')
+            _save_student_import(exam, *get_students_from_google_spreadsheet(exam, from_sheet_form))
         except Exception as e:
             flash(f"Failed to import students due to an unexpected error: {str(e)}", 'error')
         return redirect(url_for('students', exam=exam))
@@ -586,24 +593,7 @@ def import_students_from_canvas_roster(exam):  # noqa: C901
     from_manual_input_form = ImportStudentFromManualInputForm()
     if from_canvas_form.validate_on_submit():
         try:
-            new_students, updated_students, invalid_students, students_ids_to_remove = get_students_from_canvas(
-                exam, from_canvas_form)
-            to_commit = new_students + updated_students
-            if students_ids_to_remove:
-                Student.query.filter(Student.id.in_(students_ids_to_remove)).delete(synchronize_session=False)
-            if to_commit:
-                db.session.add_all(to_commit)
-            if students_ids_to_remove or to_commit:
-                db.session.commit()
-            flash(
-                f"Import done. {len(new_students)} new students, {len(updated_students)} updated students"
-                f" {len(invalid_students)} invalid students. {len(students_ids_to_remove)} students removed.", 'success')
-            if updated_students:
-                flash(
-                    f"Updated students: {set_to_str([s.name for s in updated_students])}", 'warning')
-            if invalid_students:
-                flash(
-                    describe_invalid_rows(invalid_students), 'error')
+            _save_student_import(exam, *get_students_from_canvas(exam, from_canvas_form))
         except Exception as e:
             flash(f"Failed to import students due to an unexpected error: {str(e)}", 'error')
         return redirect(url_for('students', exam=exam))
@@ -626,24 +616,7 @@ def import_students_from_csv_upload(exam):  # noqa: C901
     if from_csv_form.validate_on_submit():
         if from_csv_form.file.data:
             try:
-                new_students, updated_students, invalid_students, students_ids_to_remove = get_students_from_csv(
-                    exam, from_csv_form)
-                to_commit = new_students + updated_students
-                if students_ids_to_remove:
-                    Student.query.filter(Student.id.in_(students_ids_to_remove)).delete(synchronize_session=False)
-                if to_commit:
-                    db.session.add_all(to_commit)
-                if students_ids_to_remove or to_commit:
-                    db.session.commit()
-                flash(
-                    f"Import done. {len(new_students)} new students, {len(updated_students)} updated students"
-                    f" {len(invalid_students)} invalid students. {len(students_ids_to_remove)} students removed.", 'success')
-                if updated_students:
-                    flash(
-                        f"Updated students: {set_to_str([s.name for s in updated_students])}", 'warning')
-                if invalid_students:
-                    flash(
-                        describe_invalid_rows(invalid_students), 'error')
+                _save_student_import(exam, *get_students_from_csv(exam, from_csv_form))
             except Exception as e:
                 flash(f"Failed to import students due to an unexpected error: {str(e)}", 'error')
         else:
@@ -667,24 +640,7 @@ def import_students_from_manual_input(exam):  # noqa: C901
     from_manual_input_form = ImportStudentFromManualInputForm()
     if from_manual_input_form.validate_on_submit():
         try:
-            new_students, updated_students, invalid_students, students_ids_to_remove = get_students_from_manual_input(
-                exam, from_manual_input_form)
-            to_commit = new_students + updated_students
-            if students_ids_to_remove:
-                Student.query.filter(Student.id.in_(students_ids_to_remove)).delete(synchronize_session=False)
-            if to_commit:
-                db.session.add_all(to_commit)
-            if students_ids_to_remove or to_commit:
-                db.session.commit()
-            flash(
-                f"Import done. {len(new_students)} new students, {len(updated_students)} updated students"
-                f" {len(invalid_students)} invalid students. {len(students_ids_to_remove)} students removed.", 'success')
-            if updated_students:
-                flash(
-                    f"Updated students: {set_to_str([s.name for s in updated_students])}", 'warning')
-            if invalid_students:
-                flash(
-                    describe_invalid_rows(invalid_students), 'error')
+            _save_student_import(exam, *get_students_from_manual_input(exam, from_manual_input_form))
         except Exception as e:
             flash(f"Failed to import students due to an unexpected error: {str(e)}", 'error')
         return redirect(url_for('students', exam=exam))

@@ -282,6 +282,15 @@ header a {
   color: #616161;
 }
 
+.import-strategies label {
+  margin-right: 8px;
+}
+
+.import-strategy-help {
+  margin: 4px 0 0 24px;
+  color: #616161;
+}
+
 .send-progress {
   margin: 0 8px;
 }
