@@ -40,13 +40,15 @@ def _post(client, source, **options):
     data = {'csrf_token': re.search(r'name="csrf_token" type="hidden" value="([^"]+)"', page).group(1),
             **DEFAULTS, **options}
     data = {key: value for key, value in data.items() if value is not None}
-    response = client.post(f'{EXAM_URL}/students/import/from_{source}/', data=data, follow_redirects=True)
+    # the Canvas roster has its own form; files, pasted rows and sheet links share the import form
+    url = f'{EXAM_URL}/students/import/' + ('from_canvas_roster/' if source == 'canvas_roster' else '')
+    response = client.post(url, data=data, follow_redirects=True)
     return [' '.join(message.split()) for message in
             re.findall(r'<span class="alert-message">(.*?)</span>', response.get_data(as_text=True), re.S)]
 
 
 def _manual(client, text, **options):
-    return _post(client, 'manual_input', text=text, **options)
+    return _post(client, 'paste', text=text, **options)
 
 
 @pytest.fixture

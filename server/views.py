@@ -5,10 +5,10 @@ from flask_login import current_user, login_required
 
 from server import app
 from server.models import SeatAssignment, db, Exam, Room, Seat, Student
-from server.forms import AssignSingleForm, EditExamForm, EditRoomForm, ExamForm, ImportStudentFromCsvUploadForm, \
-    RoomForm, ChooseRoomForm, ImportStudentFromSheetForm, ImportStudentFromCanvasRosterForm, DeleteStudentForm, \
+from server.forms import AssignSingleForm, EditExamForm, EditRoomForm, ExamForm, ImportStudentsForm, \
+    RoomForm, ChooseRoomForm, ImportStudentFromCanvasRosterForm, DeleteStudentForm, \
     AssignForm, EmailForm, EditStudentForm, UploadRoomForm, ChooseCourseOfferingForm, EditStudentsForm, \
-    ImportStudentFromManualInputForm, PreviewLayoutForm, RemoveDeletedRoomPreferencesForm
+    PreviewLayoutForm, RemoveDeletedRoomPreferencesForm
 from server.services.core.export import export_exam_student_info
 from server.services.core.student import describe_invalid_rows
 from server.services.email.templates import get_email
@@ -16,10 +16,10 @@ from server.services.google import get_spreadsheet_tabs
 import server.services.canvas as canvas_client
 from server.services.email import email_about_assignment, send_test_email, substitute_about_assignment
 from server.services.core.data import get_room_from_csv, get_room_from_google_spreadsheet, get_room_from_manual_input, \
-    get_students_from_canvas, get_students_from_csv, get_students_from_google_spreadsheet, update_room_from_manual_input, \
-    get_students_from_manual_input, get_layout_preview_from_file, get_layout_preview_from_text
+    get_students_from_canvas, get_students_from_import_form, update_room_from_manual_input, \
+    get_layout_preview_from_file, get_layout_preview_from_text
 from server.services.core.assign import assign_single_student, assign_students
-from server.typings.exception import NotEnoughSeatError, SeatAssignmentError
+from server.typings.exception import DataValidationError, NotEnoughSeatError, SeatAssignmentError
 from server.typings.enum import EmailTemplate
 from server.utils.date import to_ISO8601
 from server.utils.misc import set_to_str, str_set_to_set
@@ -526,19 +526,6 @@ def room(exam, id):
 # region Student CRUDI
 
 
-@app.route('/<exam:exam>/students/import/')
-def import_students(exam):
-    from_sheet_form = ImportStudentFromSheetForm()
-    from_canvas_form = ImportStudentFromCanvasRosterForm()
-    from_csv_form = ImportStudentFromCsvUploadForm()
-    from_manual_input_form = ImportStudentFromManualInputForm()
-    return render_template('new_students.html', exam=exam,
-                           from_sheet_form=from_sheet_form,
-                           from_canvas_form=from_canvas_form,
-                           from_csv_form=from_csv_form,
-                           from_manual_input_form=from_manual_input_form)
-
-
 def _save_student_import(exam, new_students, updated_students, invalid_students, students_ids_to_remove):
     """
     Saves what a student import prepared, and says what it did: who was added, updated and
@@ -563,95 +550,44 @@ def _save_student_import(exam, new_students, updated_students, invalid_students,
         flash(describe_invalid_rows(invalid_students), 'error')
 
 
-@app.route('/<exam:exam>/students/import/from_custom_sheet/', methods=['GET', 'POST'])
-def import_students_from_custom_sheet(exam):  # noqa: C901
-    from_sheet_form = ImportStudentFromSheetForm()
+def _render_import_students(exam, form, from_canvas_form):
+    for field, errors in list(form.errors.items()) + list(from_canvas_form.errors.items()):
+        for error in errors:
+            flash("{}: {}".format(field, error), 'error')
+    return render_template('new_students.html', exam=exam, form=form, from_canvas_form=from_canvas_form)
+
+
+@app.route('/<exam:exam>/students/import/', methods=['GET', 'POST'])
+def import_students(exam):
+    """
+    Imports students from a file, pasted text or a Google Sheets link, in one form; the Canvas roster
+    has its own (import_students_from_canvas_roster), as it takes no data from staff.
+    """
+    form = ImportStudentsForm()
     from_canvas_form = ImportStudentFromCanvasRosterForm()
-    from_csv_form = ImportStudentFromCsvUploadForm()
-    from_manual_input_form = ImportStudentFromManualInputForm()
-    if from_sheet_form.validate_on_submit():
+    if form.validate_on_submit():
         try:
-            _save_student_import(exam, *get_students_from_google_spreadsheet(exam, from_sheet_form))
+            _save_student_import(exam, *get_students_from_import_form(exam, form))
+        except DataValidationError as e:
+            flash(str(e), 'error')
+            return _render_import_students(exam, form, from_canvas_form)
         except Exception as e:
             flash(f"Failed to import students due to an unexpected error: {str(e)}", 'error')
         return redirect(url_for('students', exam=exam))
-    for field, errors in from_sheet_form.errors.items():
-        for error in errors:
-            flash("{}: {}".format(field, error), 'error')
-    return render_template('new_students.html', exam=exam,
-                           from_sheet_form=from_sheet_form,
-                           from_canvas_form=from_canvas_form,
-                           from_csv_form=from_csv_form,
-                           from_manual_input_form=from_manual_input_form)
+    return _render_import_students(exam, form, from_canvas_form)
 
 
 @app.route('/<exam:exam>/students/import/from_canvas_roster/', methods=['GET', 'POST'])
-def import_students_from_canvas_roster(exam):  # noqa: C901
-    from_sheet_form = ImportStudentFromSheetForm()
+def import_students_from_canvas_roster(exam):
+    form = ImportStudentsForm()
     from_canvas_form = ImportStudentFromCanvasRosterForm()
-    from_csv_form = ImportStudentFromCsvUploadForm()
-    from_manual_input_form = ImportStudentFromManualInputForm()
     if from_canvas_form.validate_on_submit():
         try:
             _save_student_import(exam, *get_students_from_canvas(exam, from_canvas_form))
         except Exception as e:
             flash(f"Failed to import students due to an unexpected error: {str(e)}", 'error')
         return redirect(url_for('students', exam=exam))
-    for field, errors in from_canvas_form.errors.items():
-        for error in errors:
-            flash("{}: {}".format(field, error), 'error')
-    return render_template('new_students.html', exam=exam,
-                           from_sheet_form=from_sheet_form,
-                           from_canvas_form=from_canvas_form,
-                           from_csv_form=from_csv_form,
-                           from_manual_input_form=from_manual_input_form)
-
-
-@app.route('/<exam:exam>/students/import/from_csv_upload/', methods=['GET', 'POST'])
-def import_students_from_csv_upload(exam):  # noqa: C901
-    from_sheet_form = ImportStudentFromSheetForm()
-    from_canvas_form = ImportStudentFromCanvasRosterForm()
-    from_csv_form = ImportStudentFromCsvUploadForm()
-    from_manual_input_form = ImportStudentFromManualInputForm()
-    if from_csv_form.validate_on_submit():
-        if from_csv_form.file.data:
-            try:
-                _save_student_import(exam, *get_students_from_csv(exam, from_csv_form))
-            except Exception as e:
-                flash(f"Failed to import students due to an unexpected error: {str(e)}", 'error')
-        else:
-            flash("No file uploaded!", 'error')
-        return redirect(url_for('students', exam=exam))
-    for field, errors in from_csv_form.errors.items():
-        for error in errors:
-            flash("{}: {}".format(field, error), 'error')
-    return render_template('new_students.html', exam=exam,
-                           from_sheet_form=from_sheet_form,
-                           from_canvas_form=from_canvas_form,
-                           from_csv_form=from_csv_form,
-                           from_manual_input_form=from_manual_input_form)
-
-
-@app.route('/<exam:exam>/students/import/from_manual_input/', methods=['GET', 'POST'])
-def import_students_from_manual_input(exam):  # noqa: C901
-    from_sheet_form = ImportStudentFromSheetForm()
-    from_canvas_form = ImportStudentFromCanvasRosterForm()
-    from_csv_form = ImportStudentFromCsvUploadForm()
-    from_manual_input_form = ImportStudentFromManualInputForm()
-    if from_manual_input_form.validate_on_submit():
-        try:
-            _save_student_import(exam, *get_students_from_manual_input(exam, from_manual_input_form))
-        except Exception as e:
-            flash(f"Failed to import students due to an unexpected error: {str(e)}", 'error')
-        return redirect(url_for('students', exam=exam))
-    for field, errors in from_manual_input_form.errors.items():
-        for error in errors:
-            flash("{}: {}".format(field, error), 'error')
-    return render_template('new_students.html', exam=exam,
-                           from_sheet_form=from_sheet_form,
-                           from_canvas_form=from_canvas_form,
-                           from_csv_form=from_csv_form,
-                           from_manual_input_form=from_manual_input_form)
+    return _render_import_students(exam, form, from_canvas_form)
 
 
 @app.route('/<exam:exam>/students/delete/', methods=['GET', 'POST'])

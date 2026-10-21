@@ -145,25 +145,20 @@ class ImportStudentFormBase(FlaskForm):
     submit = SubmitField('import')
 
 
-class ImportStudentFromSheetForm(ImportStudentFormBase):
-    sheet_url = StringField('sheet_url', [URL()])
-    sheet_range = StringField('sheet_range', [InputRequired()])
+class ImportStudentsForm(ImportStudentFormBase):
+    """
+    One import, from a file, pasted text or a Google Sheets link: the first of them given is used.
+    Files and pasted text may be comma or tab separated.
+    """
+    file = FileField('file', validators=[Optional(), FileAllowed(['csv', 'tsv', 'txt'], 'Choose a CSV or TSV file')])
+    text = TextAreaField('text', [Optional()], render_kw={
+        "placeholder": "canvas id,email,name\n123456,x@y.z,John\n...\n\nor paste rows straight from a spreadsheet"})
+    sheet_url = StringField('sheet_url', [Optional(), URL()])
+    sheet_range = StringField('sheet_range', [Optional()])
 
 
 class ImportStudentFromCanvasRosterForm(ImportStudentFormBase):
     pass
-
-
-class ImportStudentFromCsvUploadForm(ImportStudentFormBase):
-    file = FileField('Choose File', validators=[
-        FileRequired(),
-        FileAllowed(['csv'], 'CSV files only!')
-    ])
-
-
-class ImportStudentFromManualInputForm(ImportStudentFormBase):
-    text = TextAreaField('text', [InputRequired()], render_kw={
-                         "placeholder": "canvas id,email,name\n123456,x@y.z,John\n..."})
 
 
 class EditStudentsFormBase(FlaskForm):

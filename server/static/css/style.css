@@ -304,3 +304,25 @@ header a {
   display: block;
   width: 100%;
 }
+
+.import-source {
+  margin: 12px 0;
+}
+
+.import-source > label:first-child {
+  display: block;
+  margin-bottom: 4px;
+}
+
+.import-source textarea {
+  max-width: 100%;
+}
+
+.import-source-error {
+  color: #c62828;
+  min-height: 1em;
+}
+
+.import-format li {
+  margin-bottom: 4px;
+}

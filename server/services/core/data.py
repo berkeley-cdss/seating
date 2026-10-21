@@ -1,12 +1,13 @@
 from server.forms import ImportStudentFormBase
 from server.services.canvas import get_student_roster_for_offering
 from server.services.csv import original_csv_headers, parse_csv, parse_csv_str, sniff_delimiter
-from server.services.google import get_spreadsheet_tab_content
+from server.services.google import get_spreadsheet_tab_content, get_spreadsheet_tabs
 
 from server.services.core.layout_preview import build_layout_preview
 from server.services.core.room import prepare_room, prepare_seat
 from server.services.core.student import StudentImportConfig, prepare_students
 from server.typings.enum import AssignmentImportStrategy
+from server.typings.exception import DataValidationError
 
 
 def get_room_from_google_spreadsheet(exam, room_form):
@@ -86,20 +87,26 @@ def _get_config_from_form(student_form: ImportStudentFormBase):
     )
 
 
-def get_students_from_google_spreadsheet(exam, student_form):
-    headers, rows = get_spreadsheet_tab_content(student_form.sheet_url.data,
-                                                student_form.sheet_range.data)
-    return prepare_students(exam, headers, rows, config=_get_config_from_form(student_form))
-
-
-def get_students_from_csv(exam, student_form):
-    headers, rows = parse_csv(student_form.file.data)
-    return prepare_students(exam, headers, rows, config=_get_config_from_form(student_form))
-
-
-def get_students_from_manual_input(exam, student_form):
-    headers, rows = parse_csv_str(student_form.text.data)
-    return prepare_students(exam, headers, rows, config=_get_config_from_form(student_form))
+def get_students_from_import_form(exam, form):
+    """
+    Prepares the students of the import form: from its file, pasted text or Google Sheets link,
+    whichever comes first. Files and pasted text may be comma or tab separated, so rows copied straight
+    out of a spreadsheet work as well as a downloaded CSV. Without a tab name, a sheet's first tab is read.
+    """
+    if form.file.data:
+        text = form.file.data.read().decode('utf-8-sig')
+    elif form.text.data and form.text.data.strip():
+        text = form.text.data
+    elif form.sheet_url.data:
+        tab = form.sheet_range.data or get_spreadsheet_tabs(form.sheet_url.data)[0]
+        headers, rows = get_spreadsheet_tab_content(form.sheet_url.data, tab)
+        return prepare_students(exam, headers, rows, config=_get_config_from_form(form))
+    else:
+        raise DataValidationError('Choose a file, paste a roster or enter a Google Sheets link to import')
+    # a byte order mark (from a file, or pasted along with text copied out of one) is not part of the header
+    text = text.lstrip('\ufeff')
+    headers, rows = parse_csv_str(text, delimiter=sniff_delimiter(text))
+    return prepare_students(exam, headers, rows, config=_get_config_from_form(form))
 
 
 def get_students_from_canvas(exam, student_form):

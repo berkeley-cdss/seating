@@ -214,7 +214,7 @@ def test_upload_excel_utf8_csv(exam, login_as):
     csrf_token = re.search(r'name="csrf_token" type="hidden" value="([^"]+)"', page).group(1)
     csv_bytes = ('﻿' + HEADER + 'jimmy@berkeley.edu,Jimmy Xu,234567.0,3031000001\n'
                  'new@berkeley.edu,New Student,777777,3031000002\n').encode('utf-8')
-    response = client.post(f'{EXAM_URL}/students/import/from_csv_upload/', data={
+    response = client.post(f'{EXAM_URL}/students/import/', data={
         'csrf_token': csrf_token,
         'file': (io.BytesIO(csv_bytes), 'roster.csv'),
         'revalidate_existing_assignments': 'y',
@@ -299,7 +299,7 @@ def test_upload_shows_why_rows_were_skipped(exam, login_as):
     page = client.get(f'{EXAM_URL}/students/import/').get_data(as_text=True)
     csrf_token = re.search(r'name="csrf_token" type="hidden" value="([^"]+)"', page).group(1)
     csv_bytes = (HEADER + 'jimmy@berkeley.edu,<script>alert(1)</script>,999999,\n').encode('utf-8')
-    response = client.post(f'{EXAM_URL}/students/import/from_csv_upload/', data={
+    response = client.post(f'{EXAM_URL}/students/import/', data={
         'csrf_token': csrf_token,
         'file': (io.BytesIO(csv_bytes), 'roster.csv'),
         'revalidate_existing_assignments': 'y',

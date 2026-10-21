@@ -9,8 +9,7 @@ IMPORT_URL = 'http://localhost:5000/offerings/1234567/exams/midterm1/students/im
 
 def _ask_to_remove_missing_students(driver):
     driver.get(IMPORT_URL)
-    driver.find_element(By.CSS_SELECTOR, 'a[href="#canvas-panel"]').click()
-    panel = driver.find_element(By.ID, 'canvas-panel')
+    panel = driver.find_element(By.CSS_SELECTOR, 'form[action$="/students/import/from_canvas_roster/"]')
     Select(panel.find_element(By.CSS_SELECTOR, 'select.missing-students')).select_by_value('delete')
     panel.find_element(By.CSS_SELECTOR, 'input[type=submit]').click()
     return WebDriverWait(driver, 5).until(EC.alert_is_present())
