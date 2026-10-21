@@ -91,7 +91,7 @@
       <div class="mdl-tooltip" data-mdl-for="tt2">Assign</div>
 
       <div id="tt1" class="material-icons std" onclick="location.href = '{{ url_for('import_students', exam=exam) }}';" style="float: right;">person_add</div>
-      <div class="mdl-tooltip" data-mdl-for="tt1">Add Students</div>
+      <div class="mdl-tooltip" data-mdl-for="tt1">Add/Update Students</div>
     {% if students_with_deleted_rooms %}
     <div class="deleted-rooms-notice">
       {% call macros.form(remove_deleted_rooms_form, action=url_for('remove_deleted_room_preferences', exam=exam)) %}
@@ -197,7 +197,7 @@
     </div>
   </div>
 </section>
-<script src="//cdnjs.cloudflare.com/ajax/libs/list.js/1.5.0/list.min.js"></script>
+<script src="{{ url_for('static', filename='vendor/list.js/list.min.js') }}"></script>
 <script>
 var options = {
   valueNames: ['name', 'email', 'email_search', 'sid', 'canvas_id', 'assignment', 'emailed']

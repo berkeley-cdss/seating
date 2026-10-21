@@ -259,3 +259,48 @@ header a {
 .room-view-toggle span {
   margin-left: 12px;
 }
+
+.test-email {
+  margin-top: 24px;
+  border-top: 1px solid #ccc;
+}
+
+.test-email-fields {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 12px;
+}
+
+.test-email-fields select {
+  max-width: 100%;
+}
+
+/* MDL's grey for an empty field's label is too light to read (1.87:1 on this background);
+   once the label floats, MDL's more specific focused/filled rules make it blue */
+.test-email .mdl-textfield__label {
+  color: #616161;
+}
+
+.import-strategies label {
+  margin-right: 8px;
+}
+
+.import-strategy-help {
+  margin: 4px 0 0 24px;
+  color: #616161;
+}
+
+.send-progress {
+  margin: 0 8px;
+}
+
+.send-progress a {
+  display: block;
+  margin-top: 8px;
+}
+
+.send-progress progress {
+  display: block;
+  width: 100%;
+}

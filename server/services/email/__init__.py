@@ -15,6 +15,10 @@ _email_config = SMTPConfig(
 )
 
 
+# how many emails go out over one SMTP connection before the students are marked as emailed
+SEND_BATCH_SIZE = 50
+
+
 def substitute_about_assignment(exam, form, student):
     if not student or not student.assignment:
         return None, None
@@ -64,13 +68,37 @@ def email_about_assignment(exam, form, to_addrs):
             bcc_addr=form.bcc_addr.data
         )
         email_messages.append(email_message)
-    successful_emails, failed_emails = send_emails(smtp=_email_config, messages=email_messages)
-    for msg, _ in failed_emails:
-        failure_addrs.add(msg['To'])
-    for msg, _ in successful_emails:
-        success_addrs.add(msg['To'])
-        student = email_student_map.get(msg['To'], None)
-        if student:
-            student.assignment.emailed = True
-    db.session.commit()
+    # save who was emailed after each batch, not once at the end: a send that stops partway (a server
+    # timeout, an SMTP error) then still records the students who did get their email
+    for start in range(0, len(email_messages), SEND_BATCH_SIZE):
+        successful_emails, failed_emails = send_emails(
+            smtp=_email_config, messages=email_messages[start:start + SEND_BATCH_SIZE])
+        for msg, _ in failed_emails:
+            failure_addrs.add(msg['To'])
+        for msg, _ in successful_emails:
+            success_addrs.add(msg['To'])
+            student = email_student_map.get(msg['To'], None)
+            if student:
+                student.assignment.emailed = True
+        db.session.commit()
     return success_addrs, failure_addrs
+
+
+def send_test_email(exam, form, student, to_addr):
+    """
+    Sends the email `student` would get to `to_addr` instead, with "[TEST]" before the subject, so
+    staff can check it before emailing everyone. Nobody is CC'd or BCC'd, and the student is
+    neither emailed nor marked as emailed. Returns whether it was sent.
+    """
+    subject, body = substitute_about_assignment(exam, form, student)
+    if not subject or not body:
+        return False
+    message = construct_email(
+        from_addr=form.from_addr.data,
+        to_addr=to_addr,
+        subject=f'[TEST] {subject}',
+        body=body,
+        body_html=body if form.body_html.data else None,
+    )
+    successful_emails, _ = send_emails(smtp=_email_config, messages=[message])
+    return bool(successful_emails)

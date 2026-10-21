@@ -14,7 +14,7 @@ from server.services.core.student import describe_invalid_rows
 from server.services.email.templates import get_email
 from server.services.google import get_spreadsheet_tabs
 import server.services.canvas as canvas_client
-from server.services.email import email_about_assignment, substitute_about_assignment
+from server.services.email import email_about_assignment, send_test_email, substitute_about_assignment
 from server.services.core.data import get_room_from_csv, get_room_from_google_spreadsheet, get_room_from_manual_input, \
     get_students_from_canvas, get_students_from_csv, get_students_from_google_spreadsheet, update_room_from_manual_input, \
     get_students_from_manual_input, get_layout_preview_from_file, get_layout_preview_from_text
@@ -402,7 +402,7 @@ def import_room_from_csv_upload(exam):
 
 
 @app.route('/<exam:exam>/rooms/import/from_manual/', methods=['GET', 'POST'])
-def import_room_manually(exam):
+def import_room_manually(exam):  # noqa: C901
     form = EditRoomForm()
     if request.method == 'GET':
         if not form.movable_seats.entries:
@@ -454,7 +454,7 @@ def delete_room(exam, id):
 
 
 @app.route('/<exam:exam>/rooms/<int:id>/edit', methods=['GET', 'POST'])
-def edit_room(exam, id):
+def edit_room(exam, id):  # noqa: C901
     """
     Path: /offerings/<canvas_id>/exams/<exam_name>/rooms/<room_name>/edit
     Edits a room for an exam.
@@ -539,32 +539,39 @@ def import_students(exam):
                            from_manual_input_form=from_manual_input_form)
 
 
+def _save_student_import(exam, new_students, updated_students, invalid_students, students_ids_to_remove):
+    """
+    Saves what a student import prepared, and says what it did: who was added, updated and
+    removed, and which rows were skipped and why.
+    """
+    removed_students = Student.query.filter(Student.id.in_(students_ids_to_remove), Student.exam_id == exam.id) \
+        .order_by(Student.name).all() if students_ids_to_remove else []
+    # one by one rather than in a single DELETE, so that their seat assignments go with them
+    for student in removed_students:
+        db.session.delete(student)
+    db.session.add_all(new_students + updated_students)
+    db.session.commit()
+    flash(
+        f"Import done. {len(new_students)} new students, {len(updated_students)} updated students"
+        f" {len(invalid_students)} invalid students. {len(removed_students)} students removed.", 'success')
+    if removed_students:
+        flash(f"Removed students not in the import: {', '.join(student.name for student in removed_students)}",
+              'warning')
+    if updated_students:
+        flash(f"Updated students: {set_to_str([s.name for s in updated_students])}", 'warning')
+    if invalid_students:
+        flash(describe_invalid_rows(invalid_students), 'error')
+
+
 @app.route('/<exam:exam>/students/import/from_custom_sheet/', methods=['GET', 'POST'])
-def import_students_from_custom_sheet(exam):
+def import_students_from_custom_sheet(exam):  # noqa: C901
     from_sheet_form = ImportStudentFromSheetForm()
     from_canvas_form = ImportStudentFromCanvasRosterForm()
     from_csv_form = ImportStudentFromCsvUploadForm()
     from_manual_input_form = ImportStudentFromManualInputForm()
     if from_sheet_form.validate_on_submit():
         try:
-            new_students, updated_students, invalid_students, students_ids_to_remove = get_students_from_google_spreadsheet(
-                exam, from_sheet_form)
-            to_commit = new_students + updated_students
-            if students_ids_to_remove:
-                Student.query.filter(Student.id.in_(students_ids_to_remove)).delete(synchronize_session=False)
-            if to_commit:
-                db.session.add_all(to_commit)
-            if students_ids_to_remove or to_commit:
-                db.session.commit()
-            flash(
-                f"Import done. {len(new_students)} new students, {len(updated_students)} updated students"
-                f" {len(invalid_students)} invalid students. {len(students_ids_to_remove)} students removed.", 'success')
-            if updated_students:
-                flash(
-                    f"Updated students: {set_to_str([s.name for s in updated_students])}", 'warning')
-            if invalid_students:
-                flash(
-                    describe_invalid_rows(invalid_students), 'error')
+            _save_student_import(exam, *get_students_from_google_spreadsheet(exam, from_sheet_form))
         except Exception as e:
             flash(f"Failed to import students due to an unexpected error: {str(e)}", 'error')
         return redirect(url_for('students', exam=exam))
@@ -579,31 +586,14 @@ def import_students_from_custom_sheet(exam):
 
 
 @app.route('/<exam:exam>/students/import/from_canvas_roster/', methods=['GET', 'POST'])
-def import_students_from_canvas_roster(exam):
+def import_students_from_canvas_roster(exam):  # noqa: C901
     from_sheet_form = ImportStudentFromSheetForm()
     from_canvas_form = ImportStudentFromCanvasRosterForm()
     from_csv_form = ImportStudentFromCsvUploadForm()
     from_manual_input_form = ImportStudentFromManualInputForm()
     if from_canvas_form.validate_on_submit():
         try:
-            new_students, updated_students, invalid_students, students_ids_to_remove = get_students_from_canvas(
-                exam, from_canvas_form)
-            to_commit = new_students + updated_students
-            if students_ids_to_remove:
-                Student.query.filter(Student.id.in_(students_ids_to_remove)).delete(synchronize_session=False)
-            if to_commit:
-                db.session.add_all(to_commit)
-            if students_ids_to_remove or to_commit:
-                db.session.commit()
-            flash(
-                f"Import done. {len(new_students)} new students, {len(updated_students)} updated students"
-                f" {len(invalid_students)} invalid students. {len(students_ids_to_remove)} students removed.", 'success')
-            if updated_students:
-                flash(
-                    f"Updated students: {set_to_str([s.name for s in updated_students])}", 'warning')
-            if invalid_students:
-                flash(
-                    describe_invalid_rows(invalid_students), 'error')
+            _save_student_import(exam, *get_students_from_canvas(exam, from_canvas_form))
         except Exception as e:
             flash(f"Failed to import students due to an unexpected error: {str(e)}", 'error')
         return redirect(url_for('students', exam=exam))
@@ -618,7 +608,7 @@ def import_students_from_canvas_roster(exam):
 
 
 @app.route('/<exam:exam>/students/import/from_csv_upload/', methods=['GET', 'POST'])
-def import_students_from_csv_upload(exam):
+def import_students_from_csv_upload(exam):  # noqa: C901
     from_sheet_form = ImportStudentFromSheetForm()
     from_canvas_form = ImportStudentFromCanvasRosterForm()
     from_csv_form = ImportStudentFromCsvUploadForm()
@@ -626,24 +616,7 @@ def import_students_from_csv_upload(exam):
     if from_csv_form.validate_on_submit():
         if from_csv_form.file.data:
             try:
-                new_students, updated_students, invalid_students, students_ids_to_remove = get_students_from_csv(
-                    exam, from_csv_form)
-                to_commit = new_students + updated_students
-                if students_ids_to_remove:
-                    Student.query.filter(Student.id.in_(students_ids_to_remove)).delete(synchronize_session=False)
-                if to_commit:
-                    db.session.add_all(to_commit)
-                if students_ids_to_remove or to_commit:
-                    db.session.commit()
-                flash(
-                    f"Import done. {len(new_students)} new students, {len(updated_students)} updated students"
-                    f" {len(invalid_students)} invalid students. {len(students_ids_to_remove)} students removed.", 'success')
-                if updated_students:
-                    flash(
-                        f"Updated students: {set_to_str([s.name for s in updated_students])}", 'warning')
-                if invalid_students:
-                    flash(
-                        describe_invalid_rows(invalid_students), 'error')
+                _save_student_import(exam, *get_students_from_csv(exam, from_csv_form))
             except Exception as e:
                 flash(f"Failed to import students due to an unexpected error: {str(e)}", 'error')
         else:
@@ -660,31 +633,14 @@ def import_students_from_csv_upload(exam):
 
 
 @app.route('/<exam:exam>/students/import/from_manual_input/', methods=['GET', 'POST'])
-def import_students_from_manual_input(exam):
+def import_students_from_manual_input(exam):  # noqa: C901
     from_sheet_form = ImportStudentFromSheetForm()
     from_canvas_form = ImportStudentFromCanvasRosterForm()
     from_csv_form = ImportStudentFromCsvUploadForm()
     from_manual_input_form = ImportStudentFromManualInputForm()
     if from_manual_input_form.validate_on_submit():
         try:
-            new_students, updated_students, invalid_students, students_ids_to_remove = get_students_from_manual_input(
-                exam, from_manual_input_form)
-            to_commit = new_students + updated_students
-            if students_ids_to_remove:
-                Student.query.filter(Student.id.in_(students_ids_to_remove)).delete(synchronize_session=False)
-            if to_commit:
-                db.session.add_all(to_commit)
-            if students_ids_to_remove or to_commit:
-                db.session.commit()
-            flash(
-                f"Import done. {len(new_students)} new students, {len(updated_students)} updated students"
-                f" {len(invalid_students)} invalid students. {len(students_ids_to_remove)} students removed.", 'success')
-            if updated_students:
-                flash(
-                    f"Updated students: {set_to_str([s.name for s in updated_students])}", 'warning')
-            if invalid_students:
-                flash(
-                    describe_invalid_rows(invalid_students), 'error')
+            _save_student_import(exam, *get_students_from_manual_input(exam, from_manual_input_form))
         except Exception as e:
             flash(f"Failed to import students due to an unexpected error: {str(e)}", 'error')
         return redirect(url_for('students', exam=exam))
@@ -812,7 +768,7 @@ def edit_student(exam_student):
 
 
 @app.route('/<exam:exam>/students/edit', methods=['GET', 'POST'])
-def edit_students(exam):
+def edit_students(exam):  # noqa: C901
     form = EditStudentsForm(room_list=exam.rooms)
     edited, did_not_exist = set(), set()
     if form.validate_on_submit():
@@ -945,10 +901,47 @@ def assign_student(exam_student):
     return render_template('assign_single.html.j2', exam=exam, rooms=rooms, form=form)
 
 
+def _email_form(exam):
+    """The email form, with the seated students offered for a test email."""
+    form = EmailForm()
+    form.test_student.choices = [
+        (student.id, f'{student.name} ({student.assignment.seat.room.display_name} {student.assignment.seat.display_name})')
+        for student in exam.get_students(with_seat=True) if student.assignment]
+    return form
+
+
+def _send_test_email(exam, form, **page):
+    """
+    Handles the "send test" button of the email pages, then shows the page again with the
+    subject and body as they were, so staff can keep editing and send for real.
+    """
+    if not form.test_to_addr.data:
+        flash("Enter the address to send the test email to.", 'error')
+    else:
+        student = Student.query.filter_by(id=form.test_student.data, exam_id=exam.id).one_or_none()
+        if not student or not student.assignment:
+            flash("Pick a student with a seat to fill in the test email.", 'error')
+        elif send_test_email(exam, form, student, form.test_to_addr.data):
+            flash(f"Sent a test email to {form.test_to_addr.data}, filled in with {student.name}'s seat.", 'success')
+        else:
+            flash("Failed to send the test email.", 'error')
+    return render_template('email.html.j2', exam=exam, form=form, **page)
+
+
+def _flash_form_errors(form):
+    for field, errors in form.errors.items():
+        for error in errors:
+            flash("{}: {}".format(field, error), 'error')
+
+
 @app.route('/<exam:exam>/students/email/', methods=['GET', 'POST'])
 def email_all_students(exam):
-    form = EmailForm()
+    form = _email_form(exam)
+    # the page sends to the students in batches, through this url (see email_students_batch)
+    page = {'batch_url': url_for('email_students_batch', exam=exam)}
     if form.validate_on_submit():
+        if form.send_test.data:
+            return _send_test_email(exam, form, **page)
         successful_emails, failed_emails = email_about_assignment(exam, form, form.to_addr.data)
         if successful_emails:
             flash(f"Successfully emailed {len(successful_emails)} students.", 'success')
@@ -957,18 +950,51 @@ def email_all_students(exam):
         if not successful_emails and not failed_emails:
             flash("No email sent.", 'warning')
         return redirect(url_for('students', exam=exam))
+    elif form.is_submitted():
+        # keep what was typed, rather than starting over from the template
+        _flash_form_errors(form)
     else:
         email_prefill = get_email(EmailTemplate.ASSIGNMENT_INFORM_EMAIL)
         form.subject.data = email_prefill.subject
         form.body.data = email_prefill.body
-        form.to_addr.data = set_to_str([email for (email,) in db.session.query(Student.email).filter_by(exam_id=exam.id)])
-    return render_template('email.html.j2', exam=exam, form=form)
+        # only students with a seat have anything to be told; leave out those already emailed, so that
+        # after a send that stopped partway the page picks up with the rest
+        include_emailed = request.args.get('include_emailed') == '1'
+        students = exam.get_students(with_seat=True)
+        seated = [student for student in students if student.assignment]
+        form.to_addr.data = set_to_str(
+            [student.email for student in seated if include_emailed or not student.assignment.emailed])
+        page['recipients'] = {
+            'include_emailed': include_emailed,
+            'already_emailed': sum(1 for student in seated if student.assignment.emailed),
+            'unseated': len(students) - len(seated),
+        }
+    return render_template('email.html.j2', exam=exam, form=form, **page)
 
 
-@app.route('/<exam:exam>/students/email/<string:student_id>/', methods=['GET', 'POST'])
+@app.route('/<exam:exam>/students/email/send/', methods=['POST'])
+def email_students_batch(exam):
+    """
+    Emails the students in `to_addr` and returns who was emailed, as JSON. The email page sends a
+    class in several of these, a batch of students each, so that no request runs into a server
+    timeout however large the class is.
+    """
+    form = _email_form(exam)
+    if not form.validate_on_submit():
+        return jsonify(errors=form.errors), 400
+    successful_emails, failed_emails = email_about_assignment(exam, form, form.to_addr.data)
+    return jsonify(sent=sorted(successful_emails), failed=sorted(failed_emails))
+
+
+@app.route('/<exam:exam>/students/email/<int:student_id>/', methods=['GET', 'POST'])
 def email_single_student(exam, student_id):
-    form = EmailForm()
+    # the staff check is on the exam in the url, so the student must be one of its own: looked up by
+    # id alone, any student of any course could be loaded here, email and seat included
+    student = Student.query.filter_by(id=student_id, exam_id=exam.id).first_or_404()
+    form = _email_form(exam)
     if form.validate_on_submit():
+        if form.send_test.data:
+            return _send_test_email(exam, form)
         successful_emails, failed_emails = email_about_assignment(exam, form, form.to_addr.data)
         if successful_emails:
             flash(f"Successfully emailed {len(successful_emails)} students.", 'success')
@@ -977,8 +1003,9 @@ def email_single_student(exam, student_id):
         if not successful_emails and not failed_emails:
             flash("No email sent.", 'warning')
         return redirect(url_for('students', exam=exam))
+    elif form.is_submitted():
+        _flash_form_errors(form)
     else:
-        student = Student.query.get_or_404(student_id)
         email_prefill = get_email(EmailTemplate.ASSIGNMENT_INFORM_EMAIL)
         form.subject.data = email_prefill.subject
         form.body.data = email_prefill.body
@@ -986,6 +1013,7 @@ def email_single_student(exam, student_id):
         form.subject.data = subject
         form.body.data = body
         form.to_addr.data = student.email
+        form.test_student.data = student.id
     return render_template('email.html.j2', exam=exam, form=form)
 
 
