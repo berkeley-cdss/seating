@@ -402,7 +402,7 @@ def import_room_from_csv_upload(exam):
 
 
 @app.route('/<exam:exam>/rooms/import/from_manual/', methods=['GET', 'POST'])
-def import_room_manually(exam):
+def import_room_manually(exam):  # noqa: C901
     form = EditRoomForm()
     if request.method == 'GET':
         if not form.movable_seats.entries:
@@ -454,7 +454,7 @@ def delete_room(exam, id):
 
 
 @app.route('/<exam:exam>/rooms/<int:id>/edit', methods=['GET', 'POST'])
-def edit_room(exam, id):
+def edit_room(exam, id):  # noqa: C901
     """
     Path: /offerings/<canvas_id>/exams/<exam_name>/rooms/<room_name>/edit
     Edits a room for an exam.
@@ -564,7 +564,7 @@ def _save_student_import(exam, new_students, updated_students, invalid_students,
 
 
 @app.route('/<exam:exam>/students/import/from_custom_sheet/', methods=['GET', 'POST'])
-def import_students_from_custom_sheet(exam):
+def import_students_from_custom_sheet(exam):  # noqa: C901
     from_sheet_form = ImportStudentFromSheetForm()
     from_canvas_form = ImportStudentFromCanvasRosterForm()
     from_csv_form = ImportStudentFromCsvUploadForm()
@@ -586,7 +586,7 @@ def import_students_from_custom_sheet(exam):
 
 
 @app.route('/<exam:exam>/students/import/from_canvas_roster/', methods=['GET', 'POST'])
-def import_students_from_canvas_roster(exam):
+def import_students_from_canvas_roster(exam):  # noqa: C901
     from_sheet_form = ImportStudentFromSheetForm()
     from_canvas_form = ImportStudentFromCanvasRosterForm()
     from_csv_form = ImportStudentFromCsvUploadForm()
@@ -608,7 +608,7 @@ def import_students_from_canvas_roster(exam):
 
 
 @app.route('/<exam:exam>/students/import/from_csv_upload/', methods=['GET', 'POST'])
-def import_students_from_csv_upload(exam):
+def import_students_from_csv_upload(exam):  # noqa: C901
     from_sheet_form = ImportStudentFromSheetForm()
     from_canvas_form = ImportStudentFromCanvasRosterForm()
     from_csv_form = ImportStudentFromCsvUploadForm()
@@ -633,7 +633,7 @@ def import_students_from_csv_upload(exam):
 
 
 @app.route('/<exam:exam>/students/import/from_manual_input/', methods=['GET', 'POST'])
-def import_students_from_manual_input(exam):
+def import_students_from_manual_input(exam):  # noqa: C901
     from_sheet_form = ImportStudentFromSheetForm()
     from_canvas_form = ImportStudentFromCanvasRosterForm()
     from_csv_form = ImportStudentFromCsvUploadForm()
@@ -768,7 +768,7 @@ def edit_student(exam_student):
 
 
 @app.route('/<exam:exam>/students/edit', methods=['GET', 'POST'])
-def edit_students(exam):
+def edit_students(exam):  # noqa: C901
     form = EditStudentsForm(room_list=exam.rooms)
     edited, did_not_exist = set(), set()
     if form.validate_on_submit():
@@ -910,7 +910,7 @@ def _email_form(exam):
     return form
 
 
-def _send_test_email(exam, form):
+def _send_test_email(exam, form, **page):
     """
     Handles the "send test" button of the email pages, then shows the page again with the
     subject and body as they were, so staff can keep editing and send for real.
@@ -925,7 +925,7 @@ def _send_test_email(exam, form):
             flash(f"Sent a test email to {form.test_to_addr.data}, filled in with {student.name}'s seat.", 'success')
         else:
             flash("Failed to send the test email.", 'error')
-    return render_template('email.html.j2', exam=exam, form=form)
+    return render_template('email.html.j2', exam=exam, form=form, **page)
 
 
 def _flash_form_errors(form):
@@ -937,9 +937,11 @@ def _flash_form_errors(form):
 @app.route('/<exam:exam>/students/email/', methods=['GET', 'POST'])
 def email_all_students(exam):
     form = _email_form(exam)
+    # the page sends to the students in batches, through this url (see email_students_batch)
+    page = {'batch_url': url_for('email_students_batch', exam=exam)}
     if form.validate_on_submit():
         if form.send_test.data:
-            return _send_test_email(exam, form)
+            return _send_test_email(exam, form, **page)
         successful_emails, failed_emails = email_about_assignment(exam, form, form.to_addr.data)
         if successful_emails:
             flash(f"Successfully emailed {len(successful_emails)} students.", 'success')
@@ -955,8 +957,33 @@ def email_all_students(exam):
         email_prefill = get_email(EmailTemplate.ASSIGNMENT_INFORM_EMAIL)
         form.subject.data = email_prefill.subject
         form.body.data = email_prefill.body
-        form.to_addr.data = set_to_str([email for (email,) in db.session.query(Student.email).filter_by(exam_id=exam.id)])
-    return render_template('email.html.j2', exam=exam, form=form)
+        # only students with a seat have anything to be told; leave out those already emailed, so that
+        # after a send that stopped partway the page picks up with the rest
+        include_emailed = request.args.get('include_emailed') == '1'
+        students = exam.get_students(with_seat=True)
+        seated = [student for student in students if student.assignment]
+        form.to_addr.data = set_to_str(
+            [student.email for student in seated if include_emailed or not student.assignment.emailed])
+        page['recipients'] = {
+            'include_emailed': include_emailed,
+            'already_emailed': sum(1 for student in seated if student.assignment.emailed),
+            'unseated': len(students) - len(seated),
+        }
+    return render_template('email.html.j2', exam=exam, form=form, **page)
+
+
+@app.route('/<exam:exam>/students/email/send/', methods=['POST'])
+def email_students_batch(exam):
+    """
+    Emails the students in `to_addr` and returns who was emailed, as JSON. The email page sends a
+    class in several of these, a batch of students each, so that no request runs into a server
+    timeout however large the class is.
+    """
+    form = _email_form(exam)
+    if not form.validate_on_submit():
+        return jsonify(errors=form.errors), 400
+    successful_emails, failed_emails = email_about_assignment(exam, form, form.to_addr.data)
+    return jsonify(sent=sorted(successful_emails), failed=sorted(failed_emails))
 
 
 @app.route('/<exam:exam>/students/email/<int:student_id>/', methods=['GET', 'POST'])

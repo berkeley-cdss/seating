@@ -290,3 +290,17 @@ header a {
   margin: 4px 0 0;
   color: #616161;
 }
+
+.send-progress {
+  margin: 0 8px;
+}
+
+.send-progress a {
+  display: block;
+  margin-top: 8px;
+}
+
+.send-progress progress {
+  display: block;
+  width: 100%;
+}
