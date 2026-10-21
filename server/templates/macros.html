@@ -166,14 +166,19 @@
 </div>
 {% endmacro %}
 
-{% macro render_import_strategies_choices(form) %}
+{% macro render_import_strategies_choices(form, canvas_notes=False) %}
+{# canvas_notes: the options sit in a form that can also import the Canvas roster, which has no seats
+   or preferences, so say which options that import doesn't use #}
+{% set canvas_note %}{% if canvas_notes %}<p class="import-strategy-help">Not used when importing the Canvas roster.</p>{% endif %}{% endset %}
 <div class="mdl-grid import-strategies">
   <div class="mdl-cell mdl-cell--12-col">
     {{ render_checkbox(form, 'revalidate_existing_assignments', 'Unseat students whose seat no longer fits their updated preferences') }}
+    {{ canvas_note }}
   </div>
   <div class="mdl-cell mdl-cell--12-col">
     <label for="{{ form.assignment_import_strategy.id }}">Seats listed in the import:</label>
     {{ form.assignment_import_strategy() }}
+    {{ canvas_note }}
   </div>
   <div class="mdl-cell mdl-cell--12-col">
     <label for="{{ form.updated_student_info_import_strategy.id }}">Name, email and student id of students already in this exam:</label>
@@ -182,6 +187,7 @@
   <div class="mdl-cell mdl-cell--12-col">
     <label for="{{ form.updated_preference_import_strategy.id }}">Preferences of students already in this exam:</label>
     {{ form.updated_preference_import_strategy() }}
+    {{ canvas_note }}
   </div>
   <div class="mdl-cell mdl-cell--12-col">
     <label for="{{ form.new_student_import_strategy.id }}">Students in the import but not yet in this exam:</label>

@@ -148,9 +148,10 @@ class ImportStudentFormBase(FlaskForm):
 class ImportStudentsForm(ImportStudentFormBase):
     """
     One import, from a file, pasted text or a Google Sheets link: the first of them given is used.
-    Files and pasted text may be comma or tab separated.
+    Files may be CSV, TSV or Excel; pasted text comma or tab separated.
     """
-    file = FileField('file', validators=[Optional(), FileAllowed(['csv', 'tsv', 'txt'], 'Choose a CSV or TSV file')])
+    file = FileField('file', validators=[
+        Optional(), FileAllowed(['csv', 'tsv', 'txt', 'xlsx'], 'Choose a CSV, TSV or Excel (.xlsx) file')])
     text = TextAreaField('text', [Optional()], render_kw={
         "placeholder": "canvas id,email,name\n123456,x@y.z,John\n...\n\nor paste rows straight from a spreadsheet"})
     sheet_url = StringField('sheet_url', [Optional(), URL()])

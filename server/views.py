@@ -554,14 +554,14 @@ def _render_import_students(exam, form, from_canvas_form):
     for field, errors in list(form.errors.items()) + list(from_canvas_form.errors.items()):
         for error in errors:
             flash("{}: {}".format(field, error), 'error')
-    return render_template('new_students.html', exam=exam, form=form, from_canvas_form=from_canvas_form)
+    return render_template('new_students.html', exam=exam, form=form)
 
 
 @app.route('/<exam:exam>/students/import/', methods=['GET', 'POST'])
 def import_students(exam):
     """
-    Imports students from a file, pasted text or a Google Sheets link, in one form; the Canvas roster
-    has its own (import_students_from_canvas_roster), as it takes no data from staff.
+    Imports students from a file, pasted text or a Google Sheets link. The same form's other button
+    imports the Canvas roster instead (import_students_from_canvas_roster), with the same options.
     """
     form = ImportStudentsForm()
     from_canvas_form = ImportStudentFromCanvasRosterForm()

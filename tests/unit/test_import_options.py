@@ -40,7 +40,7 @@ def _post(client, source, **options):
     data = {'csrf_token': re.search(r'name="csrf_token" type="hidden" value="([^"]+)"', page).group(1),
             **DEFAULTS, **options}
     data = {key: value for key, value in data.items() if value is not None}
-    # the Canvas roster has its own form; files, pasted rows and sheet links share the import form
+    # the Canvas roster button posts the same form elsewhere; files, pasted rows and sheet links to the page
     url = f'{EXAM_URL}/students/import/' + ('from_canvas_roster/' if source == 'canvas_roster' else '')
     response = client.post(url, data=data, follow_redirects=True)
     return [' '.join(message.split()) for message in
@@ -94,6 +94,22 @@ def test_roster_import_keeps_preferences(staff):
     db.session.commit()
     _post(staff, 'canvas_roster')
     assert (_student('345678').wants, _student('345678').avoids) == ({'lefty'}, {'broken'})
+
+
+@pytest.mark.parametrize('strategy', ['merge', 'overwrite', 'ignore'])
+def test_roster_import_ignores_the_preference_option(staff, strategy):
+    # the roster has no preferences: replacing students' with its none used to clear them all
+    _post(staff, 'canvas_roster', updated_preference_import_strategy=strategy)
+    assert _student('345678').wants == {'Lefty'}
+
+
+def test_roster_import_ignores_revalidating(staff, sharon_wants_the_impossible):
+    # Sharon was given seat 2 on purpose though it doesn't fit; the roster changes no preferences,
+    # so it has no reason to unseat her
+    _student('345678').assignment = SeatAssignment(seat=db.session.get(Seat, 2))
+    db.session.commit()
+    _post(staff, 'canvas_roster', revalidate_existing_assignments='y')
+    assert _student('345678').assignment.seat_id == 2
 
 
 def test_basic_info_keep(staff):

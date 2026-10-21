@@ -1,12 +1,17 @@
 """
 Students are imported from one form (issue #142): an uploaded file, pasted rows or a Google Sheets link.
-Files and pasted rows may be comma or tab separated, so rows copied straight out of a spreadsheet can be
-pasted. The Canvas roster keeps its own form. The seed exam has three students.
+Files may be CSV, TSV or Excel, and pasted rows comma or tab separated, so rows copied straight out of a
+spreadsheet can be pasted. The same form's second button imports the Canvas roster, with the same
+options. The seed exam has three students.
 """
+import html
 import io
 import re
 
 import pytest
+from openpyxl import Workbook
+
+from server import app as flask_app
 
 import server.services.core.data as data
 from server.models import db, Student
@@ -32,7 +37,7 @@ def _import(client, **fields):
     token = re.search(r'name="csrf_token" type="hidden" value="([^"]+)"', page).group(1)
     response = client.post(IMPORT_URL, data={'csrf_token': token, **OPTIONS, **fields},
                            content_type='multipart/form-data', follow_redirects=True)
-    messages = [' '.join(m.split()) for m in
+    messages = [html.unescape(' '.join(m.split())) for m in
                 re.findall(r'<span class="alert-message">(.*?)</span>', response.get_data(as_text=True), re.S)]
     return response, messages
 
@@ -56,10 +61,37 @@ def test_upload_a_csv_or_tsv_file(staff, filename, content):
     assert _new_student().wants == {'lefty'}
 
 
-def test_upload_rejects_other_files(staff):
-    response, messages = _import(staff, file=(io.BytesIO(b'PK\x03\x04'), 'roster.xlsx'))
+def _xlsx(*lines):
+    workbook = Workbook()
+    for line in lines:
+        workbook.active.append(line)
+    workbook.create_sheet('Other').append(['canvas id', 'email', 'name'])
+    content = io.BytesIO()
+    workbook.save(content)
+    return content.getvalue()
+
+
+def test_upload_an_excel_file(staff):
+    # Excel keeps numbers as numbers and TRUE as a boolean; the first sheet is read
+    content = _xlsx(['Canvas ID', 'Email', 'Name', 'Lefty', 'Student ID'], [],
+                    [777777, 'new@berkeley.edu', 'New Student', True, 3034567890.0])
+    _, messages = _import(staff, file=(io.BytesIO(content), 'roster.xlsx'))
+    assert 'Import done. 1 new students' in messages[0]
+    student = _new_student()
+    assert (student.wants, student.sid) == ({'lefty'}, '3034567890')
+
+
+def test_upload_an_unreadable_excel_file(staff):
+    response, messages = _import(staff, file=(io.BytesIO(b'PK\x03\x04 not really'), 'roster.xlsx'))
     assert response.status_code == 200
-    assert messages == ['file: Choose a CSV or TSV file']
+    assert messages == ["Couldn't read the Excel file: save it as .xlsx or as CSV"]
+    assert _new_student() is None
+
+
+def test_upload_rejects_other_files(staff):
+    response, messages = _import(staff, file=(io.BytesIO(b'\xd0\xcf\x11\xe0'), 'roster.xls'))
+    assert response.status_code == 200
+    assert messages == ['file: Choose a CSV, TSV or Excel (.xlsx) file']
     assert _new_student() is None
 
 
@@ -104,10 +136,32 @@ def test_first_source_given_is_used(staff, sheet):
     assert sheet == []
 
 
-def test_page_has_one_import_form_and_the_canvas_roster(staff):
+def test_page_has_one_form_with_one_set_of_options(staff):
     page = staff.get(IMPORT_URL).get_data(as_text=True)
     assert 'mdl-tabs' not in page
-    forms = re.findall(r'<form[^>]*action="([^"]+)"', page)
-    assert forms == [IMPORT_URL, f'{IMPORT_URL}from_canvas_roster/']
+    assert re.findall(r'<form[^>]*action="([^"]+)"', page) == [IMPORT_URL]
+    # its second button imports the Canvas roster, with the same options
     assert page.count('value="Import"') == 1
+    assert f'formaction="{IMPORT_URL}from_canvas_roster/"' in page
+    assert page.count('name="missing_student_import_strategy"') == 1
     assert 'canvas id</strong>, <strong>email</strong> and <strong>name</strong> are required' in page
+
+
+def test_page_says_which_options_the_canvas_roster_ignores(staff):
+    page = staff.get(IMPORT_URL).get_data(as_text=True)
+    options = re.findall(r'<div class="mdl-cell mdl-cell--12-col">(.*?)</div>\s*(?=<div class="mdl-cell|</div>)',
+                         page.split('<div class="mdl-grid import-strategies">')[1], re.S)
+    ignored = [re.search(r'name="(\w+)"', option).group(1) for option in options
+               if 'Not used when importing the Canvas roster.' in option]
+    assert ignored == ['revalidate_existing_assignments', 'assignment_import_strategy',
+                       'updated_preference_import_strategy']
+
+
+@pytest.mark.parametrize('email, shown', [
+    ('seating@example.iam.gserviceaccount.com',
+     'share it with <strong class="share-email">seating@example.iam.gserviceaccount.com</strong>'),
+    (None, "share it with the seating tool's Google account"),
+])
+def test_page_names_the_google_account_to_share_with(staff, monkeypatch, email, shown):
+    monkeypatch.setitem(flask_app.config, 'GCP_SA_EMAIL', email)
+    assert shown in staff.get(IMPORT_URL).get_data(as_text=True)

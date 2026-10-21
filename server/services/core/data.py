@@ -1,12 +1,12 @@
 from server.forms import ImportStudentFormBase
 from server.services.canvas import get_student_roster_for_offering
-from server.services.csv import original_csv_headers, parse_csv, parse_csv_str, sniff_delimiter
+from server.services.csv import original_csv_headers, parse_csv, parse_csv_str, parse_xlsx, sniff_delimiter
 from server.services.google import get_spreadsheet_tab_content, get_spreadsheet_tabs
 
 from server.services.core.layout_preview import build_layout_preview
 from server.services.core.room import prepare_room, prepare_seat
 from server.services.core.student import StudentImportConfig, prepare_students
-from server.typings.enum import AssignmentImportStrategy
+from server.typings.enum import AssignmentImportStrategy, UpdatedRowImportStrategy
 from server.typings.exception import DataValidationError
 
 
@@ -90,10 +90,14 @@ def _get_config_from_form(student_form: ImportStudentFormBase):
 def get_students_from_import_form(exam, form):
     """
     Prepares the students of the import form: from its file, pasted text or Google Sheets link,
-    whichever comes first. Files and pasted text may be comma or tab separated, so rows copied straight
-    out of a spreadsheet work as well as a downloaded CSV. Without a tab name, a sheet's first tab is read.
+    whichever comes first. Files may be CSV, TSV or Excel, and pasted text comma or tab separated, so
+    rows copied straight out of a spreadsheet work as well as a downloaded CSV. Without a tab name, a
+    sheet's first tab is read, as is an Excel file's first sheet.
     """
-    if form.file.data:
+    if form.file.data and form.file.data.filename.lower().endswith('.xlsx'):
+        headers, rows = parse_xlsx(form.file.data.read())
+        return prepare_students(exam, headers, rows, config=_get_config_from_form(form))
+    elif form.file.data:
         text = form.file.data.read().decode('utf-8-sig')
     elif form.text.data and form.text.data.strip():
         text = form.text.data
@@ -110,5 +114,14 @@ def get_students_from_import_form(exam, form):
 
 
 def get_students_from_canvas(exam, student_form):
+    """
+    The Canvas roster has names, emails and ids, but no seats or preferences, so the options about
+    those are ignored (the page says which): replacing preferences with the roster's none would clear
+    everyone's, and revalidating would unseat students given a seat that doesn't fit on purpose.
+    """
     headers, rows = get_student_roster_for_offering(exam.offering_canvas_id)
-    return prepare_students(exam, headers, rows, config=_get_config_from_form(student_form))
+    config = _get_config_from_form(student_form)
+    config.revalidate_existing_assignments = False
+    config.assignment_import_strategy = AssignmentImportStrategy.IGNORE
+    config.updated_preference_import_strategy = UpdatedRowImportStrategy.IGNORE
+    return prepare_students(exam, headers, rows, config=config)

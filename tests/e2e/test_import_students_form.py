@@ -7,8 +7,8 @@ IMPORT_URL = 'http://localhost:5000/offerings/1234567/exams/midterm1/students/im
 ROWS = 'canvas id\temail\tname\n777777\tnew@berkeley.edu\tNew Student\n'
 
 
-def _submit(driver):
-    driver.find_element(By.CSS_SELECTOR, '#import-students input[type=submit]').click()
+def _submit(driver, button='import-submit'):
+    driver.find_element(By.ID, button).click()
     return driver.find_element(By.ID, 'import-source-error').text
 
 
@@ -24,10 +24,14 @@ def test_import_form_takes_exactly_one_source(get_authed_driver, seeded_db):
     driver.find_element(By.ID, 'import_sheet_url').send_keys('https://docs.google.com/spreadsheets/d/abc/edit')
     assert _submit(driver) == 'Choose only one: a file, pasted rows or a Google Sheet link.'
     assert driver.current_url == IMPORT_URL
+    # the Canvas roster button imports none of them: likely a wrong click
+    assert _submit(driver, 'import-canvas-roster') == \
+        "Import Canvas roster doesn't use a file, pasted rows or a sheet link: clear them, or choose Import."
+    assert driver.current_url == IMPORT_URL
 
     # pasted rows alone, tab separated as copied out of a spreadsheet, are imported
     driver.find_element(By.ID, 'import_sheet_url').clear()
-    driver.find_element(By.CSS_SELECTOR, '#import-students input[type=submit]').click()
+    driver.find_element(By.ID, 'import-submit').click()
     WebDriverWait(driver, 10).until(lambda d: d.current_url.endswith('/students/'))
     assert 'Import done. 1 new students' in driver.find_element(By.TAG_NAME, 'body').text
     db.session.commit()  # end the test's transaction to see the server's writes

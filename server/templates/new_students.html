@@ -5,12 +5,13 @@
 <div class="mdl-grid import-students">
   <div class="mdl-cell mdl-cell--12-col">
     <h4>Import students</h4>
-    <p>Upload a file, paste rows, or link a Google Sheet: one of the three.</p>
+    <p>Upload a file, paste rows, or link a Google Sheet: one of the three. Or import the course's Canvas roster.</p>
     <form id="import-students" action="{{ url_for('import_students', exam=exam) }}" method="post" enctype="multipart/form-data">
       {{ form.hidden_tag() }}
       <div class="import-source">
-        <label for="import_file">Upload a CSV or TSV file:</label>
-        {{ form.file(id="import_file", accept=".csv,.tsv,.txt,text/csv,text/tab-separated-values") }}
+        <label for="import_file">Upload a CSV, TSV or Excel (.xlsx) file:</label>
+        {{ form.file(id="import_file", accept=".csv,.tsv,.txt,.xlsx,text/csv,text/tab-separated-values,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet") }}
+        <p class="import-strategy-help">An Excel file's first sheet is imported.</p>
       </div>
       <div class="import-source">
         <label for="import_text">Or paste rows, comma or tab separated (straight from a spreadsheet works):</label>
@@ -21,14 +22,22 @@
         {{ form.sheet_url(id="import_sheet_url", type="url", size=60, placeholder="https://docs.google.com/spreadsheets/d/...") }}
         <label for="import_sheet_range">tab:</label>
         {{ form.sheet_range(id="import_sheet_range", size=16, placeholder="first tab") }}
+        {% if config.GCP_SA_EMAIL %}
+        <p class="import-strategy-help">The sheet stays private: share it with <strong class="share-email">{{ config.GCP_SA_EMAIL }}</strong> as a Viewer.</p>
+        {% else %}
         <p class="import-strategy-help">The sheet stays private: share it with the seating tool's Google account as a Viewer.</p>
+        {% endif %}
       </div>
       <p id="import-source-error" class="import-source-error" role="alert"></p>
 
-      {{ macros.render_import_strategies_choices(form) }}
+      <h5>Options</h5>
+      {{ macros.render_import_strategies_choices(form, canvas_notes=True) }}
       <div class="form-buttons">
-        {{ form.submit(class="mdl-button mdl-js-button mdl-button--raised", value="Import") }}
+        {{ form.submit(id="import-submit", class="mdl-button mdl-js-button mdl-button--raised", value="Import") }}
+        <input id="import-canvas-roster" class="mdl-button mdl-js-button mdl-button--raised" type="submit" value="Import Canvas roster"
+               formaction="{{ url_for('import_students_from_canvas_roster', exam=exam) }}">
       </div>
+      <p class="import-strategy-help">Import Canvas roster takes the course's students from bCourses: names, emails and ids, but no seats or preferences.</p>
     </form>
 
     <h5>Format</h5>
@@ -39,20 +48,10 @@
       <li>The students page's export downloads a file in this format, to edit and import again.</li>
     </ul>
   </div>
-
-  <div class="mdl-cell mdl-cell--12-col">
-    <h4>Or sync with the Canvas roster</h4>
-    <form action="{{ url_for('import_students_from_canvas_roster', exam=exam) }}" method="post">
-      {{ from_canvas_form.hidden_tag() }}
-      {{ macros.render_import_strategies_choices(from_canvas_form) }}
-      <div class="form-buttons">
-        {{ from_canvas_form.submit(class="mdl-button mdl-js-button mdl-button--raised", value="Import Canvas roster") }}
-      </div>
-    </form>
-  </div>
 </div>
 <script>
-  // one source per import: the server would use the first one anyway, so say so before sending
+  // one source per import: the server would use the first one anyway, so say so before sending. The
+  // Canvas roster button imports none of them, so a source filled in there is likely a wrong click.
   (function () {
     var form = document.getElementById('import-students');
     var error = document.getElementById('import-source-error');
@@ -62,9 +61,14 @@
         document.getElementById('import_text').value.trim() !== '',
         document.getElementById('import_sheet_url').value.trim() !== '',
       ].filter(Boolean).length;
-      error.textContent = given === 0 ? 'Choose a file, paste rows or link a Google Sheet.'
-        : given > 1 ? 'Choose only one: a file, pasted rows or a Google Sheet link.' : '';
-      if (given !== 1) {
+      if (event.submitter && event.submitter.id === 'import-canvas-roster') {
+        error.textContent = given > 0
+          ? 'Import Canvas roster doesn\'t use a file, pasted rows or a sheet link: clear them, or choose Import.' : '';
+      } else {
+        error.textContent = given === 0 ? 'Choose a file, paste rows or link a Google Sheet.'
+          : given > 1 ? 'Choose only one: a file, pasted rows or a Google Sheet link.' : '';
+      }
+      if (error.textContent) {
         event.preventDefault();
         event.stopImmediatePropagation();
       }
