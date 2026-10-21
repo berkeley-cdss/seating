@@ -37,7 +37,7 @@ def index():
     # if already logged in, redirect to offerings page
     if current_user and current_user.is_authenticated:
         return redirect(url_for('offerings'))
-    return render_template("index.html.j2")
+    return render_template("index.html")
 
 
 # region Offering CRUDI
@@ -82,7 +82,7 @@ def offerings():
     if skipped:
         flash("Skipped invalid courses from Canvas: " + str([s.__dict__ for s in skipped]), 'warning')
 
-    return render_template("select_offering.html.j2",
+    return render_template("select_offering.html",
                            title="Select a Course Offering",
                            staff_offerings_existing=staff_offerings_existing,
                            student_offerings_existing=student_offerings_existing,
@@ -126,7 +126,7 @@ def add_offerings():
             db.session.rollback()
             print("error", str(e))
             flash("An error occurred when inserting offering: " + str(e), 'error')
-    return render_template("new_offerings.html.j2",
+    return render_template("new_offerings.html",
                            title="Add New Course Offerings",
                            form=form)
 
@@ -141,7 +141,7 @@ def offering(offering):
     all_exams = offering.exams
     active_exams = [e for e in all_exams if e.is_active]
     inactive_exams = [e for e in all_exams if not e.is_active]
-    return render_template("select_exam.html.j2",
+    return render_template("select_exam.html",
                            title="Select an Exam for {}".format(offering.name),
                            active_exams=active_exams,
                            inactive_exams=inactive_exams,
@@ -200,7 +200,7 @@ def new_exam(offering):
             db.session.rollback()
             flash(f"An error occurred when inserting exam of name={form.name.data}\n{str(e)}", 'error')
             return redirect(url_for('offering', offering=offering))
-    return render_template("upsert_exam.html.j2",
+    return render_template("upsert_exam.html",
                            title="Create an Exam for {}".format(offering.name),
                            form=form, exam=None)
 
@@ -249,7 +249,7 @@ def edit_exam(exam):
             db.session.rollback()
             flash(f"Failed to edit exam name={exam.display_name} due to a db error: \n{e}", 'error')
             return redirect(url_for('offering', offering=exam.offering))
-    return render_template("upsert_exam.html.j2",
+    return render_template("upsert_exam.html",
                            title="Edit Exam: {}".format(exam.display_name),
                            form=form, exam=exam)
 
@@ -282,7 +282,7 @@ def exam(exam):
     Path: /offerings/<canvas_id>/exams/<exam_name>
     Front page for an exam, which essentially shows all rooms created for an exam.
     """
-    return render_template('exam.html.j2', exam=exam)
+    return render_template('exam.html', exam=exam)
 # endregion
 
 # region Room CRUDI
@@ -296,7 +296,7 @@ def import_room(exam):
     new_form = RoomForm()
     choose_form = ChooseRoomForm(room_list=get_spreadsheet_tabs(app.config.get('MASTER_ROOM_SHEET_URL')))
     upload_form = UploadRoomForm()
-    return render_template('new_room.html.j2',
+    return render_template('new_room.html',
                            exam=exam, new_form=new_form, choose_form=choose_form,
                            upload_form=upload_form,
                            master_sheet_url=app.config.get('MASTER_ROOM_SHEET_URL'))
@@ -326,7 +326,7 @@ def import_room_from_custom_sheet(exam):
     for field, errors in new_form.errors.items():
         for error in errors:
             flash("{}: {}".format(field, error), 'error')
-    return render_template('new_room.html.j2',
+    return render_template('new_room.html',
                            exam=exam,
                            new_form=new_form, choose_form=choose_form,
                            upload_form=upload_form,
@@ -363,7 +363,7 @@ def import_room_from_master_sheet(exam):
     for field, errors in choose_form.errors.items():
         for error in errors:
             flash("{}: {}".format(field, error), 'error')
-    return render_template('new_room.html.j2',
+    return render_template('new_room.html',
                            exam=exam,
                            new_form=new_form, choose_form=choose_form,
                            upload_form=upload_form,
@@ -394,7 +394,7 @@ def import_room_from_csv_upload(exam):
     for field, errors in upload_form.errors.items():
         for error in errors:
             flash("{}: {}".format(field, error), 'error')
-    return render_template('new_room.html.j2',
+    return render_template('new_room.html',
                            exam=exam,
                            new_form=new_form, choose_form=choose_form,
                            upload_form=upload_form,
@@ -430,7 +430,7 @@ def import_room_manually(exam):  # noqa: C901
     for field, errors in form.errors.items():
         for error in errors:
             flash("{}: {}".format(field, error), 'error')
-    return render_template('upsert_room.html.j2', exam=exam, form=form, room=None)
+    return render_template('upsert_room.html', exam=exam, form=form, room=None)
 
 
 @app.route('/<exam:exam>/rooms/<int:id>/delete', methods=['GET', 'DELETE'])
@@ -450,7 +450,7 @@ def delete_room(exam, id):
         except Exception as e:
             db.session.rollback()
             flash(f"Failed to delete room {room.display_name} (ID: {room.id}) due to an error:\n{e}", 'error')
-    return render_template('exam.html.j2', exam=exam)
+    return render_template('exam.html', exam=exam)
 
 
 @app.route('/<exam:exam>/rooms/<int:id>/edit', methods=['GET', 'POST'])
@@ -501,7 +501,7 @@ def edit_room(exam, id):  # noqa: C901
         except Exception as e:
             flash(f"Failed to edit room due to a db error: {e}", 'error')
         return redirect(url_for('exam', exam=exam))
-    return render_template('upsert_room.html.j2', exam=exam, form=form, room=room)
+    return render_template('upsert_room.html', exam=exam, form=form, room=room)
 
 
 @app.route('/<exam:exam>/rooms/<int:id>/')
@@ -520,7 +520,7 @@ def room(exam, id):
     # this page is staff only (the exam converter sends students to their own seat), so the
     # proctor view, which shows the room from the front, is never offered to students
     proctor = request.args.get('view') == 'proctor'
-    return render_template('room.html.j2', exam=exam, room=room, seat_id=seat_id, proctor=proctor)
+    return render_template('room.html', exam=exam, room=room, seat_id=seat_id, proctor=proctor)
 # endregion
 
 # region Student CRUDI
@@ -532,7 +532,7 @@ def import_students(exam):
     from_canvas_form = ImportStudentFromCanvasRosterForm()
     from_csv_form = ImportStudentFromCsvUploadForm()
     from_manual_input_form = ImportStudentFromManualInputForm()
-    return render_template('new_students.html.j2', exam=exam,
+    return render_template('new_students.html', exam=exam,
                            from_sheet_form=from_sheet_form,
                            from_canvas_form=from_canvas_form,
                            from_csv_form=from_csv_form,
@@ -578,7 +578,7 @@ def import_students_from_custom_sheet(exam):  # noqa: C901
     for field, errors in from_sheet_form.errors.items():
         for error in errors:
             flash("{}: {}".format(field, error), 'error')
-    return render_template('new_students.html.j2', exam=exam,
+    return render_template('new_students.html', exam=exam,
                            from_sheet_form=from_sheet_form,
                            from_canvas_form=from_canvas_form,
                            from_csv_form=from_csv_form,
@@ -600,7 +600,7 @@ def import_students_from_canvas_roster(exam):  # noqa: C901
     for field, errors in from_canvas_form.errors.items():
         for error in errors:
             flash("{}: {}".format(field, error), 'error')
-    return render_template('new_students.html.j2', exam=exam,
+    return render_template('new_students.html', exam=exam,
                            from_sheet_form=from_sheet_form,
                            from_canvas_form=from_canvas_form,
                            from_csv_form=from_csv_form,
@@ -625,7 +625,7 @@ def import_students_from_csv_upload(exam):  # noqa: C901
     for field, errors in from_csv_form.errors.items():
         for error in errors:
             flash("{}: {}".format(field, error), 'error')
-    return render_template('new_students.html.j2', exam=exam,
+    return render_template('new_students.html', exam=exam,
                            from_sheet_form=from_sheet_form,
                            from_canvas_form=from_canvas_form,
                            from_csv_form=from_csv_form,
@@ -647,7 +647,7 @@ def import_students_from_manual_input(exam):  # noqa: C901
     for field, errors in from_manual_input_form.errors.items():
         for error in errors:
             flash("{}: {}".format(field, error), 'error')
-    return render_template('new_students.html.j2', exam=exam,
+    return render_template('new_students.html', exam=exam,
                            from_sheet_form=from_sheet_form,
                            from_canvas_form=from_canvas_form,
                            from_csv_form=from_csv_form,
@@ -673,7 +673,7 @@ def delete_students(exam):
         db.session.commit()
         if not deleted and not did_not_exist:
             abort(404, "No change has been made.")
-    return render_template('delete_students.html.j2',
+    return render_template('delete_students.html',
                            exam=exam, form=form, deleted=deleted, did_not_exist=did_not_exist)
 
 
@@ -682,7 +682,7 @@ def students(exam):
     students_list = exam.get_students(with_seat=True)
     students_with_deleted_rooms = sum(
         1 for student in students_list if student.unknown_room_wants or student.unknown_room_avoids)
-    return render_template('students.html.j2', exam=exam, students=students_list,
+    return render_template('students.html', exam=exam, students=students_list,
                            students_with_deleted_rooms=students_with_deleted_rooms,
                            remove_deleted_rooms_form=RemoveDeletedRoomPreferencesForm())
 
@@ -744,7 +744,7 @@ def edit_student(exam_student):
                 "Wants and avoids should not overlap.\n"
                 f"Want: {new_wants_set}\nAvoid: {new_avoids_set}\n"
                 f"Room Want: {new_room_wants_set}\nRoom Avoid: {new_room_avoids_set}", 'error')
-            return render_template('edit_student.html.j2', exam=exam, form=form, student=student)
+            return render_template('edit_student.html', exam=exam, form=form, student=student)
         student.wants = new_wants_set
         student.avoids = new_avoids_set
         student.room_wants = new_room_wants_set
@@ -763,7 +763,7 @@ def edit_student(exam_student):
     for field, errors in form.errors.items():
         for error in errors:
             flash("{}: {}".format(field, error), 'error')
-    return render_template('edit_students.html.j2', exam=exam, form=form, edited=edited,
+    return render_template('edit_students.html', exam=exam, form=form, edited=edited,
                            did_not_exist=did_not_exist, student=student)
 
 
@@ -799,7 +799,7 @@ def edit_students(exam):  # noqa: C901
                     "Wants and avoids should not overlap.\n"
                     f"Want: {new_wants_set}\nAvoid: {new_avoids_set}\n"
                     f"Room Want: {new_room_wants_set}\nRoom Avoid: {new_room_avoids_set}", 'error')
-                return render_template('edit_students.html.j2', exam=exam, form=form)
+                return render_template('edit_students.html', exam=exam, form=form)
             orig_wants_set = set(student.wants)
             orig_avoids_set = set(student.avoids)
             orig_room_wants_set = set(student.room_wants)
@@ -821,7 +821,7 @@ def edit_students(exam):  # noqa: C901
     for field, errors in form.errors.items():
         for error in errors:
             flash("{}: {}".format(field, error), 'error')
-    return render_template('edit_students.html.j2', exam=exam, form=form, edited=edited,
+    return render_template('edit_students.html', exam=exam, form=form, edited=edited,
                            did_not_exist=did_not_exist, student=None)
 
 
@@ -863,7 +863,7 @@ def assign(exam):
         except SeatAssignmentError as e:
             flash(str(e), 'error')
         return redirect(url_for('students', exam=exam))
-    return render_template('assign.html.j2', exam=exam, form=form)
+    return render_template('assign.html', exam=exam, form=form)
 
 
 @app.route('/<exam_student:exam_student>/assign/', methods=['GET', 'POST'])
@@ -898,7 +898,7 @@ def assign_student(exam_student):
     rooms = Room.query.filter_by(exam_id=exam.id).options(
         joinedload(Room.seats).joinedload(Seat.assignment).joinedload(SeatAssignment.student)
     ).order_by(Room.start_at.desc(), Room.display_name.desc()).all()
-    return render_template('assign_single.html.j2', exam=exam, rooms=rooms, form=form)
+    return render_template('assign_single.html', exam=exam, rooms=rooms, form=form)
 
 
 def _email_form(exam):
@@ -925,7 +925,7 @@ def _send_test_email(exam, form, **page):
             flash(f"Sent a test email to {form.test_to_addr.data}, filled in with {student.name}'s seat.", 'success')
         else:
             flash("Failed to send the test email.", 'error')
-    return render_template('email.html.j2', exam=exam, form=form, **page)
+    return render_template('email.html', exam=exam, form=form, **page)
 
 
 def _flash_form_errors(form):
@@ -969,7 +969,7 @@ def email_all_students(exam):
             'already_emailed': sum(1 for student in seated if student.assignment.emailed),
             'unseated': len(students) - len(seated),
         }
-    return render_template('email.html.j2', exam=exam, form=form, **page)
+    return render_template('email.html', exam=exam, form=form, **page)
 
 
 @app.route('/<exam:exam>/students/email/send/', methods=['POST'])
@@ -1012,13 +1012,13 @@ def email_single_student(exam_student):
         form.body.data = body
         form.to_addr.data = student.email
         form.test_student.data = student.id
-    return render_template('email.html.j2', exam=exam, form=form)
+    return render_template('email.html', exam=exam, form=form)
 
 
 @app.route('/<exam_student:exam_student>', methods=['GET'])
 def student(exam_student):
     exam, student = exam_student
-    return render_template('student.html.j2', exam=exam, student=student)
+    return render_template('student.html', exam=exam, student=student)
 
 
 @app.route('/<exam_student:exam_student>/photo/', methods=['GET'])
@@ -1087,7 +1087,7 @@ def preview_layout():
     for field, errors in form.errors.items():
         for error in errors:
             flash("{}: {}".format(field, error), 'error')
-    return render_template('preview_layout.html.j2',
+    return render_template('preview_layout.html',
                            title="Seating Layout Preview",
                            form=form, preview=preview)
 # endregion
@@ -1098,5 +1098,5 @@ def preview_layout():
 @app.route('/seats/<int:seat_id>/')
 def student_single_seat(seat_id):
     seat = Seat.query.filter_by(id=seat_id).first_or_404()
-    return render_template('seat.html.j2', room=seat.room, seat=seat)
+    return render_template('seat.html', room=seat.room, seat=seat)
 # endregion
