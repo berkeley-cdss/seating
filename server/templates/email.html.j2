@@ -16,6 +16,22 @@
     </div>
   </div>
 
+  {% if recipients and (recipients.already_emailed or recipients.unseated) %}
+  <div class="mdl-cell mdl-cell--12-col delist recipients-note">
+    {% set already = recipients.already_emailed %}
+    {% if already and recipients.include_emailed %}
+      Including {{ already }} {{ 'student' if already == 1 else 'students' }} already emailed.
+      <a href="{{ url_for('email_all_students', exam=exam) }}">Leave them out</a>.
+    {% elif already %}
+      Leaving out {{ already }} {{ 'student' if already == 1 else 'students' }} already emailed.
+      <a href="{{ url_for('email_all_students', exam=exam, include_emailed=1) }}">Email them again too</a>.
+    {% endif %}
+    {% if recipients.unseated %}
+      Leaving out {{ recipients.unseated }} {{ 'student' if recipients.unseated == 1 else 'students' }} without a seat.
+    {% endif %}
+  </div>
+  {% endif %}
+
   <div class="mdl-cell mdl-cell--12-col delist">
     <div class="mdl-textfield mdl-js-textfield mdl-textfield--floating-label mdl-cell--6-col">
       {{ form.cc_addr(class="mdl-textfield__input", type="text", id="cc_addr") }}
@@ -54,6 +70,115 @@
     <button class="mdl-button mdl-js-button mdl-button--raised" type="button" onclick="updatePreview()">Preview</button>
     {{ form.submit(class="mdl-button mdl-js-button mdl-button--raised") }}
   </div>
+  <div id="send-progress" class="mdl-cell mdl-cell--12-col send-progress" aria-live="polite"></div>
+
+  <div class="mdl-cell mdl-cell--12-col test-email">
+    <h6>Send a test</h6>
+    {% if form.test_student.choices %}
+    <p>Fill in this email with one student's seat and send it to yourself instead. The student is not emailed, and nobody is CC'd or BCC'd.</p>
+    <div class="test-email-fields">
+      <label for="test_student">Student:</label>
+      {{ form.test_student(id="test_student") }}
+      <div class="mdl-textfield mdl-js-textfield mdl-textfield--floating-label">
+        {{ form.test_to_addr(class="mdl-textfield__input", type="email", id="test_to_addr") }}
+        <label class="mdl-textfield__label" for="test_to_addr">Send test to:</label>
+      </div>
+      {{ form.send_test(class="mdl-button mdl-js-button mdl-button--raised") }}
+    </div>
+    {% else %}
+    <p>No student has a seat yet, so there is nothing to fill in a test email with.</p>
+    {% endif %}
+  </div>
+
+  {% if batch_url %}
+  <script>
+      // Send to the students a batch at a time, so no single request runs into a server timeout
+      // however large the class is; without JavaScript, the form still sends everyone in one request.
+      (function () {
+          var BATCH_SIZE = 50;
+          var sendButton = document.getElementById('submit');
+          var form = sendButton.form;
+          var progress = document.getElementById('send-progress');
+
+          function line(text, href) {
+              var p = document.createElement(href ? 'a' : 'p');
+              p.textContent = text;
+              if (href) { p.href = href; }
+              progress.appendChild(p);
+          }
+
+          function warnBeforeLeaving(event) {
+              event.preventDefault();
+              event.returnValue = '';
+          }
+
+          // estimated from how long the batches so far took; empty until the first one is back
+          function timeLeft(done, total, elapsedMs) {
+              if (!done) { return ''; }
+              var minutes = Math.round(elapsedMs / done * (total - done) / 60000);
+              return minutes < 1 ? ', less than a minute left' : ', about ' + minutes + ' min left';
+          }
+
+          form.addEventListener('submit', async function (event) {
+              // other buttons (send test) submit the form as usual
+              if (event.submitter !== sendButton) { return; }
+              event.preventDefault();
+              var recipients = document.getElementById('to_addr').value.split(',')
+                  .map(function (address) { return address.trim(); })
+                  .filter(function (address) { return address; });
+              var buttons = form.querySelectorAll('button, input[type=submit]');
+              buttons.forEach(function (button) { button.disabled = true; });
+              progress.textContent = '';
+              var status = document.createElement('p');
+              progress.appendChild(status);
+              // only shown while sending: the page sends each batch, so closing it stops the rest
+              var bar = document.createElement('progress');
+              bar.max = recipients.length;
+              bar.value = 0;
+              progress.appendChild(bar);
+              var keepOpen = document.createElement('p');
+              keepOpen.textContent = 'Keep this page open until sending finishes. Closing it stops the students not emailed yet from being emailed.';
+              progress.appendChild(keepOpen);
+              window.addEventListener('beforeunload', warnBeforeLeaving);
+              var sent = [], failed = [], stopped = null;
+              var startedAt = Date.now();
+              for (var start = 0; start < recipients.length; start += BATCH_SIZE) {
+                  var done = sent.length + failed.length;
+                  bar.value = done;
+                  status.textContent = 'Emailing students: ' + done + ' of ' + recipients.length + ' done' +
+                      timeLeft(done, recipients.length, Date.now() - startedAt) + '…';
+                  var data = new FormData(form);
+                  data.set('to_addr', recipients.slice(start, start + BATCH_SIZE).join(','));
+                  try {
+                      var response = await fetch({{ batch_url|tojson }}, {method: 'POST', body: data});
+                      var result = await response.json();
+                      if (!response.ok) {
+                          stopped = Object.entries(result.errors || {})
+                              .map(function (entry) { return entry[0] + ': ' + entry[1].join(' '); }).join('; ');
+                          break;
+                      }
+                      sent = sent.concat(result.sent);
+                      failed = failed.concat(result.failed);
+                  } catch (error) {
+                      stopped = 'the server could not be reached (' + error.message + ')';
+                      break;
+                  }
+              }
+              window.removeEventListener('beforeunload', warnBeforeLeaving);
+              bar.remove();
+              keepOpen.remove();
+              status.textContent = 'Emailed ' + sent.length + ' of ' + recipients.length + ' students.';
+              if (failed.length) { line('Failed to email: ' + failed.join(', ')); }
+              if (stopped) {
+                  line('Stopped early: ' + stopped + '. The students not emailed yet are still marked as such; ' +
+                       'reload this page to email just them.');
+              }
+              line('Back to the students page', {{ url_for('students', exam=exam)|tojson }});
+              buttons.forEach(function (button) { button.disabled = false; });
+          });
+      })();
+  </script>
+  {% endif %}
 
   <script>
       function updatePreview() {
