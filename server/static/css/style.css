@@ -314,8 +314,15 @@ header a {
   margin-bottom: 4px;
 }
 
+/* the import page: one centered column, as wide as its widest row (the option dropdowns) */
+.import-students {
+  max-width: 800px;
+  margin: 0 auto;
+}
+
 .import-source textarea {
-  max-width: 100%;
+  width: 100%;
+  box-sizing: border-box;
 }
 
 .import-source-error {
