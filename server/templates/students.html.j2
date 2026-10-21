@@ -176,7 +176,7 @@
             {% else %}
               <div class="emailed" title="Not emailed">❌</div>
             {% endif %}
-            <a class="material-icons" style="text-align: center; margin: 0; cursor: pointer;" onclick="location.href = '{{ url_for('email_single_student', exam=exam, student_id=student.id) }}';">email</a>
+            <a class="material-icons" style="text-align: center; margin: 0; cursor: pointer;" onclick="location.href = '{{ url_for('email_single_student', exam_student=(exam, student)) }}';">email</a>
           {% else %}
             <div>NO SEAT</div>
           {% endif %}

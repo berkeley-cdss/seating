@@ -1,9 +1,9 @@
 """
-Canvas ids are whole numbers, and student urls (/students/<canvas id>/...) only match digits, so a
-student imported with any other canvas id could never be opened, edited or deleted from the students
-page (issue #43), nor find their seat on logging in. Imports skip such rows and say why. The values
-below are ones found in real imports: a TRUE/FALSE column read as canvas ids, and long Canvas ids a
-spreadsheet turned into scientific notation.
+Canvas ids are whole numbers, and a student is found on logging in by their Canvas id, so a student
+imported with any other canvas id could never find their seat. (Student urls used to hold the Canvas
+id too, which left such students impossible to open, edit or delete, #43; they now use database ids.)
+Imports skip such rows and say why. The values below are ones found in real imports: a TRUE/FALSE
+column read as canvas ids, and long Canvas ids a spreadsheet turned into scientific notation.
 """
 import re
 
@@ -79,7 +79,8 @@ def test_imported_students_can_be_deleted_from_the_students_page(exam, login_as)
     client = login_as(1)
     page = client.get(f'{EXAM_URL}/students/').get_data(as_text=True)
     links = re.findall(r"delete this student\?', '([^']+)'", page)
-    assert f'{EXAM_URL}/students/777777/delete' in links
+    new_student = Student.query.filter_by(exam_id=1, canvas_id='777777').one()
+    assert f'{EXAM_URL}/students/{new_student.id}/delete' in links
     for link in links:
         assert client.get(link).status_code == 302
     assert Student.query.filter_by(exam_id=1).count() == 0

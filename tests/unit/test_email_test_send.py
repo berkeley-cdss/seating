@@ -149,7 +149,7 @@ def test_invalid_send_keeps_the_typed_email(staff, sent):
 
 def test_single_student_page_preselects_that_student(staff):
     jimmy = _student('234567')
-    page = staff.get(f'{EXAM_URL}/students/email/{jimmy.id}/').get_data(as_text=True)
+    page = staff.get(f'{EXAM_URL}/students/{jimmy.id}/email/').get_data(as_text=True)
     assert re.search(rf'<option selected value="{jimmy.id}">', page)
 
 

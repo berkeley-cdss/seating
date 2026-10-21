@@ -31,7 +31,7 @@ def _photo_imgs(response):
 
 @pytest.mark.parametrize('path', [
     '/rooms/1/',
-    '/students/456789/assign/',
+    '/students/3/assign/',
 ])
 def test_seat_map_photos_load_lazily(exam, login_as, path):
     photos = _photo_imgs(login_as(1).get(EXAM_URL + path))

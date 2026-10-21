@@ -152,8 +152,8 @@ class StudentMatcher:
 def canvas_id_problem(canvas_id: str) -> str | None:
     """
     Why `canvas_id`, cleaned up by normalize_id, cannot be a Canvas id, or None if it can. Canvas ids
-    are whole numbers, and the app's student urls only match digits, so a student stored with
-    anything else could never be opened, edited or deleted, nor find their seat on logging in.
+    are whole numbers, and a student is found on logging in by their Canvas id, so a student stored
+    with anything else could never find their seat.
     """
     if re.fullmatch(r'[0-9]+', canvas_id):
         return None

@@ -15,8 +15,8 @@ exam_regex = ban_words + r'\w+'
 student_regex = r'\d+'
 
 
-def format_student_url(offering_canvas_id, exam_name, student_canvas_id):
-    return 'offerings/{}/exams/{}/students/{}'.format(offering_canvas_id, exam_name, student_canvas_id)
+def format_student_url(offering_canvas_id, exam_name, student_id):
+    return 'offerings/{}/exams/{}/students/{}'.format(offering_canvas_id, exam_name, student_id)
 
 
 class StudentConverter(BaseConverter):
@@ -26,7 +26,8 @@ class StudentConverter(BaseConverter):
         if not current_user.is_authenticated:
             session['after_login'] = request.url
             raise Redirect(url_for('auth.login'))
-        _, offering_canvas_id, _, exam_name, _, student_canvas_id = value.split('/', 5)
+        # students are identified by their database id, not their Canvas id or student id
+        _, offering_canvas_id, _, exam_name, _, student_id = value.split('/', 5)
         exam = Exam.query.filter_by(
             offering_canvas_id=offering_canvas_id, name=exam_name
         ).one_or_none()
@@ -37,16 +38,17 @@ class StudentConverter(BaseConverter):
             abort(403, "You are not authorized to view this page. " + GENERAL_STUDENT_HINT)
         else:
             abort(403, "You are not authorized to view this page. " + GENERAL_STUDENT_HINT)
-        exam_student = Student.query.filter_by(
-            canvas_id=student_canvas_id, exam_id=exam.id).one_or_none()
+        if not exam:
+            abort(404, "This exam does not exist. ")
+        # only a student of the exam in the url: staff were checked against that exam's course
+        exam_student = Student.query.filter_by(id=int(student_id), exam_id=exam.id).one_or_none()
         if not exam_student:
             abort(404, "This student is not in this exam. ")
         return exam, exam_student
 
     def to_url(self, value):
         exam, exam_student = value
-        rlt = format_student_url(exam.offering_canvas_id, exam.name, exam_student.canvas_id)
-        return rlt
+        return format_student_url(exam.offering_canvas_id, exam.name, exam_student.id)
 
 
 def format_exam_url(offering_canvas_id, exam_name):

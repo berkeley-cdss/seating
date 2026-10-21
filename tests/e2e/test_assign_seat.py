@@ -4,7 +4,7 @@ from selenium.webdriver.support.ui import WebDriverWait
 
 from server.models import db, Student
 
-ASSIGN_URL = 'http://localhost:5000/offerings/1234567/exams/midterm1/students/234567/assign/'
+ASSIGN_URL = 'http://localhost:5000/offerings/1234567/exams/midterm1/students/1/assign/'  # Jimmy Xu
 
 
 def _open_assign_page(get_authed_driver, height=1000):

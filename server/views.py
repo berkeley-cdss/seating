@@ -986,11 +986,9 @@ def email_students_batch(exam):
     return jsonify(sent=sorted(successful_emails), failed=sorted(failed_emails))
 
 
-@app.route('/<exam:exam>/students/email/<int:student_id>/', methods=['GET', 'POST'])
-def email_single_student(exam, student_id):
-    # the staff check is on the exam in the url, so the student must be one of its own: looked up by
-    # id alone, any student of any course could be loaded here, email and seat included
-    student = Student.query.filter_by(id=student_id, exam_id=exam.id).first_or_404()
+@app.route('/<exam_student:exam_student>/email/', methods=['GET', 'POST'])
+def email_single_student(exam_student):
+    exam, student = exam_student
     form = _email_form(exam)
     if form.validate_on_submit():
         if form.send_test.data:
