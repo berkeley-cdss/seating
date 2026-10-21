@@ -40,6 +40,22 @@ class TestGetSpreadsheetService(unittest.TestCase):
             google._get_spreadsheet_service()
         mock_creds.from_service_account_info.assert_called_once_with(info, scopes=ANY)
 
+    @patch('server.services.google.build')
+    @patch('server.services.google.service_account.Credentials')
+    @patch('server.services.google.google.auth.default')
+    def test_runtime_credentials(self, mock_default, mock_creds, mock_build):
+        # no key: the credentials of the account the app runs as, read-only on Sheets
+        runtime_credentials = MagicMock()
+        mock_default.return_value = (runtime_credentials, 'staging-cdss-web-apps')
+        with patch.dict(app.config, {'GCP_SA_CRED_TYPE': 'runtime', 'GCP_SA_CRED_VALUE': None,
+                                     'GCP_SA_CRED_FILE': None}):
+            service = google._get_spreadsheet_service()
+        mock_default.assert_called_once_with(scopes=['https://www.googleapis.com/auth/spreadsheets.readonly'])
+        mock_creds.from_service_account_file.assert_not_called()
+        mock_creds.from_service_account_info.assert_not_called()
+        mock_build.assert_called_once_with('sheets', 'v4', credentials=runtime_credentials)
+        self.assertIs(service, mock_build.return_value)
+
     def test_invalid_cred_type(self):
         with patch.dict(app.config, {'GCP_SA_CRED_TYPE': 'bogus'}):
             with self.assertRaisesRegex(GcpError, 'Invalid GCP_SA_CRED_TYPE'):

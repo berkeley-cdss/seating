@@ -9,6 +9,7 @@ from server import app
 from server.typings.enum import GcpSaCredType
 from server.typings.exception import GcpError
 
+import google.auth
 from google.oauth2 import service_account
 from googleapiclient.discovery import build
 
@@ -29,6 +30,10 @@ def _get_spreadsheet_service():
         service_account_info = json.loads(decoded_credentials)
         credentials = service_account.Credentials.from_service_account_info(
             service_account_info, scopes=SCOPES)
+    elif cred_type == GcpSaCredType.RUNTIME.value:
+        # the account the app runs as, with no key to store, leak or rotate: on Cloud Run, the
+        # service's own service account, which each sheet the app reads is shared with
+        credentials, _ = google.auth.default(scopes=SCOPES)
     else:
         raise GcpError('Invalid GCP_SA_CRED_TYPE')
     if not credentials:
