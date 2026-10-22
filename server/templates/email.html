@@ -45,40 +45,39 @@
 
   <div class="mdl-cell mdl-cell--12-col delist">
     <div class="mdl-textfield mdl-js-textfield mdl-textfield--floating-label mdl-cell--12-col">
-      {{ form.body(class="mdl-textfield__input", type="text", rows="30", id="body") }}
-      <label class="mdl-textfield__label" for="body">Body:</label>
-    </div>
-    
-  </div>
-
-  <div class="mdl-cell mdl-cell--12-col delist">
-      <div id="preview" style="border: 2px dotted #000; padding: 10px; margin-top: 30px; background-color: #fff;">NO PREVIEW</div>
-  </div>
-
-  <div class="mdl-cell mdl-cell--12-col delist">
-    <div class="mdl-textfield mdl-js-textfield mdl-textfield--floating-label mdl-cell--10-col">
-      {{ form.subject(class="mdl-textfield__input", type="text", rows="10", id="subject") }}
+      {{ form.subject(class="mdl-textfield__input", type="text", id="subject") }}
       <label class="mdl-textfield__label" for="subject">Subject:</label>
     </div>
-    <div class="mdl-textfield mdl-js-textfield mdl-textfield--floating-label mdl-cell--2-col">
-      {{ form.body_html(class="mdl-textfield__input", type="checkbox", id="body_html") }}
-      <label class="mdl-textfield__label" for="body_html">HTML Body?</label>
-    </div>
-  <div>
-
-  <div class="form-buttons">
-    <button class="mdl-button mdl-js-button mdl-button--raised" type="button" onclick="updatePreview()">Preview</button>
-    {{ form.submit(class="mdl-button mdl-js-button mdl-button--raised") }}
   </div>
-  <div id="send-progress" class="mdl-cell mdl-cell--12-col send-progress" aria-live="polite"></div>
+
+  <div class="mdl-cell mdl-cell--12-col delist">
+    <div class="mdl-textfield mdl-js-textfield mdl-textfield--floating-label mdl-cell--12-col">
+      {{ form.body(class="mdl-textfield__input", rows="16", id="body", **{'aria-describedby': 'body-help'}) }}
+      <label class="mdl-textfield__label" for="body">Message:</label>
+    </div>
+    <p id="body-help" class="email-help">Plain text: a blank line starts a new paragraph, and links are made clickable.
+      The <a href="#email-variables">variables</a> are filled in for each student.</p>
+  </div>
 
   <div class="mdl-cell mdl-cell--12-col test-email">
-    <h6>Send a test</h6>
+    <h6>Preview and send a test</h6>
     {% if form.test_student.choices %}
-    <p>Fill in this email with one student's seat and send it to yourself instead. The student is not emailed, and nobody is CC'd or BCC'd.</p>
+    <p>See the email one student would get, or send it to yourself. A test isn't sent to the student, and nobody is CC'd or BCC'd.</p>
     <div class="test-email-fields">
       <label for="test_student">Student:</label>
       {{ form.test_student(id="test_student") }}
+      <button id="preview-button" class="mdl-button mdl-js-button mdl-button--raised" type="button">Preview</button>
+    </div>
+    <div id="preview" class="email-preview" hidden>
+      <p class="email-preview-subject"><strong>Subject:</strong> <span id="preview-subject"></span></p>
+      <iframe id="preview-html" title="Email preview" sandbox></iframe>
+      <details>
+        <summary>Plain-text version</summary>
+        <pre id="preview-text"></pre>
+      </details>
+    </div>
+    <p id="preview-error" class="email-preview-error" role="alert"></p>
+    <div class="test-email-fields">
       <div class="mdl-textfield mdl-js-textfield mdl-textfield--floating-label">
         {{ form.test_to_addr(class="mdl-textfield__input", type="email", id="test_to_addr") }}
         <label class="mdl-textfield__label" for="test_to_addr">Send test to:</label>
@@ -86,8 +85,31 @@
       {{ form.send_test(class="mdl-button mdl-js-button mdl-button--raised") }}
     </div>
     {% else %}
-    <p>No student has a seat yet, so there is nothing to fill in a test email with.</p>
+    <p>No student has a seat yet, so there is nothing to preview or test the email with.</p>
     {% endif %}
+  </div>
+
+  <div class="mdl-cell mdl-cell--12-col">
+    <div class="form-buttons">
+      {{ form.submit(class="mdl-button mdl-js-button mdl-button--raised mdl-button--colored", value="Send to students") }}
+    </div>
+    <div id="send-progress" class="send-progress" aria-live="polite"></div>
+  </div>
+
+  <div id="email-variables" class="mdl-cell mdl-cell--12-col email-variables">
+    <h6>Variables</h6>
+    <p>Type a variable, braces included, into the subject or message to fill in each student's details.</p>
+    <table class="mdl-data-table">
+      <thead><tr><th class="mdl-data-table__cell--non-numeric">Variable</th><th class="mdl-data-table__cell--non-numeric">Filled in with</th></tr></thead>
+      <tbody>
+        {% for name, description in variables.items() %}
+        <tr>
+          <td class="mdl-data-table__cell--non-numeric"><code>{{ '{{' ~ name ~ '}}' }}</code></td>
+          <td class="mdl-data-table__cell--non-numeric">{{ description }}{% if name == 'SEAT_DETAILS_LIST' %} (message only){% endif %}</td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
   </div>
 
   {% if batch_url %}
@@ -181,19 +203,33 @@
   {% endif %}
 
   <script>
-      function updatePreview() {
-          var htmlContent = document.getElementById('body').value;
-          document.getElementById('preview').innerHTML = htmlContent;
-          document.querySelectorAll('.preview-link').forEach(link => {
-            const href = link.getAttribute('href');
-            if (!href || href.includes('{{URL}}')) {
-              link.addEventListener('click', function(e) {
-                e.preventDefault();
-                alert('This link would be clickable in a real email.');
-              });
-            }
+      // the preview is filled in by the server, the way the email is sent; it is shown in a sandboxed
+      // frame, so nothing in it runs or reaches this page
+      (function () {
+          var button = document.getElementById('preview-button');
+          if (!button) { return; }
+          var preview = document.getElementById('preview');
+          var error = document.getElementById('preview-error');
+          button.addEventListener('click', async function () {
+              error.textContent = '';
+              try {
+                  var response = await fetch({{ preview_url|tojson }}, {method: 'POST', body: new FormData(button.form)});
+                  var result = await response.json();
+                  if (!response.ok) {
+                      preview.hidden = true;
+                      error.textContent = Object.values(result.errors || {})
+                          .map(function (messages) { return messages.join(' '); }).join(' ');
+                      return;
+                  }
+                  document.getElementById('preview-subject').textContent = result.subject;
+                  document.getElementById('preview-html').srcdoc = result.html;
+                  document.getElementById('preview-text').textContent = result.text;
+                  preview.hidden = false;
+              } catch (e) {
+                  error.textContent = 'The preview could not be loaded (' + e.message + ').';
+              }
           });
-      }
+      })();
   </script>
 </main>
 {% endcall %}

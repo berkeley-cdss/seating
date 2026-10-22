@@ -205,26 +205,21 @@ def test_batch_send_with_mock_smtp_server(smtp_server):
     assert len(failed_emails) == 0
 
 
-def test_send_seating_html_email_with_mock_smtp_server(smtp_server):
-
-    test_seating_email = \
-        templates.get_email(EmailTemplate.ASSIGNMENT_INFORM_EMAIL,
-                            {"EXAM": "test exam"},
-                            {"NAME": "test name",
-                                "COURSE": "test course",
-                                "EXAM": "test exam",
-                                "ROOM": "test room",
-                                "SEAT": "test seat",
-                                "URL": "test/url",
-                                "ADDITIONAL_INFO": "test additional text",
-                                "SIGNATURE": "test signature"})
+def test_send_seating_email_with_mock_smtp_server(smtp_server):
+    email = templates.get_email(EmailTemplate.ASSIGNMENT_INFORM_EMAIL)
+    values = {"NAME": "test name", "COURSE": "test course", "EXAM": "test exam", "ROOM": "test room",
+              "SEAT": "test seat", "START_TIME": "test time", "DURATION": "test duration",
+              "URL": "https://example.edu/test/url"}
+    subject = templates.make_substitutions(email.subject, values)
+    text = templates.render_text(email.body, values)
+    html = templates.render_html(subject, email.body, values)
 
     success = send_single_email(smtp=_fake_email_config,
                                 from_addr=TEST_FROM_EMAIL,
                                 to_addr=TEST_TO_EMAIL,
-                                subject=test_seating_email.subject,
-                                body=test_seating_email.body,
-                                body_html=test_seating_email.body if test_seating_email.body_html else None)
+                                subject=subject,
+                                body=text,
+                                body_html=html)
 
     assert success[0]
 
@@ -232,8 +227,7 @@ def test_send_seating_html_email_with_mock_smtp_server(smtp_server):
 
     assert msg['From'] == TEST_FROM_EMAIL
     assert msg['To'] == TEST_TO_EMAIL
-    assert msg['Subject'] == test_seating_email.subject
-
-    html = _get_content(msg, 'text/html')
-    assert html is not None
-    assert test_seating_email.body in html
+    assert msg['Subject'] == 'Your Exam Seating Assignment for test exam'
+    assert 'Dear test name,' in _get_content(msg, 'text/plain')
+    assert '<li>Room: <strong>test room</strong></li>' in _get_content(msg, 'text/html')
+    assert '<a href="https://example.edu/test/url">' in _get_content(msg, 'text/html')

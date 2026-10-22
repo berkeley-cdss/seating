@@ -48,7 +48,7 @@ def sent(monkeypatch):
 
 def _form():
     return EmailForm(formdata=None, data={
-        'from_addr': 'staff@berkeley.edu', 'subject': 'Seat', 'body': 'Dear {{NAME}}', 'body_html': False})
+        'from_addr': 'staff@berkeley.edu', 'subject': 'Seat', 'body': 'Dear {{NAME}}'})
 
 
 def test_emailed_is_saved_after_each_batch(seated, monkeypatch):
@@ -160,4 +160,4 @@ def test_batches_survive_a_test_send(seated, sent, login_as):
 
 def test_single_student_page_sends_in_one_request(seeded_db, login_as):
     page = login_as(1).get(f'{EXAM_URL}/students/{_student("234567").id}/email/').get_data(as_text=True)
-    assert 'fetch(' not in page
+    assert BATCH_URL not in page

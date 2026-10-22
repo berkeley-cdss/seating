@@ -1,0 +1,11 @@
+Dear {{NAME}},
+
+Here's your assigned seat for the upcoming exam:
+
+{{SEAT_DETAILS_LIST}}
+
+You can see where your seat is on the seating chart: {{URL}}
+
+If you have any questions or need help, please contact the course staff.
+
+Good luck on your exam!

@@ -1,8 +1,11 @@
 """
-Assignment emails are filled in by replacing {{KEY}} placeholders with names and other values that
-come from imports and staff input. In an HTML body the values must be escaped; in plain text, and
-in the subject, they must not be. Values are taken literally, backslashes included.
+Staff write assignment emails as plain text with {{VARIABLE}} placeholders (issue #140), and the app
+builds both parts of the email from it. The values come from imports and staff input: the HTML part
+escapes them, and everything staff typed, while the plain-text part and the subject take them as they
+are. Staff text is never run as a Jinja template.
 """
+import re
+
 import pytest
 
 from server import app as flask_app
@@ -10,10 +13,21 @@ from server.forms import EmailForm
 from server.models import db, Exam, Student
 import server.services.email as email_service
 from server.services.email import email_about_assignment, substitute_about_assignment
-from server.services.email.templates import get_email, make_substitutions
+from server.services.email.templates import get_email, make_substitutions, render_html, render_text, \
+    unknown_variables, VARIABLES
 from server.typings.enum import EmailTemplate
 
 NAME = 'Lovelace, Ada & <Bo>'  # first name: "Ada & <Bo>"
+VALUES = {'NAME': 'Ada & <Bo>', 'COURSE': 'CS 169', 'EXAM': 'Midterm <1>', 'ROOM': 'Soda 306',
+          'SEAT': 'A1', 'START_TIME': '9:00 AM', 'DURATION': '2 hours', 'URL': 'https://seating.example.edu/seats/1/'}
+
+
+def _body(html):
+    return re.search(r'<body>(.*)</body>', html, re.S).group(1)
+
+
+def _squeeze(html):
+    return re.sub(r'>\s+<', '><', ' '.join(html.split()))
 
 
 @pytest.mark.parametrize('value', ['Jo\\hn', 'Ann \\1', '\\g<0>', 'C:\\new\\table'])
@@ -25,20 +39,80 @@ def test_placeholders_allow_spaces_inside_the_braces():
     assert make_substitutions('{{NAME}} / {{ NAME }}', {'NAME': 'Ada'}) == 'Ada / Ada'
 
 
-def test_html_values_are_escaped():
-    assert make_substitutions('<b>{{NAME}}</b>', {'NAME': 'Ada & <Bo>'}, html=True) == \
-        '<b>Ada &amp; &lt;Bo&gt;</b>'
+def test_plain_text_part_takes_values_as_they_are():
+    assert render_text('Dear {{NAME}},\n\n{{SEAT_DETAILS_LIST}}', VALUES) == (
+        'Dear Ada & <Bo>,\n\n- Course: CS 169\n- Exam: Midterm <1>\n- Room: Soda 306\n- Seat: A1\n'
+        '- Start Time: 9:00 AM\n- Duration: 2 hours')
 
 
-def test_plain_text_values_are_not_escaped():
-    assert make_substitutions('Dear {{NAME}}', {'NAME': 'Ada & <Bo>'}) == 'Dear Ada & <Bo>'
+def test_html_part_has_paragraphs_line_breaks_and_the_seat_list():
+    html = _squeeze(_body(render_html('Seat', 'Dear {{NAME}},\nhello\n\n{{SEAT_DETAILS_LIST}}\n\nBye', VALUES)))
+    assert html == (
+        '<p>Dear Ada &amp; &lt;Bo&gt;,<br>hello</p>'
+        '<ul><li>Course: <strong>CS 169</strong></li><li>Exam: <strong>Midterm &lt;1&gt;</strong></li>'
+        '<li>Room: <strong>Soda 306</strong></li><li>Seat: <strong>A1</strong></li>'
+        '<li>Start Time: <strong>9:00 AM</strong></li><li>Duration: <strong>2 hours</strong></li></ul>'
+        '<p>Bye</p>')
 
 
-def test_template_email_escapes_body_but_not_subject():
-    email = get_email(EmailTemplate.ASSIGNMENT_INFORM_EMAIL, {'EXAM': 'Midterm <1> & 2'}, {'NAME': 'Ada & <Bo>'})
-    assert email.body_html
-    assert email.subject == 'Your Exam Seating Assignment for Midterm <1> & 2'
-    assert 'Dear <strong>Ada &amp; &lt;Bo&gt;</strong>' in email.body
+def test_seat_list_in_the_middle_of_a_paragraph_stands_on_its_own():
+    html = _squeeze(_body(render_html('Seat', 'Your seat: {{SEAT_DETAILS_LIST}} Good luck', VALUES)))
+    assert re.fullmatch(r'<p>Your seat:</p><ul>.*</ul><p>Good luck</p>', html)
+
+
+def test_html_typed_by_staff_is_shown_as_text():
+    html = _body(render_html('Seat', '<b>Hi</b> <script>alert(1)</script> {{ "x" * 3 }}', VALUES))
+    assert '&lt;b&gt;Hi&lt;/b&gt; &lt;script&gt;alert(1)&lt;/script&gt;' in html
+    assert '<b>' not in html and '<script>' not in html
+
+
+@pytest.mark.parametrize('text', ['{{ 7 * 7 }}', '{% if true %}yes{% endif %}', '{{ config }}'])
+def test_staff_text_is_not_run_as_a_template(text):
+    assert '49' not in render_html('Seat', text, VALUES)
+    assert 'yes</p>' not in render_html('Seat', text, VALUES)
+    assert 'SECRET_KEY' not in render_html('Seat', text, VALUES)
+
+
+@pytest.mark.parametrize('text, links', [
+    ('See https://example.edu/a?b=1&c=2 now', ['https://example.edu/a?b=1&amp;c=2']),
+    ('Ends a sentence: https://example.edu/a.', ['https://example.edu/a']),
+    ('(see https://example.edu/a)', ['https://example.edu/a']),
+    ('https://en.wikipedia.org/wiki/Seat_(furniture)', ['https://en.wikipedia.org/wiki/Seat_(furniture)']),
+    ('Your seat: {{URL}}', ['https://seating.example.edu/seats/1/']),
+    ('javascript:alert(1) and www.example.edu', []),
+])
+def test_links_are_clickable(text, links):
+    html = render_html('Seat', text, VALUES)
+    assert re.findall(r'<a href="([^"]*)">', html) == links
+
+
+def test_quotes_in_a_link_do_not_leave_the_attribute():
+    html = render_html('Seat', "https://example.edu/a'onmouseover='x", VALUES)
+    assert re.findall(r'<a href="([^"]*)">', html) == ['https://example.edu/a&#39;onmouseover=&#39;x']
+
+
+def test_subject_is_the_html_title():
+    assert '<title>Seat for Midterm &lt;1&gt;</title>' in render_html('Seat for Midterm <1>', 'Hi', VALUES)
+
+
+def test_unknown_variables():
+    assert unknown_variables('{{NAME}} {{ROOOM}} {{ ROOOM }} {{SEATS}}') == ['ROOOM', 'SEATS']
+    assert unknown_variables('{{SEAT_DETAILS_LIST}}', known=['NAME']) == ['SEAT_DETAILS_LIST']
+
+
+def test_default_email_uses_only_known_variables_and_no_html():
+    email = get_email(EmailTemplate.ASSIGNMENT_INFORM_EMAIL)
+    assert email.subject == 'Your Exam Seating Assignment for {{EXAM}}'
+    assert not unknown_variables(email.subject + email.body)
+    assert '{{SEAT_DETAILS_LIST}}' in email.body and '{{URL}}' in email.body
+    assert '<' not in email.body
+
+
+def test_every_variable_has_a_value(seeded_db):
+    jimmy = Student.query.filter_by(exam_id=1, canvas_id='234567').one()
+    with flask_app.test_request_context():
+        values = email_service.assignment_values(jimmy.exam, jimmy)
+    assert set(values) | {'SEAT_DETAILS_LIST'} == set(VARIABLES)
 
 
 @pytest.fixture
@@ -52,23 +126,17 @@ def jimmy(seeded_db):
     yield jimmy
 
 
-def _form(body_html):
+def _form(body='Dear {{NAME}}, {{EXAM}}'):
     return EmailForm(formdata=None, data={
-        'from_addr': 'staff@berkeley.edu', 'to_addr': 'x@berkeley.edu', 'subject': 'Seat for {{EXAM}}',
-        'body': '<p>Dear {{NAME}}, {{EXAM}}</p>', 'body_html': body_html})
+        'from_addr': 'staff@berkeley.edu', 'to_addr': 'x@berkeley.edu', 'subject': 'Seat for {{EXAM}}', 'body': body})
 
 
-def test_substitution_escapes_an_html_body(jimmy):
+def test_substitution_fills_in_all_three(jimmy):
     with flask_app.test_request_context():
-        subject, body = substitute_about_assignment(jimmy.exam, _form(body_html=True), jimmy)
+        subject, text, html = substitute_about_assignment(jimmy.exam, _form(), jimmy)
     assert subject == 'Seat for Midterm <1> & 2'
-    assert body == '<p>Dear Ada &amp; &lt;Bo&gt;, Midterm &lt;1&gt; &amp; 2</p>'
-
-
-def test_substitution_leaves_a_plain_body_alone(jimmy):
-    with flask_app.test_request_context():
-        _, body = substitute_about_assignment(jimmy.exam, _form(body_html=False), jimmy)
-    assert body == '<p>Dear Ada & <Bo>, Midterm <1> & 2</p>'
+    assert text == 'Dear Ada & <Bo>, Midterm <1> & 2'
+    assert '<p>Dear Ada &amp; &lt;Bo&gt;, Midterm &lt;1&gt; &amp; 2</p>' in html
 
 
 @pytest.fixture
@@ -84,21 +152,16 @@ def sent(monkeypatch):
     yield sent_messages
 
 
-@pytest.mark.parametrize('body_html, content_types', [
-    (True, ['text/plain', 'text/html']),
-    (False, ['text/plain']),
-])
-def test_html_checkbox_decides_whether_an_html_part_is_sent(jimmy, sent, body_html, content_types):
+def test_every_email_has_a_text_and_an_html_part(jimmy, sent):
     with flask_app.test_request_context():
-        successful, failed = email_about_assignment(jimmy.exam, _form(body_html), [jimmy.email])
+        successful, failed = email_about_assignment(jimmy.exam, _form('Dear {{NAME}}\n\n{{SEAT_DETAILS_LIST}}'),
+                                                    [jimmy.email])
     assert successful == {jimmy.email} and not failed
     (message,) = sent
-    parts = list(message.iter_parts()) if message.is_multipart() else [message]
-    assert [part.get_content_type() for part in parts] == content_types
-    if body_html:
-        assert 'Dear Ada &amp; &lt;Bo&gt;' in parts[1].get_content()
-    else:
-        assert 'Dear Ada & <Bo>' in parts[0].get_content()
+    assert [part.get_content_type() for part in message.iter_parts()] == ['text/plain', 'text/html']
+    text = message.get_body(('plain',)).get_content()
+    assert text.startswith('Dear Ada & <Bo>\n\n- Course: ') and '<li>' not in text
+    assert 'Dear Ada &amp; &lt;Bo&gt;' in message.get_body(('html',)).get_content()
     assert message['Subject'] == 'Seat for Midterm <1> & 2'
 
 
@@ -106,6 +169,6 @@ def test_backslash_in_a_name_does_not_stop_the_emails(jimmy, sent):
     jimmy.name = 'Xu, Jo\\hn'
     db.session.commit()
     with flask_app.test_request_context():
-        successful, _ = email_about_assignment(jimmy.exam, _form(True), [jimmy.email])
+        successful, _ = email_about_assignment(jimmy.exam, _form(), [jimmy.email])
     assert successful == {jimmy.email}
     assert 'Dear Jo\\Hn' in sent[0].get_body(('html',)).get_content()
