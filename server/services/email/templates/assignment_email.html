@@ -1,0 +1,12 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <meta charset="utf-8">
+    <title>{{ subject }}</title>
+  </head>
+  <body>
+    {% for paragraph in paragraphs %}
+    <p>{% for kind, value in paragraph %}{% if kind == 'link' %}<a href="{{ value }}">{{ value }}</a>{% elif kind == 'break' %}<br>{% else %}{{ value }}{% endif %}{% endfor %}</p>
+    {% endfor %}
+  </body>
+</html>

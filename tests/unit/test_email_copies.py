@@ -76,7 +76,7 @@ def sent(monkeypatch):
 def test_every_student_email_is_copied(seated, sent):
     with flask_app.test_request_context():
         form = EmailForm(formdata=None, data={
-            'from_addr': 'staff@berkeley.edu', 'subject': 'Seat', 'body': 'Dear {{NAME}}', 'body_html': False,
+            'from_addr': 'staff@berkeley.edu', 'subject': 'Seat', 'body': 'Dear {{NAME}}',
             'cc_addr': 'ta1@berkeley.edu, ta2@berkeley.edu', 'bcc_addr': 'hidden@berkeley.edu'})
         email_about_assignment(db.session.get(Exam, 1), form, [student.email for student in seated])
     assert [message['To'] for message in sent] == [student.email for student in seated]

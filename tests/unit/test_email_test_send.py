@@ -13,7 +13,7 @@ from server.models import db, Student
 
 EXAM_URL = '/offerings/1234567/exams/midterm1'
 EMAIL_URL = f'{EXAM_URL}/students/email/'
-BODY = '<p>Dear {{NAME}}, you sit in {{ROOM}} seat {{SEAT}}.</p>'
+BODY = 'Dear {{NAME}}, you sit in {{ROOM}} seat {{SEAT}}.'
 
 
 @pytest.fixture
@@ -44,7 +44,7 @@ def _post(client, url, **fields):
         'csrf_token': re.search(r'name="csrf_token" type="hidden" value="([^"]+)"', page).group(1),
         'from_addr': 'staff@berkeley.edu', 'to_addr': 'jx@berkeley.edu',
         'cc_addr': 'cc@berkeley.edu', 'bcc_addr': 'bcc@berkeley.edu',
-        'subject': 'Seat for {{EXAM}}', 'body': BODY, 'body_html': 'y',
+        'subject': 'Seat for {{EXAM}}', 'body': BODY,
     }
     data.update({key: value for key, value in fields.items() if value is not None})
     for key in [key for key, value in fields.items() if value is None]:
@@ -84,11 +84,12 @@ def test_send_test_goes_to_staff_filled_in_with_the_student(staff, sent):
     assert '{{NAME}}' in response.get_data(as_text=True)
 
 
-def test_send_test_without_html_body_is_plain_text(staff, sent):
+def test_send_test_has_a_text_and_an_html_part(staff, sent):
     jimmy = _student('234567')
-    _post(staff, EMAIL_URL, send_test='y', test_student=str(jimmy.id), test_to_addr='me@berkeley.edu', body_html=None)
+    _post(staff, EMAIL_URL, send_test='y', test_student=str(jimmy.id), test_to_addr='me@berkeley.edu')
     (message,) = sent
-    assert not message.is_multipart() and message.get_content_type() == 'text/plain'
+    assert [part.get_content_type() for part in message.iter_parts()] == ['text/plain', 'text/html']
+    assert message.get_body(('plain',)).get_content().startswith(f'Dear {jimmy.first_name}, you sit in ')
 
 
 def test_send_test_needs_an_address(staff, sent):
