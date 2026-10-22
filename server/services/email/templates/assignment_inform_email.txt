@@ -1,0 +1,16 @@
+Dear {{NAME}},
+
+Here's your assigned seat for the upcoming exam:
+
+Course: {{COURSE}}
+Exam: {{EXAM}}
+Room: {{ROOM}}
+Seat: {{SEAT}}
+Start Time: {{START_TIME}}
+Duration: {{DURATION}}
+
+You can see where your seat is on the seating chart: {{URL}}
+
+If you have any questions or need help, please contact the course staff.
+
+Good luck on your exam!

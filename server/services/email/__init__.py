@@ -19,27 +19,32 @@ _email_config = SMTPConfig(
 SEND_BATCH_SIZE = 50
 
 
+def assignment_values(exam, student):
+    """The values of the email variables (templates.VARIABLES) for a seated student."""
+    seat = student.assignment.seat
+    return {
+        "NAME": student.first_name,
+        "COURSE": exam.offering.name,
+        "EXAM": exam.display_name,
+        "ROOM": seat.room.display_name,
+        "SEAT": seat.display_name,
+        "START_TIME": seat.room.start_at_time_display(),
+        "DURATION": seat.room.duration_display,
+        "URL": urljoin(app.config.get('SERVER_BASE_URL'), url_for('student_single_seat', seat_id=seat.id)),
+    }
+
+
 def substitute_about_assignment(exam, form, student):
+    """
+    The email `student` gets: its subject, plain-text body and HTML body, all filled in from the
+    plain text staff wrote. (None, None, None) for a student without a seat.
+    """
     if not student or not student.assignment:
-        return None, None
-    assignment = student.assignment
-    # the subject is plain text; the body is HTML when the form says so, and then gets escaped values
-    subject = templates.make_substitutions(form.subject.data, {"EXAM": exam.display_name})
-    body = templates.make_substitutions(form.body.data,
-                                        {"NAME": assignment.student.first_name,
-                                         "COURSE": exam.offering.name,
-                                         "EXAM": exam.display_name,
-                                         "ROOM": assignment.seat.room.display_name,
-                                         "SEAT": assignment.seat.display_name,
-                                         "START_TIME": assignment.seat.room.start_at_time_display(),
-                                         "DURATION": assignment.seat.room.duration_display,
-                                         "URL": urljoin(
-                                             app.config.get('SERVER_BASE_URL'),
-                                             url_for('student_single_seat',
-                                                     seat_id=assignment.seat.id)),
-                                         },
-                                        html=form.body_html.data)
-    return subject, body
+        return None, None, None
+    values = assignment_values(exam, student)
+    subject = templates.make_substitutions(form.subject.data, values)
+    return (subject, templates.render_text(form.body.data, values),
+            templates.render_html(subject, form.body.data, values))
 
 
 def email_about_assignment(exam, form, to_addrs):
@@ -53,8 +58,8 @@ def email_about_assignment(exam, form, to_addrs):
     email_messages = []
     for to_addr in to_addrs:
         student = email_student_map.get(to_addr, None)
-        subject, body = substitute_about_assignment(exam, form, student)
-        if not subject or not body:
+        subject, body, body_html = substitute_about_assignment(exam, form, student)
+        if not subject:
             failure_addrs.add(to_addr)
             continue
         email_message = construct_email(
@@ -62,8 +67,7 @@ def email_about_assignment(exam, form, to_addrs):
             to_addr=to_addr,
             subject=subject,
             body=body,
-            # the checkbox's value, not the field: the field object is always truthy
-            body_html=body if form.body_html.data else None,
+            body_html=body_html,
             cc_addr=form.cc_addr.data,
             bcc_addr=form.bcc_addr.data
         )
@@ -90,15 +94,15 @@ def send_test_email(exam, form, student, to_addr):
     staff can check it before emailing everyone. Nobody is CC'd or BCC'd, and the student is
     neither emailed nor marked as emailed. Returns whether it was sent.
     """
-    subject, body = substitute_about_assignment(exam, form, student)
-    if not subject or not body:
+    subject, body, body_html = substitute_about_assignment(exam, form, student)
+    if not subject:
         return False
     message = construct_email(
         from_addr=form.from_addr.data,
         to_addr=to_addr,
         subject=f'[TEST] {subject}',
         body=body,
-        body_html=body if form.body_html.data else None,
+        body_html=body_html,
     )
     successful_emails, _ = send_emails(smtp=_email_config, messages=[message])
     return bool(successful_emails)

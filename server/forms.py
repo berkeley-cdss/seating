@@ -7,6 +7,7 @@ from wtforms import Form as NoCsrfForm
 from flask_wtf.file import FileRequired, FileAllowed
 from wtforms.validators import Email, InputRequired, URL, Optional, DataRequired
 from server.controllers import exam_regex
+from server.services.email.templates import VARIABLES, unknown_variables
 from server.typings.enum import AssignmentImportStrategy, NewRowImportStrategy, UpdatedRowImportStrategy, \
     MissingRowImportStrategy
 
@@ -219,18 +220,34 @@ class AssignSingleForm(FlaskForm):
     submit = SubmitField('assign')
 
 
-class EmailForm(FlaskForm):
+def known_variables(known):
+    """Refuses a placeholder that is not a variable, like {{ROOOM}}: it would reach every student as typed."""
+    def validate(form, field):
+        unknown = unknown_variables(field.data, known)
+        if unknown:
+            raise ValidationError('{} {}; the variables are listed below the email.'.format(
+                ', '.join('{{%s}}' % name for name in unknown),
+                'is not a variable' if len(unknown) == 1 else 'are not variables'))
+    return validate
+
+
+class EmailPreviewForm(FlaskForm):
+    """What the email page's preview fills in for one student."""
+    subject = StringField('subject', [InputRequired(), known_variables(VARIABLES)])
+    # plain text: the HTML part of the email is built from it (issue #140)
+    body = TextAreaField('body', [InputRequired(), known_variables(VARIABLES)])
+    # the student whose seat fills in a preview or a test email
+    test_student = SelectField('test_student', coerce=int, validate_choice=False)
+
+
+class EmailForm(EmailPreviewForm):
     from_addr = StringField('from_addr', [Email(), InputRequired()])
     to_addr = StringField('to_addr', [InputRequired()])
     cc_addr = StringField('cc_addr', [])
     bcc_addr = StringField('bcc_addr', [])
-    subject = StringField('subject', [InputRequired()])
-    body = TextAreaField('body', [InputRequired()])
-    body_html = BooleanField('body_html', default=True)
     submit = SubmitField('send')
     # a test fills in the email with one student's seat and sends it to a staff member instead
     # only checked when sending a test, so a regular send works even when no student has a seat
-    test_student = SelectField('test_student', coerce=int, validate_choice=False)
     test_to_addr = StringField('test_to_addr', [Optional(), Email()])
     send_test = SubmitField('send test')
 

@@ -7,11 +7,11 @@ from server import app
 from server.models import SeatAssignment, db, Exam, Room, Seat, Student
 from server.forms import AssignSingleForm, EditExamForm, EditRoomForm, ExamForm, ImportStudentFromCsvUploadForm, \
     RoomForm, ChooseRoomForm, ImportStudentFromSheetForm, ImportStudentFromCanvasRosterForm, DeleteStudentForm, \
-    AssignForm, EmailForm, EditStudentForm, UploadRoomForm, ChooseCourseOfferingForm, EditStudentsForm, \
+    AssignForm, EmailForm, EmailPreviewForm, EditStudentForm, UploadRoomForm, ChooseCourseOfferingForm, EditStudentsForm, \
     ImportStudentFromManualInputForm, PreviewLayoutForm, RemoveDeletedRoomPreferencesForm
 from server.services.core.export import export_exam_student_info
 from server.services.core.student import describe_invalid_rows
-from server.services.email.templates import get_email
+from server.services.email.templates import VARIABLES, get_email, make_substitutions
 from server.services.google import get_spreadsheet_tabs
 import server.services.canvas as canvas_client
 from server.services.email import email_about_assignment, send_test_email, substitute_about_assignment
@@ -903,9 +903,9 @@ def assign_student(exam_student):
     return render_template('assign_single.html', exam=exam, rooms=rooms, form=form)
 
 
-def _email_form(exam):
-    """The email form, with the seated students offered for a test email."""
-    form = EmailForm()
+def _email_form(exam, form_class=None):
+    """The email form, with the seated students offered for a preview or a test email."""
+    form = (form_class or EmailForm)()
     form.test_student.choices = [
         (student.id, f'{student.name} ({student.assignment.seat.room.display_name} {student.assignment.seat.display_name})')
         for student in exam.get_students(with_seat=True) if student.assignment]
@@ -927,7 +927,38 @@ def _send_test_email(exam, form, **page):
             flash(f"Sent a test email to {form.test_to_addr.data}, filled in with {student.name}'s seat.", 'success')
         else:
             flash("Failed to send the test email.", 'error')
-    return render_template('email.html', exam=exam, form=form, **page)
+    return _render_email_page(exam, form, **page)
+
+
+def _render_email_page(exam, form, **page):
+    return render_template('email.html', exam=exam, form=form, variables=VARIABLES,
+                           preview_url=url_for('email_preview', exam=exam), **page)
+
+
+def _prefill_email(exam, form):
+    """
+    The assignment email to start from: the subject shows the exam's name, and the body keeps its
+    variables, which are filled in for each student when sending.
+    """
+    email_prefill = get_email(EmailTemplate.ASSIGNMENT_INFORM_EMAIL)
+    form.subject.data = make_substitutions(email_prefill.subject, {'EXAM': exam.display_name})
+    form.body.data = email_prefill.body
+
+
+@app.route('/<exam:exam>/students/email/preview/', methods=['POST'])
+def email_preview(exam):
+    """
+    The email one student would get, filled in from the email page's subject and body, as JSON:
+    the page shows it, so staff see the real email rather than the text they typed.
+    """
+    form = _email_form(exam, EmailPreviewForm)
+    if not form.validate_on_submit():
+        return jsonify(errors=form.errors), 400
+    student = Student.query.filter_by(id=form.test_student.data, exam_id=exam.id).one_or_none()
+    subject, body, body_html = substitute_about_assignment(exam, form, student)
+    if not subject:
+        return jsonify(errors={'test_student': ['Pick a student with a seat to preview the email with.']}), 400
+    return jsonify(subject=subject, text=body, html=body_html)
 
 
 def _flash_form_errors(form):
@@ -956,9 +987,7 @@ def email_all_students(exam):
         # keep what was typed, rather than starting over from the template
         _flash_form_errors(form)
     else:
-        email_prefill = get_email(EmailTemplate.ASSIGNMENT_INFORM_EMAIL)
-        form.subject.data = email_prefill.subject
-        form.body.data = email_prefill.body
+        _prefill_email(exam, form)
         # only students with a seat have anything to be told; leave out those already emailed, so that
         # after a send that stopped partway the page picks up with the rest
         include_emailed = request.args.get('include_emailed') == '1'
@@ -971,7 +1000,7 @@ def email_all_students(exam):
             'already_emailed': sum(1 for student in seated if student.assignment.emailed),
             'unseated': len(students) - len(seated),
         }
-    return render_template('email.html', exam=exam, form=form, **page)
+    return _render_email_page(exam, form, **page)
 
 
 @app.route('/<exam:exam>/students/email/send/', methods=['POST'])
@@ -1006,15 +1035,10 @@ def email_single_student(exam_student):
     elif form.is_submitted():
         _flash_form_errors(form)
     else:
-        email_prefill = get_email(EmailTemplate.ASSIGNMENT_INFORM_EMAIL)
-        form.subject.data = email_prefill.subject
-        form.body.data = email_prefill.body
-        subject, body = substitute_about_assignment(exam, form, student)
-        form.subject.data = subject
-        form.body.data = body
+        _prefill_email(exam, form)
         form.to_addr.data = student.email
         form.test_student.data = student.id
-    return render_template('email.html', exam=exam, form=form)
+    return _render_email_page(exam, form)
 
 
 @app.route('/<exam_student:exam_student>', methods=['GET'])

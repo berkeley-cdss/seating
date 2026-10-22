@@ -44,47 +44,66 @@
   </div>
 
   <div class="delist mb-3">
-    <label class="form-label" for="body">Body:</label>
-    {{ form.body(class="form-control", type="text", rows="30", id="body") }}
+    <label class="form-label" for="subject">Subject:</label>
+    {{ form.subject(class="form-control", type="text", id="subject") }}
   </div>
 
   <div class="delist mb-3">
-      <div id="preview" style="border: 2px dotted #000; padding: 10px; margin-top: 30px; background-color: #fff;">NO PREVIEW</div>
+    <label class="form-label" for="body">Message:</label>
+    {{ form.body(class="form-control", rows="16", id="body", **{'aria-describedby': 'body-help'}) }}
+    <p id="body-help" class="email-help form-text">Plain text: a blank line starts a new paragraph, and links are made clickable.
+      The <a href="#email-variables">variables</a> are filled in for each student.</p>
   </div>
-
-  <div class="row align-items-end delist">
-    <div class="col-md-10 mb-3">
-      <label class="form-label" for="subject">Subject:</label>
-      {{ form.subject(class="form-control", type="text", rows="10", id="subject") }}
-    </div>
-    <div class="col-md-2 mb-3">
-      <div class="form-check">
-        {{ form.body_html(class="form-check-input", type="checkbox", id="body_html") }}
-        <label class="form-check-label" for="body_html">HTML Body?</label>
-      </div>
-    </div>
-  </div>
-
-  <div class="form-buttons">
-    <button class="btn btn-outline-primary" type="button" onclick="updatePreview()">Preview</button>
-    {{ form.submit(class="btn btn-primary") }}
-  </div>
-  <div id="send-progress" class="send-progress" aria-live="polite"></div>
 
   <div class="test-email">
-    <h2 class="h6">Send a test</h2>
+    <h2 class="h6">Preview and send a test</h2>
     {% if form.test_student.choices %}
-    <p>Fill in this email with one student's seat and send it to yourself instead. The student is not emailed, and nobody is CC'd or BCC'd.</p>
+    <p>See the email one student would get, or send it to yourself. A test isn't sent to the student, and nobody is CC'd or BCC'd.</p>
     <div class="test-email-fields">
       <label for="test_student">Student:</label>
       {{ form.test_student(class="form-select w-auto", id="test_student") }}
+      <button id="preview-button" class="btn btn-outline-primary" type="button">Preview</button>
+    </div>
+    <div id="preview" class="email-preview" hidden>
+      <p class="email-preview-subject"><strong>Subject:</strong> <span id="preview-subject"></span></p>
+      <iframe id="preview-html" title="Email preview" sandbox></iframe>
+      <details>
+        <summary>Plain-text version</summary>
+        <pre id="preview-text"></pre>
+      </details>
+    </div>
+    <p id="preview-error" class="email-preview-error" role="alert"></p>
+    <div class="test-email-fields">
       <label for="test_to_addr">Send test to:</label>
       {{ form.test_to_addr(class="form-control w-auto", type="email", id="test_to_addr") }}
       {{ form.send_test(class="btn btn-outline-primary") }}
     </div>
     {% else %}
-    <p>No student has a seat yet, so there is nothing to fill in a test email with.</p>
+    <p>No student has a seat yet, so there is nothing to preview or test the email with.</p>
     {% endif %}
+  </div>
+
+  <div>
+    <div class="form-buttons">
+      {{ form.submit(class="btn btn-primary", value="Send to students") }}
+    </div>
+    <div id="send-progress" class="send-progress" aria-live="polite"></div>
+  </div>
+
+  <div id="email-variables" class="email-variables">
+    <h2 class="h6">Variables</h2>
+    <p>Type a variable, braces included, into the subject or message to fill in each student's details.</p>
+    <table class="table table-sm w-auto bg-white">
+      <thead><tr><th>Variable</th><th>Filled in with</th></tr></thead>
+      <tbody>
+        {% for name, description in variables.items() %}
+        <tr>
+          <td><code>{{ '{{' ~ name ~ '}}' }}</code></td>
+          <td>{{ description }}</td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
   </div>
 
   {% if batch_url %}
@@ -151,7 +170,8 @@
                       var result = await response.json();
                       if (!response.ok) {
                           stopped = Object.entries(result.errors || {})
-                              .map(function (entry) { return entry[0] + ': ' + entry[1].join(' '); }).join('; ');
+                              .map(function (entry) { return entry[0] + ': ' + entry[1].join(' '); }).join('; ')
+                              .replace(/\.$/, '');  // the sentence below adds its own
                           break;
                       }
                       sent = sent.concat(result.sent);
@@ -178,19 +198,33 @@
   {% endif %}
 
   <script>
-      function updatePreview() {
-          var htmlContent = document.getElementById('body').value;
-          document.getElementById('preview').innerHTML = htmlContent;
-          document.querySelectorAll('.preview-link').forEach(link => {
-            const href = link.getAttribute('href');
-            if (!href || href.includes('{{URL}}')) {
-              link.addEventListener('click', function(e) {
-                e.preventDefault();
-                alert('This link would be clickable in a real email.');
-              });
-            }
+      // the preview is filled in by the server, the way the email is sent; it is shown in a sandboxed
+      // frame, so nothing in it runs or reaches this page
+      (function () {
+          var button = document.getElementById('preview-button');
+          if (!button) { return; }
+          var preview = document.getElementById('preview');
+          var error = document.getElementById('preview-error');
+          button.addEventListener('click', async function () {
+              error.textContent = '';
+              try {
+                  var response = await fetch({{ preview_url|tojson }}, {method: 'POST', body: new FormData(button.form)});
+                  var result = await response.json();
+                  if (!response.ok) {
+                      preview.hidden = true;
+                      error.textContent = Object.values(result.errors || {})
+                          .map(function (messages) { return messages.join(' '); }).join(' ');
+                      return;
+                  }
+                  document.getElementById('preview-subject').textContent = result.subject;
+                  document.getElementById('preview-html').srcdoc = result.html;
+                  document.getElementById('preview-text').textContent = result.text;
+                  preview.hidden = false;
+              } catch (e) {
+                  error.textContent = 'The preview could not be loaded (' + e.message + ').';
+              }
           });
-      }
+      })();
   </script>
 </div>
 {% endcall %}
