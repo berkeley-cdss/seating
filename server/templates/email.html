@@ -176,7 +176,8 @@
                       var result = await response.json();
                       if (!response.ok) {
                           stopped = Object.entries(result.errors || {})
-                              .map(function (entry) { return entry[0] + ': ' + entry[1].join(' '); }).join('; ');
+                              .map(function (entry) { return entry[0] + ': ' + entry[1].join(' '); }).join('; ')
+                              .replace(/\.$/, '');  // the sentence below adds its own
                           break;
                       }
                       sent = sent.concat(result.sent);

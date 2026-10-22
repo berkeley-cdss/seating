@@ -35,6 +35,14 @@ def test_values_with_backslashes_are_taken_literally(value):
     assert make_substitutions('Dear {{NAME}},', {'NAME': value}) == f'Dear {value},'
 
 
+def test_values_are_not_filled_in_again():
+    # a name that looks like a variable (or a template) is printed as it is
+    assert make_substitutions('Dear {{NAME}}, {{ROOM}}', {'NAME': '{{ROOM}} {{ 7*7 }}', 'ROOM': 'Soda'}) == \
+        'Dear {{ROOM}} {{ 7*7 }}, Soda'
+    values = {**VALUES, 'NAME': '{{ROOM}}', 'ROOM': 'Soda'}
+    assert '<p>Dear {{ROOM}}, Soda</p>' in render_html('Seat', 'Dear {{NAME}}, {{ROOM}}', values)
+
+
 def test_placeholders_allow_spaces_inside_the_braces():
     assert make_substitutions('{{NAME}} / {{ NAME }}', {'NAME': 'Ada'}) == 'Ada / Ada'
 
