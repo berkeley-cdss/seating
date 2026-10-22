@@ -7,7 +7,7 @@ from wtforms import Form as NoCsrfForm
 from flask_wtf.file import FileRequired, FileAllowed
 from wtforms.validators import Email, InputRequired, URL, Optional, DataRequired
 from server.controllers import exam_regex
-from server.services.email.templates import SUBJECT_VARIABLES, VARIABLES, unknown_variables
+from server.services.email.templates import VARIABLES, unknown_variables
 from server.typings.enum import AssignmentImportStrategy, NewRowImportStrategy, UpdatedRowImportStrategy, \
     MissingRowImportStrategy
 
@@ -233,7 +233,7 @@ def known_variables(known):
 
 class EmailPreviewForm(FlaskForm):
     """What the email page's preview fills in for one student."""
-    subject = StringField('subject', [InputRequired(), known_variables(SUBJECT_VARIABLES)])
+    subject = StringField('subject', [InputRequired(), known_variables(VARIABLES)])
     # plain text: the HTML part of the email is built from it (issue #140)
     body = TextAreaField('body', [InputRequired(), known_variables(VARIABLES)])
     # the student whose seat fills in a preview or a test email

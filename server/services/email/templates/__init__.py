@@ -1,7 +1,7 @@
 """
 Assignment emails. Staff write plain text with {{VARIABLE}} placeholders (issue #140), and both parts
 of the email are built from it: a plain-text part, and an HTML part from assignment_email.html in which
-blank lines start paragraphs, links are clickable and {{SEAT_DETAILS_LIST}} is a list.
+blank lines start paragraphs, line breaks are kept and links are clickable.
 
 Staff text is only ever data: it is never rendered as a Jinja template, which would let whoever
 writes the email run code on the server. The HTML template gets it in pieces, and escapes them.
@@ -23,12 +23,7 @@ VARIABLES = {
     'START_TIME': 'When the exam starts in that room',
     'DURATION': 'How long the exam is',
     'URL': "A link to the student's seat on the seating chart",
-    'SEAT_DETAILS_LIST': 'The course, exam, room, seat, start time and duration, as a list',
 }
-SEAT_DETAILS = [('Course', 'COURSE'), ('Exam', 'EXAM'), ('Room', 'ROOM'), ('Seat', 'SEAT'),
-                ('Start Time', 'START_TIME'), ('Duration', 'DURATION')]
-# the list only makes sense in the body
-SUBJECT_VARIABLES = [name for name in VARIABLES if name != 'SEAT_DETAILS_LIST']
 
 PLACEHOLDER = re.compile(r'\{\{\s*(\w+)\s*\}\}')
 LINK = re.compile(r'https?://[^\s<>"]+')
@@ -70,33 +65,22 @@ def make_substitutions(text: str, substitutions: dict[str, str]) -> str:
 
 
 def render_text(body: str, values: dict[str, str]) -> str:
-    """The plain-text part: the body filled in, with the seat details as lines."""
-    seat_details = '\n'.join(f'- {label}: {values[key]}' for label, key in SEAT_DETAILS)
-    return make_substitutions(body, {**values, 'SEAT_DETAILS_LIST': seat_details})
+    """The plain-text part: the body filled in."""
+    return make_substitutions(body, values)
 
 
 def render_html(subject: str, body: str, values: dict[str, str]) -> str:
     """The HTML part, from assignment_email.html: the template escapes every piece of `body`."""
-    return _jinja.get_template('assignment_email.html').render(
-        subject=subject, blocks=_blocks(body, values),
-        seat_details=[(label, values[key]) for label, key in SEAT_DETAILS])
+    return _jinja.get_template('assignment_email.html').render(subject=subject, paragraphs=_paragraphs(body, values))
 
 
-def _blocks(body, values):
+def _paragraphs(body, values):
     """
-    `body` as the template's blocks: 'seat_details' for the list, or a paragraph as a list of
-    (kind, value) pieces, kind being 'text', 'link' or 'break'. Blank lines separate paragraphs; the
-    list stands on its own, since a list can't sit inside a paragraph.
+    `body` as the template's paragraphs, each a list of (kind, value) pieces, kind being 'text',
+    'link' or 'break'. Blank lines separate paragraphs.
     """
-    blocks = []
-    for chunk in re.split(r'\n\s*\n', body.replace('\r\n', '\n').strip()):
-        for i, part in enumerate(re.split(r'\{\{\s*SEAT_DETAILS_LIST\s*\}\}', chunk)):
-            if i:
-                blocks.append('seat_details')
-            paragraph = _pieces(part.strip(), values)
-            if paragraph:
-                blocks.append(paragraph)
-    return blocks
+    chunks = re.split(r'\n\s*\n', body.replace('\r\n', '\n').strip())
+    return [pieces for pieces in (_pieces(chunk.strip(), values) for chunk in chunks) if pieces]
 
 
 def _pieces(text, values):

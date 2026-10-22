@@ -40,24 +40,13 @@ def test_placeholders_allow_spaces_inside_the_braces():
 
 
 def test_plain_text_part_takes_values_as_they_are():
-    assert render_text('Dear {{NAME}},\n\n{{SEAT_DETAILS_LIST}}', VALUES) == (
-        'Dear Ada & <Bo>,\n\n- Course: CS 169\n- Exam: Midterm <1>\n- Room: Soda 306\n- Seat: A1\n'
-        '- Start Time: 9:00 AM\n- Duration: 2 hours')
+    assert render_text('Dear {{NAME}},\n\nRoom: {{ROOM}}\nExam: {{EXAM}}', VALUES) == \
+        'Dear Ada & <Bo>,\n\nRoom: Soda 306\nExam: Midterm <1>'
 
 
-def test_html_part_has_paragraphs_line_breaks_and_the_seat_list():
-    html = _squeeze(_body(render_html('Seat', 'Dear {{NAME}},\nhello\n\n{{SEAT_DETAILS_LIST}}\n\nBye', VALUES)))
-    assert html == (
-        '<p>Dear Ada &amp; &lt;Bo&gt;,<br>hello</p>'
-        '<ul><li>Course: <strong>CS 169</strong></li><li>Exam: <strong>Midterm &lt;1&gt;</strong></li>'
-        '<li>Room: <strong>Soda 306</strong></li><li>Seat: <strong>A1</strong></li>'
-        '<li>Start Time: <strong>9:00 AM</strong></li><li>Duration: <strong>2 hours</strong></li></ul>'
-        '<p>Bye</p>')
-
-
-def test_seat_list_in_the_middle_of_a_paragraph_stands_on_its_own():
-    html = _squeeze(_body(render_html('Seat', 'Your seat: {{SEAT_DETAILS_LIST}} Good luck', VALUES)))
-    assert re.fullmatch(r'<p>Your seat:</p><ul>.*</ul><p>Good luck</p>', html)
+def test_html_part_has_paragraphs_and_line_breaks():
+    html = _squeeze(_body(render_html('Seat', 'Dear {{NAME}},\n\nRoom: {{ROOM}}\nSeat: {{SEAT}}\n\n\n\nBye', VALUES)))
+    assert html == '<p>Dear Ada &amp; &lt;Bo&gt;,</p><p>Room: Soda 306<br>Seat: A1</p><p>Bye</p>'
 
 
 def test_html_typed_by_staff_is_shown_as_text():
@@ -97,14 +86,14 @@ def test_subject_is_the_html_title():
 
 def test_unknown_variables():
     assert unknown_variables('{{NAME}} {{ROOOM}} {{ ROOOM }} {{SEATS}}') == ['ROOOM', 'SEATS']
-    assert unknown_variables('{{SEAT_DETAILS_LIST}}', known=['NAME']) == ['SEAT_DETAILS_LIST']
+    assert unknown_variables('{{SEAT_DETAILS_LIST}}') == ['SEAT_DETAILS_LIST']
 
 
 def test_default_email_uses_only_known_variables_and_no_html():
     email = get_email(EmailTemplate.ASSIGNMENT_INFORM_EMAIL)
     assert email.subject == 'Your Exam Seating Assignment for {{EXAM}}'
     assert not unknown_variables(email.subject + email.body)
-    assert '{{SEAT_DETAILS_LIST}}' in email.body and '{{URL}}' in email.body
+    assert '{{ROOM}}' in email.body and '{{SEAT}}' in email.body and '{{URL}}' in email.body
     assert '<' not in email.body
 
 
@@ -112,7 +101,7 @@ def test_every_variable_has_a_value(seeded_db):
     jimmy = Student.query.filter_by(exam_id=1, canvas_id='234567').one()
     with flask_app.test_request_context():
         values = email_service.assignment_values(jimmy.exam, jimmy)
-    assert set(values) | {'SEAT_DETAILS_LIST'} == set(VARIABLES)
+    assert set(values) == set(VARIABLES)
 
 
 @pytest.fixture
@@ -154,13 +143,13 @@ def sent(monkeypatch):
 
 def test_every_email_has_a_text_and_an_html_part(jimmy, sent):
     with flask_app.test_request_context():
-        successful, failed = email_about_assignment(jimmy.exam, _form('Dear {{NAME}}\n\n{{SEAT_DETAILS_LIST}}'),
+        successful, failed = email_about_assignment(jimmy.exam, _form('Dear {{NAME}}\n\nRoom: {{ROOM}}'),
                                                     [jimmy.email])
     assert successful == {jimmy.email} and not failed
     (message,) = sent
     assert [part.get_content_type() for part in message.iter_parts()] == ['text/plain', 'text/html']
     text = message.get_body(('plain',)).get_content()
-    assert text.startswith('Dear Ada & <Bo>\n\n- Course: ') and '<li>' not in text
+    assert text.rstrip() == f'Dear Ada & <Bo>\n\nRoom: {jimmy.assignment.seat.room.display_name}'
     assert 'Dear Ada &amp; &lt;Bo&gt;' in message.get_body(('html',)).get_content()
     assert message['Subject'] == 'Seat for Midterm <1> & 2'
 

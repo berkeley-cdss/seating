@@ -5,16 +5,8 @@
     <title>{{ subject }}</title>
   </head>
   <body>
-    {% for block in blocks %}
-    {% if block == 'seat_details' %}
-    <ul>
-      {% for label, value in seat_details %}
-      <li>{{ label }}: <strong>{{ value }}</strong></li>
-      {% endfor %}
-    </ul>
-    {% else %}
-    <p>{% for kind, value in block %}{% if kind == 'link' %}<a href="{{ value }}">{{ value }}</a>{% elif kind == 'break' %}<br>{% else %}{{ value }}{% endif %}{% endfor %}</p>
-    {% endif %}
+    {% for paragraph in paragraphs %}
+    <p>{% for kind, value in paragraph %}{% if kind == 'link' %}<a href="{{ value }}">{{ value }}</a>{% elif kind == 'break' %}<br>{% else %}{{ value }}{% endif %}{% endfor %}</p>
     {% endfor %}
   </body>
 </html>

@@ -229,5 +229,5 @@ def test_send_seating_email_with_mock_smtp_server(smtp_server):
     assert msg['To'] == TEST_TO_EMAIL
     assert msg['Subject'] == 'Your Exam Seating Assignment for test exam'
     assert 'Dear test name,' in _get_content(msg, 'text/plain')
-    assert '<li>Room: <strong>test room</strong></li>' in _get_content(msg, 'text/html')
+    assert 'Room: test room<br>Seat: test seat' in _get_content(msg, 'text/html')
     assert '<a href="https://example.edu/test/url">' in _get_content(msg, 'text/html')

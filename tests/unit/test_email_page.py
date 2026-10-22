@@ -62,7 +62,7 @@ def test_page_lists_every_variable_at_the_bottom(staff):
 
 def test_single_student_page_keeps_the_variables(staff):
     page = staff.get(f'{EXAM_URL}/students/{_jimmy().id}/email/').get_data(as_text=True)
-    assert '{{SEAT_DETAILS_LIST}}' in page
+    assert '{{ROOM}}' in page
 
 
 @pytest.mark.parametrize('fields, error', [
@@ -72,6 +72,8 @@ def test_single_student_page_keeps_the_variables(staff):
      'body: {{ROOOM}}, {{SEATS}} are not variables; the variables are listed below the email.'),
     ({'subject': 'Seat {{SEAT_DETAILS_LIST}}'},
      'subject: {{SEAT_DETAILS_LIST}} is not a variable; the variables are listed below the email.'),
+    ({'subject': 'Seat for {{EXAM}}', 'body': 'Dear {{NAME}},\n\n{{SEAT_DETAILS_LIST}}'},
+     'body: {{SEAT_DETAILS_LIST}} is not a variable; the variables are listed below the email.'),
 ])
 def test_unknown_variable_is_refused_before_sending(staff, sent, fields, error):
     data = {'csrf_token': _csrf(staff), 'from_addr': 'staff@berkeley.edu', 'to_addr': 'jx@berkeley.edu',
@@ -88,7 +90,7 @@ def test_unknown_variable_is_refused_before_sending(staff, sent, fields, error):
 
 def _preview(client, **fields):
     data = {'csrf_token': _csrf(client), 'subject': 'Seat for {{EXAM}}',
-            'body': 'Dear {{NAME}}, <b>hi</b>\n\n{{SEAT_DETAILS_LIST}}', 'test_student': str(_jimmy().id), **fields}
+            'body': 'Dear {{NAME}}, <b>hi</b>\n\nRoom: {{ROOM}}', 'test_student': str(_jimmy().id), **fields}
     return client.post(PREVIEW_URL, data=data)
 
 
@@ -98,8 +100,9 @@ def test_preview_is_the_email_the_student_would_get(staff, sent):
     preview = response.get_json()
     assert preview['subject'] == 'Seat for Midterm 1'
     name = _jimmy().first_name
-    assert preview['text'].startswith(f'Dear {name}, <b>hi</b>\n\n- Course: ')
-    assert f'Dear {name}, &lt;b&gt;hi&lt;/b&gt;' in preview['html'] and '<ul>' in preview['html']
+    room = _jimmy().assignment.seat.room.display_name
+    assert preview['text'] == f'Dear {name}, <b>hi</b>\n\nRoom: {room}'
+    assert f'<p>Dear {name}, &lt;b&gt;hi&lt;/b&gt;</p>' in preview['html'] and f'<p>Room: {room}</p>' in preview['html']
     assert sent == []
 
 
