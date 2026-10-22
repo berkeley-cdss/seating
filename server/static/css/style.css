@@ -1,16 +1,92 @@
-/* Bootstrap scrolls smoothly; jump instead, as the pages did before, so scrolling
-   to a seat or a form field lands at once */
+/* UC Berkeley colors (https://brand.berkeley.edu/visual-identity/colors/), as in
+   layout_preview.css: Berkeley Blue #003262 takes the place of Bootstrap's blue, and
+   California Gold #FDB515 underlines the header. */
 :root {
+  --berkeley-blue: #003262;
+  --berkeley-blue-dark: #00243f;
+  --berkeley-blue-darker: #001a2e;
+  --berkeley-blue-light: #8098b0;
+  --california-gold: #fdb515;
+
+  --bs-primary: var(--berkeley-blue);
+  --bs-primary-rgb: 0, 50, 98;
+  --bs-primary-text-emphasis: var(--berkeley-blue-darker);
+  --bs-primary-bg-subtle: #ccd6e0;
+  --bs-primary-border-subtle: #99adc0;
+  --bs-link-color: var(--berkeley-blue);
+  --bs-link-color-rgb: 0, 50, 98;
+  --bs-link-hover-color: var(--berkeley-blue-dark);
+  --bs-link-hover-color-rgb: 0, 36, 63;
+  --bs-focus-ring-color: rgba(0, 50, 98, 0.25);
+
+  /* Bootstrap scrolls smoothly; jump instead, as the pages did before, so scrolling
+     to a seat or a form field lands at once */
   scroll-behavior: auto;
 }
 
+/* Bootstrap's components set their own copy of its blue rather than reading --bs-primary */
+.btn-primary {
+  --bs-btn-bg: var(--berkeley-blue);
+  --bs-btn-border-color: var(--berkeley-blue);
+  --bs-btn-hover-bg: var(--berkeley-blue-dark);
+  --bs-btn-hover-border-color: var(--berkeley-blue-dark);
+  --bs-btn-focus-shadow-rgb: 0, 50, 98;
+  --bs-btn-active-bg: var(--berkeley-blue-darker);
+  --bs-btn-active-border-color: var(--berkeley-blue-darker);
+  --bs-btn-disabled-bg: var(--berkeley-blue);
+  --bs-btn-disabled-border-color: var(--berkeley-blue);
+}
+
+.btn-outline-primary {
+  --bs-btn-color: var(--berkeley-blue);
+  --bs-btn-border-color: var(--berkeley-blue);
+  --bs-btn-hover-bg: var(--berkeley-blue);
+  --bs-btn-hover-border-color: var(--berkeley-blue);
+  --bs-btn-focus-shadow-rgb: 0, 50, 98;
+  --bs-btn-active-bg: var(--berkeley-blue);
+  --bs-btn-active-border-color: var(--berkeley-blue);
+  --bs-btn-disabled-color: var(--berkeley-blue);
+  --bs-btn-disabled-border-color: var(--berkeley-blue);
+}
+
+.dropdown-menu {
+  --bs-dropdown-link-active-bg: var(--berkeley-blue);
+}
+
+.form-control:focus,
+.form-select:focus,
+.form-check-input:focus {
+  border-color: var(--berkeley-blue-light);
+  box-shadow: 0 0 0 0.25rem var(--bs-focus-ring-color);
+}
+
+.form-check-input:checked {
+  background-color: var(--berkeley-blue);
+  border-color: var(--berkeley-blue);
+}
+
+.nav-link:focus-visible {
+  box-shadow: 0 0 0 0.25rem var(--bs-focus-ring-color);
+}
+
+.btn-close {
+  --bs-btn-close-focus-shadow: 0 0 0 0.25rem var(--bs-focus-ring-color);
+}
+
 a {
-  color: #1976d2;
   text-decoration: none;
 }
 
-/* Bootstrap's dark navbar dims its links to 55% white, too faint to read on the blue */
+/* Berkeley Blue is too close to the text color to mark a link on its own, so links
+   within a sentence are underlined too */
+p a,
+.recipients-note a {
+  text-decoration: underline;
+}
+
 .navbar.site-header {
+  border-bottom: 4px solid var(--california-gold);
+  /* Bootstrap's dark navbar dims its links to 55% white, too faint to read on the blue */
   --bs-navbar-color: #fff;
   --bs-navbar-hover-color: #fff;
   --bs-navbar-active-color: #fff;
@@ -19,6 +95,9 @@ a {
 .site-header .nav-link:hover,
 .site-header .nav-link:focus-visible {
   text-decoration: underline;
+  text-decoration-color: var(--california-gold);
+  text-decoration-thickness: 2px;
+  text-underline-offset: 4px;
 }
 
 .site-title {
