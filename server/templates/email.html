@@ -3,21 +3,21 @@
 
 {% block body %}
 {% call macros.form(form) %}
-<main class="mdl-grid">
+<div class="email-form">
 
-  <div class="mdl-cell mdl-cell--12-col delist">
-    <div class="mdl-textfield mdl-js-textfield mdl-textfield--floating-label mdl-cell--6-col">
-      {{ form.from_addr(class="mdl-textfield__input", type="Email", id="from_addr") }}
-      <label class="mdl-textfield__label" for="from_addr">FROM:</label>
+  <div class="row delist">
+    <div class="col-md-6 mb-3">
+      <label class="form-label" for="from_addr">FROM:</label>
+      {{ form.from_addr(class="form-control", type="Email", id="from_addr") }}
     </div>
-    <div class="mdl-textfield mdl-js-textfield mdl-textfield--floating-label mdl-cell--6-col">
-      {{ form.to_addr(class="mdl-textfield__input", type="text", id="to_addr") }}
-      <label class="mdl-textfield__label" for="to_addr">TO:</label>
+    <div class="col-md-6 mb-3">
+      <label class="form-label" for="to_addr">TO:</label>
+      {{ form.to_addr(class="form-control", type="text", id="to_addr") }}
     </div>
   </div>
 
   {% if recipients and (recipients.already_emailed or recipients.unseated) %}
-  <div class="mdl-cell mdl-cell--12-col delist recipients-note">
+  <div class="delist mb-3 recipients-note">
     {% set already = recipients.already_emailed %}
     {% if already and recipients.include_emailed %}
       Including {{ already }} {{ 'student' if already == 1 else 'students' }} already emailed.
@@ -32,58 +32,55 @@
   </div>
   {% endif %}
 
-  <div class="mdl-cell mdl-cell--12-col delist">
-    <div class="mdl-textfield mdl-js-textfield mdl-textfield--floating-label mdl-cell--6-col">
-      {{ form.cc_addr(class="mdl-textfield__input", type="text", id="cc_addr") }}
-      <label class="mdl-textfield__label" for="cc_addr">CC:</label>
+  <div class="row delist">
+    <div class="col-md-6 mb-3">
+      <label class="form-label" for="cc_addr">CC:</label>
+      {{ form.cc_addr(class="form-control", type="text", id="cc_addr") }}
     </div>
-    <div class="mdl-textfield mdl-js-textfield mdl-textfield--floating-label mdl-cell--6-col">
-      {{ form.bcc_addr(class="mdl-textfield__input", type="text", id="bcc_addr") }}
-      <label class="mdl-textfield__label" for="bcc_addr">BCC:</label>
+    <div class="col-md-6 mb-3">
+      <label class="form-label" for="bcc_addr">BCC:</label>
+      {{ form.bcc_addr(class="form-control", type="text", id="bcc_addr") }}
     </div>
   </div>
 
-  <div class="mdl-cell mdl-cell--12-col delist">
-    <div class="mdl-textfield mdl-js-textfield mdl-textfield--floating-label mdl-cell--12-col">
-      {{ form.body(class="mdl-textfield__input", type="text", rows="30", id="body") }}
-      <label class="mdl-textfield__label" for="body">Body:</label>
-    </div>
-    
+  <div class="delist mb-3">
+    <label class="form-label" for="body">Body:</label>
+    {{ form.body(class="form-control", type="text", rows="30", id="body") }}
   </div>
 
-  <div class="mdl-cell mdl-cell--12-col delist">
+  <div class="delist mb-3">
       <div id="preview" style="border: 2px dotted #000; padding: 10px; margin-top: 30px; background-color: #fff;">NO PREVIEW</div>
   </div>
 
-  <div class="mdl-cell mdl-cell--12-col delist">
-    <div class="mdl-textfield mdl-js-textfield mdl-textfield--floating-label mdl-cell--10-col">
-      {{ form.subject(class="mdl-textfield__input", type="text", rows="10", id="subject") }}
-      <label class="mdl-textfield__label" for="subject">Subject:</label>
+  <div class="row align-items-end delist">
+    <div class="col-md-10 mb-3">
+      <label class="form-label" for="subject">Subject:</label>
+      {{ form.subject(class="form-control", type="text", rows="10", id="subject") }}
     </div>
-    <div class="mdl-textfield mdl-js-textfield mdl-textfield--floating-label mdl-cell--2-col">
-      {{ form.body_html(class="mdl-textfield__input", type="checkbox", id="body_html") }}
-      <label class="mdl-textfield__label" for="body_html">HTML Body?</label>
+    <div class="col-md-2 mb-3">
+      <div class="form-check">
+        {{ form.body_html(class="form-check-input", type="checkbox", id="body_html") }}
+        <label class="form-check-label" for="body_html">HTML Body?</label>
+      </div>
     </div>
-  <div>
+  </div>
 
   <div class="form-buttons">
-    <button class="mdl-button mdl-js-button mdl-button--raised" type="button" onclick="updatePreview()">Preview</button>
-    {{ form.submit(class="mdl-button mdl-js-button mdl-button--raised") }}
+    <button class="btn btn-outline-primary" type="button" onclick="updatePreview()">Preview</button>
+    {{ form.submit(class="btn btn-primary") }}
   </div>
-  <div id="send-progress" class="mdl-cell mdl-cell--12-col send-progress" aria-live="polite"></div>
+  <div id="send-progress" class="send-progress" aria-live="polite"></div>
 
-  <div class="mdl-cell mdl-cell--12-col test-email">
-    <h6>Send a test</h6>
+  <div class="test-email">
+    <h2 class="h6">Send a test</h2>
     {% if form.test_student.choices %}
     <p>Fill in this email with one student's seat and send it to yourself instead. The student is not emailed, and nobody is CC'd or BCC'd.</p>
     <div class="test-email-fields">
       <label for="test_student">Student:</label>
-      {{ form.test_student(id="test_student") }}
-      <div class="mdl-textfield mdl-js-textfield mdl-textfield--floating-label">
-        {{ form.test_to_addr(class="mdl-textfield__input", type="email", id="test_to_addr") }}
-        <label class="mdl-textfield__label" for="test_to_addr">Send test to:</label>
-      </div>
-      {{ form.send_test(class="mdl-button mdl-js-button mdl-button--raised") }}
+      {{ form.test_student(class="form-select w-auto", id="test_student") }}
+      <label for="test_to_addr">Send test to:</label>
+      {{ form.test_to_addr(class="form-control w-auto", type="email", id="test_to_addr") }}
+      {{ form.send_test(class="btn btn-outline-primary") }}
     </div>
     {% else %}
     <p>No student has a seat yet, so there is nothing to fill in a test email with.</p>
@@ -195,6 +192,6 @@
           });
       }
   </script>
-</main>
+</div>
 {% endcall %}
 {% endblock %}

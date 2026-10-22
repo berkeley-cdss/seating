@@ -2,42 +2,35 @@
 {% import 'macros.html' as macros with context %}
 
 {% block body %}
-<div class="mdl-grid">
-  <div class="mdl-cell mdl-cell--9-col delist">
+<div class="row">
+  <div class="col-12 delist">
     {% call macros.form(form) %}
-    <div class="mdl-textfield mdl-js-textfield">
-      {{ form.emails(class="mdl-textfield__input", type="text", rows="10", id="delemails") }}
-      <label class="mdl-textfield__label" for="delemails">Emails...</label>
+    <div class="mb-3">
+      <label class="form-label" for="delemails">Emails...</label>
+      {{ form.emails(class="form-control", type="text", rows="10", id="delemails") }}
     </div>
-    <div class="checkbox" id="use_all_emails">{{ form.use_all_emails }}
-      <label class="" for="use_all_emails">Delete All</label>
+    <div class="form-check">
+      {{ form.use_all_emails(class="form-check-input") }}
+      <label class="form-check-label" for="{{ form.use_all_emails.id }}">Delete All</label>
     </div>
     <div class="form-buttons">
-      {{ form.submit(class="mdl-button mdl-js-button mdl-button--raised") }}
+      {{ form.submit(class="btn btn-danger") }}
     </div>
     {% endcall %}
   </div>
-  <div class="mdl-cell mdl-cell--4-col delist"> 
-    <h5>Deleted:</h5>
-    <ul class="mdl-list">
+  <div class="col-md-6 delist">
+    <h2 class="h5">Deleted:</h2>
+    <ul class="list-unstyled">
       {% for student in deleted|sort %}
-      <li class="mdl-list__item delitem">
-        <span class="mdl-list__item-primary-content">
-          {{ student }}
-        </span>
-      </li>
+      <li>{{ student }}</li>
       {% endfor %}
     </ul>
   </div>
-  <div class="mdl-cell mdl-cell--4-col delist">
-    <h5>Did not exist:</h5>
-    <ul class="mdl-list">
+  <div class="col-md-6 delist">
+    <h2 class="h5">Did not exist:</h2>
+    <ul class="list-unstyled">
       {% for student in did_not_exist|sort %}
-      <li class="mdl-list__item delitem">
-        <span class="mdl-list__item-primary-content">
-          {{ student }}
-        </span>
-      </li>
+      <li>{{ student }}</li>
       {% endfor %}
     </ul>
   </div>

@@ -2,26 +2,26 @@
 {% import 'macros.html' as macros with context %}
 
 {% block body %}
-<div class="mdl-grid assign-bar">
+<div class="assign-bar">
 {% call macros.form(form) %}
-  <div class="mdl-cell mdl-cell--12-col delist">
-    <div class="checkbox" id="ignore_restrictions">
-      {{ form.ignore_restrictions }}
-      <label class="" for="ignore_restrictions">Ignore Restrictions?</label>
+  <div class="delist">
+    <div class="form-check">
+      {{ form.ignore_restrictions(class="form-check-input") }}
+      <label class="form-check-label" for="{{ form.ignore_restrictions.id }}">Ignore Restrictions?</label>
     </div>
-    <div class="mdl-textfield mdl-js-textfield mdl-textfield--floating-label mdl-cell--12-col">
-      {{ form.seat_id(class="mdl-textfield__input", type="text", id="seat_id") }}
-      <label class="mdl-textfield__label" for="seat_id">Seat ID (Leave blank for random)</label>
+    <div class="mb-2">
+      <label class="form-label" for="seat_id">Seat ID (Leave blank for random)</label>
+      {{ form.seat_id(class="form-control", type="text", id="seat_id") }}
     </div>
   </div>
   <div id="selected-seat" class="selected-seat" aria-live="polite"></div>
   <div class="form-buttons">
-      {{ form.submit(class="mdl-button mdl-js-button mdl-button--raised") }}
-      {{ form.just_delete(class="mdl-button mdl-js-button mdl-button--raised") }}
+      {{ form.submit(class="btn btn-primary") }}
+      {{ form.just_delete(class="btn btn-outline-danger") }}
   </div>
 {% endcall %}
 </div>
-<div class="">
+<div>
 {% for room in rooms %}
   {{ macros.room(room, highlight_seat_id=seat_id, show_attributes=True, remove_link=True) }}
   <hr style="border-top: 1px solid black;" />
@@ -37,7 +37,7 @@
                 return 'movable seat ' + seat.id;
             }
             // fixed seats show their name on the first line of their tooltip
-            var tooltip = document.querySelector('.seat-tooltip[for="' + seat.id + '"]');
+            var tooltip = seatTooltip(seat);
             return tooltip ? tooltip.firstChild.textContent.trim() : seat.id;
         }
 
@@ -57,8 +57,6 @@
         document.querySelectorAll('.s').forEach(function(seat) {
             seat.addEventListener('click', function() {
                 field.value = this.id;
-                // MDL only floats the label on user input, so mark the field dirty ourselves
-                field.parentNode.classList.add('is-dirty');
                 selectSeat(this.id);
             });
         });

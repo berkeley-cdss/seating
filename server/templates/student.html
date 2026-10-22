@@ -4,10 +4,10 @@
 {% block title %}{{ student.name }} | {{ super() }}{% endblock %}
 
 {% block body %}
-<section class="student mdl-grid">
-  <div class="mdl-cell mdl-cell--12-col">
+<section class="student">
+  <div>
     <img class="photo" src="{{ url_for('student_photo', exam_student=(exam, student)) }}" alt="photo for: {{ student.name }}" />
-    <h6>{{ student.name }}</h6>
+    <h2 class="h6">{{ student.name }}</h2>
     <p>{{ student.email }}</p>
     <p>Student ID: {{ student.sid }}</p>
     <p>Canvas ID: {{ student.canvas_id }}</p>
