@@ -87,7 +87,7 @@ def _to_field(page):
 
 
 def _note(page):
-    match = re.search(r'<div class="mdl-cell mdl-cell--12-col delist recipients-note">(.*?)</div>', page, re.S)
+    match = re.search(r'<div class="delist mb-3 recipients-note">(.*?)</div>', page, re.S)
     return ' '.join(re.sub(r'<[^>]+>', '', match.group(1)).split()) if match else None
 
 

@@ -24,14 +24,14 @@ def _seat_positions(html):
 
 def _toggle(html):
     """The room view toggle button: its label, path and query."""
-    href, label = re.search(r'<a class="mdl-button[^"]*" href="([^"]+)">(Proctor view|Student view)</a>', html).groups()
+    href, label = re.search(r'<a class="btn[^"]*" href="([^"]+)">(Proctor view|Student view)</a>', html).groups()
     url = urlsplit(html_lib.unescape(href))
     return label, url.path, parse_qs(url.query)
 
 
 def _headings(html):
     """The Front/Back headings around the seat map, top to bottom."""
-    return re.findall(r'<h6>(Front|Back)</h6>', html)
+    return re.findall(r'<h4 class="h6">(Front|Back)</h4>', html)
 
 
 def test_room_page_shows_the_student_view_by_default(seeded_db, login_as):

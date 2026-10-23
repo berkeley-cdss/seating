@@ -2,22 +2,28 @@
 {% import 'macros.html' as macros with context %}
 
 {% block body %}
-<div class="mdl-tabs mdl-js-tabs mdl-js-ripple-effect">
-  <div class="mdl-tabs__tab-bar">
-    <a href="#sheet-panel" class="mdl-tabs__tab is-active">Import from Custom Sheet</a>
-    <a href="#canvas-panel" class="mdl-tabs__tab">Import from Canvas Roster</a>
-    <a href="#upload-panel" class="mdl-tabs__tab">Import from CSV upload</a>
-    <a href="#manual-panel" class="mdl-tabs__tab">Manual Entry</a>
-  </div>
-  <div class="mdl-tabs__panel is-active" id="sheet-panel">
+<ul class="nav nav-tabs" role="tablist">
+  <li class="nav-item" role="presentation">
+    <button class="nav-link active" id="sheet-tab" data-bs-toggle="tab" data-bs-target="#sheet-panel" type="button" role="tab" aria-controls="sheet-panel" aria-selected="true">Import from Custom Sheet</button>
+  </li>
+  <li class="nav-item" role="presentation">
+    <button class="nav-link" id="canvas-tab" data-bs-toggle="tab" data-bs-target="#canvas-panel" type="button" role="tab" aria-controls="canvas-panel" aria-selected="false">Import from Canvas Roster</button>
+  </li>
+  <li class="nav-item" role="presentation">
+    <button class="nav-link" id="upload-tab" data-bs-toggle="tab" data-bs-target="#upload-panel" type="button" role="tab" aria-controls="upload-panel" aria-selected="false">Import from CSV upload</button>
+  </li>
+  <li class="nav-item" role="presentation">
+    <button class="nav-link" id="manual-tab" data-bs-toggle="tab" data-bs-target="#manual-panel" type="button" role="tab" aria-controls="manual-panel" aria-selected="false">Manual Entry</button>
+  </li>
+</ul>
+<div class="tab-content pt-3">
+  <div class="tab-pane show active" id="sheet-panel" role="tabpanel" aria-labelledby="sheet-tab" tabindex="0">
     <form action="{{ url_for('import_students_from_custom_sheet', exam=exam) }}" method="post">
         {{ from_sheet_form.hidden_tag() }}
-      <div class="mdl-grid">
-        <div class="mdl-cell mdl-cell--3-col">
-          <div class="mdl-textfield mdl-js-textfield mdl-textfield--floating-label">
-            {{ from_sheet_form.sheet_url(class="mdl-textfield__input", type="Google Sheet URL", id="gsurl") }}
-            <label class="mdl-textfield__label" for="gsurl">Google Sheet URL</label>
-          </div>
+      <div class="row">
+        <div class="col-md-6 mb-3">
+          <label class="form-label" for="gsurl">Google Sheet URL</label>
+          {{ from_sheet_form.sheet_url(class="form-control", type="Google Sheet URL", id="gsurl") }}
           <div class="errormsg">
             {% if from_sheet_form.sheet_url.errors %}
               {% for error in from_sheet_form.sheet_url.errors %}
@@ -26,11 +32,9 @@
             {% endif %}
           </div>
         </div>
-        <div class="mdl-cell mdl-cell--3-col">
-          <div class="mdl-textfield mdl-js-textfield mdl-textfield--floating-label">
-            {{ from_sheet_form.sheet_range(class="mdl-textfield__input", type="Sheet Name", id="sheetname") }}
-            <label class="mdl-textfield__label" for="sheetname">Sheet Name</label>
-          </div>
+        <div class="col-md-6 mb-3">
+          <label class="form-label" for="sheetname">Sheet Name</label>
+          {{ from_sheet_form.sheet_range(class="form-control", type="Sheet Name", id="sheetname") }}
           <div class="errormsg">
             {% if from_sheet_form.sheet_range.errors %}
               {% for error in from_sheet_form.sheet_range.errors %}
@@ -39,59 +43,51 @@
             {% endif %}
           </div>
         </div>
-        {{ macros.render_import_strategies_choices(from_sheet_form) }}
-        <div class="form-buttons">
-          {{ from_sheet_form.submit(class="mdl-button mdl-js-button mdl-button--raised") }}
-        </div>
-
-      </div> 
+      </div>
+      {{ macros.render_import_strategies_choices(from_sheet_form) }}
+      <div class="form-buttons">
+        {{ from_sheet_form.submit(class="btn btn-primary") }}
+      </div>
     </form>
   </div>
 
-  <div class="mdl-tabs__panel" id="canvas-panel">
+  <div class="tab-pane" id="canvas-panel" role="tabpanel" aria-labelledby="canvas-tab" tabindex="0">
     <form action="{{ url_for('import_students_from_canvas_roster', exam=exam) }}" method="post">
         {{ from_canvas_form.hidden_tag() }}
-        <div class="mdl-grid">
-          {{ macros.render_import_strategies_choices(from_canvas_form) }}
-          <div class="form-buttons">
-            {{ from_canvas_form.submit(class="mdl-button mdl-js-button mdl-button--raised") }}
-          </div>
+        {{ macros.render_import_strategies_choices(from_canvas_form) }}
+        <div class="form-buttons">
+          {{ from_canvas_form.submit(class="btn btn-primary") }}
         </div>
     </form>
   </div>
 
-  <div class="mdl-tabs__panel" id="upload-panel">
+  <div class="tab-pane" id="upload-panel" role="tabpanel" aria-labelledby="upload-tab" tabindex="0">
     <form action="{{ url_for('import_students_from_csv_upload', exam=exam) }}" method="post" enctype="multipart/form-data">
         {{ from_csv_form.hidden_tag() }}
-        <div class="mdl-grid">
-          <div class="mdl-cell mdl-cell--12-col">
-            {{ from_csv_form.file(class="mdl-textfield__input", type="file", id="upload_csv_file")}}
-          </div>
-          {{ macros.render_import_strategies_choices(from_csv_form) }}
-          <div class="form-buttons">
-            {{ from_csv_form.submit(class="mdl-button mdl-js-button mdl-button--raised") }}
-          </div>
+        <div class="mb-3">
+          {{ from_csv_form.file(class="form-control", type="file", id="upload_csv_file", **{"aria-label": "CSV file"})}}
+        </div>
+        {{ macros.render_import_strategies_choices(from_csv_form) }}
+        <div class="form-buttons">
+          {{ from_csv_form.submit(class="btn btn-primary") }}
         </div>
     </form>
   </div>
 
-  <div class="mdl-tabs__panel" id="manual-panel">
+  <div class="tab-pane" id="manual-panel" role="tabpanel" aria-labelledby="manual-tab" tabindex="0">
     <form action="{{ url_for('import_students_from_manual_input', exam=exam) }}" method="post">
         {{ from_manual_input_form.hidden_tag() }}
-        <div class="mdl-grid">
-          <div class="mdl-cell mdl-cell--12-col">
-            <div class="mdl-textfield mdl-js-textfield mdl-textfield--floating-label">
-                {{ from_manual_input_form.text(class="mdl-textfield__input", id="students", rows=10, cols=70) }}
-              <label class="mdl-textfield__label" for="students">Enter student roster here (CSV format):</label>
-            </div>
-          </div>
-          {{ macros.render_import_strategies_choices(from_manual_input_form) }}
-          <div class="form-buttons">
-            {{ from_manual_input_form.submit(class="mdl-button mdl-js-button mdl-button--raised") }}
-          </div>
+        <div class="mb-3">
+          <label class="form-label" for="students">Enter student roster here (CSV format):</label>
+          {{ from_manual_input_form.text(class="form-control", id="students", rows=10, cols=70) }}
+        </div>
+        {{ macros.render_import_strategies_choices(from_manual_input_form) }}
+        <div class="form-buttons">
+          {{ from_manual_input_form.submit(class="btn btn-primary") }}
         </div>
     </form>
   </div>
+</div>
 <script>
   // removing students is hard to undo, so confirm it before importing
   document.querySelectorAll('select.missing-students').forEach(function (select) {

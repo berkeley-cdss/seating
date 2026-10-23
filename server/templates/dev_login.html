@@ -2,43 +2,43 @@
 {% import 'macros.html' as macros with context %}
 
 {% block body %}
-<div class="rooms mdl-grid">
-  <div class="mdl-cell mdl-cell--12-col">
-    <h4>Dev Login</h4>
+<div class="rooms">
+  <div>
+    <h2 class="h4">Dev Login</h2>
     <p>
       This server runs against the fake Canvas, so there is no real sign-in. Pick one of the
       seeded users below. This page does not exist in staging or production.
     </p>
   </div>
 
-  <div class="mdl-cell mdl-cell--12-col">
+  <div class="table-responsive mb-4">
     {% call macros.form(form) %}
-    <table class="mdl-data-table mdl-js-data-table mdl-shadow--2dp" style="width: 100%;">
+    <table class="table table-hover align-middle bg-white shadow-sm">
       <thead>
         <tr>
-          <th class="mdl-data-table__cell--non-numeric">Name</th>
-          <th class="mdl-data-table__cell--non-numeric">Canvas ID</th>
-          <th class="mdl-data-table__cell--non-numeric">Enrollments</th>
-          <th class="mdl-data-table__cell--non-numeric"></th>
+          <th>Name</th>
+          <th>Canvas ID</th>
+          <th>Enrollments</th>
+          <th></th>
         </tr>
       </thead>
       <tbody>
         {% for user in mock_users %}
         <tr>
-          <td class="mdl-data-table__cell--non-numeric">
+          <td>
             {{ user.name }}<br><small>{{ user.email }}</small>
           </td>
-          <td class="mdl-data-table__cell--non-numeric">{{ user.id }}</td>
-          <td class="mdl-data-table__cell--non-numeric">
+          <td>{{ user.id }}</td>
+          <td>
             {% for course in user.courses %}
               {{ course.roles|join(', ') }} in {{ course.name }}{% if not loop.last %}<br>{% endif %}
             {% else %}
               No course enrollments
             {% endfor %}
           </td>
-          <td class="mdl-data-table__cell--non-numeric">
+          <td>
             {# A submit button carries its own name and value, so one form covers every user. #}
-            <button class="mdl-button mdl-js-button mdl-button--raised mdl-js-ripple-effect"
+            <button class="btn btn-primary btn-sm text-nowrap"
                     type="submit" name="user_id" value="{{ user.id }}">Log in</button>
           </td>
         </tr>
@@ -48,18 +48,18 @@
     {% endcall %}
   </div>
 
-  <div class="mdl-cell mdl-cell--12-col">
-    <h5>Another Canvas ID</h5>
+  <div>
+    <h3 class="h5">Another Canvas ID</h3>
     <form method="POST">
       {# Rendered by hand rather than via hidden_tag() so the id stays unique;
          Flask-WTF drops the field entirely when CSRF is switched off. #}
       {% if form.csrf_token %}{{ form.csrf_token(id="manual_csrf_token") }}{% endif %}
-      <div class="mdl-textfield mdl-js-textfield mdl-textfield--floating-label mdl-cell--4-col">
-        {{ form.user_id(class="mdl-textfield__input") }}
-        <label class="mdl-textfield__label" for="user_id">Canvas ID</label>
+      <div class="mb-3">
+        <label class="form-label" for="user_id">Canvas ID</label>
+        {{ form.user_id(class="form-control") }}
       </div>
       <div class="form-buttons">
-        {{ form.submit(class="mdl-button mdl-js-button mdl-button--raised") }}
+        {{ form.submit(class="btn btn-primary") }}
       </div>
     </form>
   </div>

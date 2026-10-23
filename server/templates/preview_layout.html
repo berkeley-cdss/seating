@@ -32,7 +32,7 @@
         data-x="{{ seat.x if seat.x is not none else '' }}"
         data-y="{{ seat.y if seat.y is not none else '' }}"
         data-attributes="{{ seat.attributes|join(',') }}"><span class="layout-seat__badge">{{ seat.badge }}</span></button>
-<div class="seat-tooltip mdl-tooltip mdl-tooltip--large" for="{{ seat.id }}">
+<div class="seat-tooltip">
   {{ seat.name if seat.name else 'Movable seat' }}
   {% for attribute in seat.attribute_labels %}
     <br>{{ attribute }}
@@ -46,9 +46,9 @@
 {% endmacro %}
 
 {% block body %}
-<div class="layout-preview mdl-grid" id="layout-preview">
-  <div class="mdl-cell mdl-cell--12-col">
-    <h4>Seating Layout Preview</h4>
+<div class="layout-preview" id="layout-preview">
+  <div>
+    <h2 class="h4">Seating Layout Preview</h2>
     <p>
       Load the same room spreadsheet the import flow accepts to see how it renders, highlight
       the seats belonging to a layout or attribute, then build a new layout and export it as a
@@ -56,39 +56,33 @@
     </p>
   </div>
 
-  <div class="mdl-cell mdl-cell--12-col">
+  <div>
     <form action="{{ url_for('preview_layout') }}" method="post" enctype="multipart/form-data">
       {{ form.hidden_tag() }}
-      <div class="mdl-tabs mdl-js-tabs mdl-js-ripple-effect">
-        <div class="mdl-tabs__tab-bar">
-          <a href="#preview-upload-panel" class="mdl-tabs__tab is-active">From File Upload</a>
-          <a href="#preview-paste-panel" class="mdl-tabs__tab">From Pasted Rows</a>
+      <ul class="nav nav-tabs" role="tablist">
+        <li class="nav-item" role="presentation">
+          <button class="nav-link active" id="preview-upload-tab" data-bs-toggle="tab" data-bs-target="#preview-upload-panel" type="button" role="tab" aria-controls="preview-upload-panel" aria-selected="true">From File Upload</button>
+        </li>
+        <li class="nav-item" role="presentation">
+          <button class="nav-link" id="preview-paste-tab" data-bs-toggle="tab" data-bs-target="#preview-paste-panel" type="button" role="tab" aria-controls="preview-paste-panel" aria-selected="false">From Pasted Rows</button>
+        </li>
+      </ul>
+
+      <div class="tab-content pt-3">
+        <div class="tab-pane show active" id="preview-upload-panel" role="tabpanel" aria-labelledby="preview-upload-tab" tabindex="0">
+          <label class="form-label" for="upload_csv_file">Export one room tab of the master sheet as CSV or TSV, then upload it here.</label>
+          {{ form.file(class="form-control", type="file", accept=".csv,.tsv,.txt", id="upload_csv_file") }}
         </div>
 
-        <div class="mdl-tabs__panel is-active" id="preview-upload-panel">
-          <div class="mdl-grid">
-            <div class="mdl-cell mdl-cell--12-col">
-              {{ form.file(class="mdl-textfield__input", type="file", accept=".csv,.tsv,.txt", id="upload_csv_file") }}
-              <label for="upload_csv_file">Export one room tab of the master sheet as CSV or TSV, then upload it here.</label>
-            </div>
-          </div>
-        </div>
-
-        <div class="mdl-tabs__panel" id="preview-paste-panel">
-          <div class="mdl-grid">
-            <div class="mdl-cell mdl-cell--12-col">
-              <div class="mdl-textfield mdl-js-textfield mdl-cell--12-col">
-                {{ form.text(class="mdl-textfield__input layout-preview__textarea", rows=8, id="layout-csv-text") }}
-                <label class="mdl-textfield__label" for="layout-csv-text">Copy the header row and seat rows out of the sheet and paste them here</label>
-              </div>
-            </div>
-          </div>
+        <div class="tab-pane" id="preview-paste-panel" role="tabpanel" aria-labelledby="preview-paste-tab" tabindex="0">
+          <label class="form-label" for="layout-csv-text">Copy the header row and seat rows out of the sheet and paste them here</label>
+          {{ form.text(class="form-control layout-preview__textarea", rows=8, id="layout-csv-text") }}
         </div>
       </div>
 
       <div class="form-buttons">
-        {{ form.submit(class="mdl-button mdl-js-button mdl-button--raised") }}
-        <button type="button" class="mdl-button mdl-js-button" id="layout-load-sample">Load example</button>
+        {{ form.submit(class="btn btn-primary") }}
+        <button type="button" class="btn btn-outline-primary" id="layout-load-sample">Load example</button>
       </div>
     </form>
 
@@ -140,12 +134,12 @@ B,9,,,,TRUE,,TRUE,TRUE,,,TRUE,</pre>
   </div>
 
   {% if preview %}
-  <div class="mdl-cell mdl-cell--12-col">
-    <h5>Highlight and edit</h5>
+  <div>
+    <h3 class="h5">Highlight and edit</h3>
     <div class="layout-toolbar">
       <div id="layout-highlight-field">
         <label for="layout-highlight">Highlight seats belonging to</label>
-        <select id="layout-highlight">
+        <select id="layout-highlight" class="form-select w-auto d-inline-block">
           <option value="">All seats ({{ preview.counts.total }})</option>
           {% for group in preview.highlight_options %}
           <optgroup label="{{ group.group }}">
@@ -157,24 +151,24 @@ B,9,,,,TRUE,,TRUE,TRUE,,,TRUE,</pre>
         </select>
       </div>
       <div class="form-buttons">
-        <button type="button" class="mdl-button mdl-js-button mdl-button--raised"
+        <button type="button" class="btn btn-primary"
                 id="layout-mode-toggle" aria-pressed="false">New layout</button>
       </div>
     </div>
 
     <div class="layout-edit-only" hidden>
       <div class="layout-toolbar">
-        <div class="mdl-textfield mdl-js-textfield mdl-textfield--floating-label">
-          <input class="mdl-textfield__input" type="text" id="layout-name" value="newlayout">
-          <label class="mdl-textfield__label" for="layout-name">Name this layout</label>
+        <div>
+          <label class="form-label" for="layout-name">Name this layout</label>
+          <input class="form-control" type="text" id="layout-name" value="newlayout">
         </div>
         <div class="form-buttons">
-          <button type="button" class="mdl-button mdl-js-button mdl-button--raised mdl-button--colored"
+          <button type="button" class="btn btn-primary"
                   id="layout-export">Export CSV</button>
-          <button type="button" class="mdl-button mdl-js-button" id="layout-select-all">Select all</button>
-          <button type="button" class="mdl-button mdl-js-button" id="layout-select-none">Clear</button>
-          <button type="button" class="mdl-button mdl-js-button" id="layout-invert">Invert</button>
-          <button type="button" class="mdl-button mdl-js-button" id="layout-drop-broken">Deselect broken</button>
+          <button type="button" class="btn btn-outline-primary" id="layout-select-all">Select all</button>
+          <button type="button" class="btn btn-outline-primary" id="layout-select-none">Clear</button>
+          <button type="button" class="btn btn-outline-primary" id="layout-invert">Invert</button>
+          <button type="button" class="btn btn-outline-primary" id="layout-drop-broken">Deselect broken</button>
         </div>
       </div>
       <p class="layout-hint">
@@ -193,10 +187,10 @@ B,9,,,,TRUE,,TRUE,TRUE,,,TRUE,</pre>
     </p>
   </div>
 
-  <div class="mdl-cell mdl-cell--12-col room">
+  <div class="room">
     {% if preview.grid_rows %}
-    <h5>Fixed Seats</h5>
-    <h6>Front</h6>
+    <h3 class="h5">Fixed Seats</h3>
+    <h4 class="h6">Front</h4>
     {% set b = preview.bounds %}
     <div class="scroll" style="overflow-y: hidden">
       <div class="seats layout-grid"
@@ -216,11 +210,11 @@ B,9,,,,TRUE,,TRUE,TRUE,,,TRUE,</pre>
         {% endfor %}
       </div>
     </div>
-    <h6>Back</h6>
+    <h4 class="h6">Back</h4>
     {% endif %}
 
     {% if preview.movable_groups %}
-    <h5>Movable Seats</h5>
+    <h3 class="h5">Movable Seats</h3>
     <div class="layout-movable">
       {% for group in preview.movable_groups %}
       <div class="layout-movable__group">
@@ -236,11 +230,11 @@ B,9,,,,TRUE,,TRUE,TRUE,,,TRUE,</pre>
     {% endif %}
   </div>
 
-  <div class="mdl-cell mdl-cell--12-col layout-legend">
-    <h5>Legend</h5>
-    <div class="mdl-grid">
-      <div class="mdl-cell mdl-cell--5-col">
-        <h6>Seat state</h6>
+  <div class="layout-legend">
+    <h3 class="h5">Legend</h3>
+    <div class="row">
+      <div class="col-md-5">
+        <h4 class="h6">Seat state</h4>
         <ul>
           <li>{{ legend_swatch('layout-legend__swatch--selected') }}
             <span>In this layout <span class="layout-legend__desc">(Berkeley Blue)</span></span></li>
@@ -251,7 +245,7 @@ B,9,,,,TRUE,,TRUE,TRUE,,,TRUE,</pre>
           <li>{{ legend_swatch('layout-legend__swatch--focus') }}
             <span>Hovered or focused <span class="layout-legend__desc">(California Gold)</span></span></li>
         </ul>
-        <h6>Seat markings</h6>
+        <h4 class="h6">Seat markings</h4>
         <ul>
           <li>{{ legend_swatch('', 'L') }}
             <span>Lefty desk <span class="layout-legend__desc">(righty desks, the default, are
@@ -261,8 +255,8 @@ B,9,,,,TRUE,,TRUE,TRUE,,,TRUE,</pre>
         </ul>
       </div>
 
-      <div class="mdl-cell mdl-cell--7-col">
-        <h6>Columns in this file</h6>
+      <div class="col-md-7">
+        <h4 class="h6">Columns in this file</h4>
         <p class="layout-legend__desc">
           A column is a <strong>seat attribute</strong> when its name is one the app knows
           (below); every other column is a <strong>layout</strong> &mdash; a named set of seats.
