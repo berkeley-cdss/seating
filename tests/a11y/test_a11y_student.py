@@ -25,7 +25,7 @@ def test_a11y_select_exam_page(seeded_db, get_authed_driver):
     Checks a11y for select exam page
     """
     driver = get_authed_driver("123456")
-    first_offering_btn = driver.find_element(By.CSS_SELECTOR, ".mdl-list__item-primary-content")
+    first_offering_btn = driver.find_element(By.CSS_SELECTOR, ".item-link")
     assert first_offering_btn is not None
     first_offering_btn.click()
     report = run_axe(driver)

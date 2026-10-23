@@ -2,52 +2,56 @@
 {% import 'macros.html' as macros with context %}
 
 {% block body %}
-<div class="mdl-grid import-students">
-  <div class="mdl-cell mdl-cell--12-col">
-    <h4>Import students</h4>
-    <p>Import Canvas/bCourses roster (below), or import students via a file, pasting rows, or a Google Sheet URL. See below for formatting.</p>
-    <form id="import-students" action="{{ url_for('import_students', exam=exam) }}" method="post" enctype="multipart/form-data">
-      {{ form.hidden_tag() }}
-      <div class="import-source">
-        <label for="import_file">Upload a CSV, TSV or Excel (.xlsx) file:</label>
-        {{ form.file(id="import_file", accept=".csv,.tsv,.txt,.xlsx,text/csv,text/tab-separated-values,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet") }}
-        <p class="import-strategy-help">An Excel file's first sheet is imported.</p>
+<div class="import-students">
+  <h2 class="h4">Import students</h2>
+  <p>Import Canvas/bCourses roster (below), or import students via a file, pasting rows, or a Google Sheet URL. See below for formatting.</p>
+  <form id="import-students" action="{{ url_for('import_students', exam=exam) }}" method="post" enctype="multipart/form-data">
+    {{ form.hidden_tag() }}
+    <div class="import-source">
+      <label class="form-label" for="import_file">Upload a CSV, TSV or Excel (.xlsx) file:</label>
+      {{ form.file(class="form-control", id="import_file", accept=".csv,.tsv,.txt,.xlsx,text/csv,text/tab-separated-values,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet") }}
+      <p class="form-text">An Excel file's first sheet is imported.</p>
+    </div>
+    <div class="import-source">
+      <label class="form-label" for="import_text">Or paste rows, comma or tab separated (straight from a spreadsheet works):</label>
+      {{ form.text(class="form-control", id="import_text", rows=8, cols=80) }}
+    </div>
+    <div class="import-source">
+      <div class="row">
+        <div class="col-md-9">
+          <label class="form-label" for="import_sheet_url">Or link a Google Sheet:</label>
+          {{ form.sheet_url(class="form-control", id="import_sheet_url", type="url", placeholder="https://docs.google.com/spreadsheets/d/...") }}
+        </div>
+        <div class="col-md-3">
+          <label class="form-label" for="import_sheet_range">tab:</label>
+          {{ form.sheet_range(class="form-control", id="import_sheet_range", placeholder="Sheet1") }}
+        </div>
       </div>
-      <div class="import-source">
-        <label for="import_text">Or paste rows, comma or tab separated (straight from a spreadsheet works):</label>
-        {{ form.text(id="import_text", rows=8, cols=80) }}
-      </div>
-      <div class="import-source">
-        <label for="import_sheet_url">Or link a Google Sheet:</label>
-        {{ form.sheet_url(id="import_sheet_url", type="url", size=60, placeholder="https://docs.google.com/spreadsheets/d/...") }}
-        <label for="import_sheet_range">tab:</label>
-        {{ form.sheet_range(id="import_sheet_range", size=16, placeholder="Sheet1") }}
-        {% if config.GCP_SA_EMAIL %}
-        <p class="import-strategy-help">The sheet stays private: share it with <strong class="share-email">{{ config.GCP_SA_EMAIL }}</strong> as a Viewer.</p>
-        {% else %}
-        <p class="import-strategy-help">The sheet stays private: share it with the seating tool's Google account as a Viewer.</p>
-        {% endif %}
-      </div>
-      <p id="import-source-error" class="import-source-error" role="alert"></p>
+      {% if config.GCP_SA_EMAIL %}
+      <p class="form-text">The sheet stays private: share it with <strong class="share-email">{{ config.GCP_SA_EMAIL }}</strong> as a Viewer.</p>
+      {% else %}
+      <p class="form-text">The sheet stays private: share it with the seating tool's Google account as a Viewer.</p>
+      {% endif %}
+    </div>
+    <p id="import-source-error" class="import-source-error" role="alert"></p>
 
-      <h5>Options</h5>
-      {{ macros.render_import_strategies_choices(form, canvas_notes=True) }}
-      <div class="form-buttons">
-        {{ form.submit(id="import-submit", class="mdl-button mdl-js-button mdl-button--raised", value="Import") }}
-        <input id="import-canvas-roster" class="mdl-button mdl-js-button mdl-button--raised" type="submit" value="Import Canvas roster"
-               formaction="{{ url_for('import_students_from_canvas_roster', exam=exam) }}">
-      </div>
-      <p class="import-strategy-help">Import Canvas roster takes the course's students from bCourses: names, emails and ids, but no seats or preferences, so replacing preferences clears them.</p>
-    </form>
+    <h3 class="h5">Options</h3>
+    {{ macros.render_import_strategies_choices(form, canvas_notes=True) }}
+    <div class="form-buttons">
+      {{ form.submit(id="import-submit", class="btn btn-primary", value="Import") }}
+      <input id="import-canvas-roster" class="btn btn-outline-primary" type="submit" value="Import Canvas roster"
+             formaction="{{ url_for('import_students_from_canvas_roster', exam=exam) }}">
+    </div>
+    <p class="form-text">Import Canvas roster takes the course's students from bCourses: names, emails and ids, but no seats or preferences, so replacing preferences clears them.</p>
+  </form>
 
-    <h5>Format</h5>
-    <ul class="import-format">
-      <li>The first row names the columns. <strong>canvas id</strong>, <strong>email</strong> and <strong>name</strong> are required; <strong>student id</strong> is optional.</li>
-      <li>Preferences: one column per seat attribute (such as <strong>lefty</strong>), with <strong>true</strong> for wants and <strong>false</strong> for avoids; blank is no preference. A <strong>room:&lt;room id&gt;</strong> column does the same for a room.</li>
-      <li>Seats, optional: <strong>seat id</strong>, or <strong>session name</strong> and <strong>seat name</strong>.</li>
-      <li>The students page's export downloads a file in this format, to edit and import again.</li>
-    </ul>
-  </div>
+  <h3 class="h5">Format</h3>
+  <ul class="import-format">
+    <li>The first row names the columns. <strong>canvas id</strong>, <strong>email</strong> and <strong>name</strong> are required; <strong>student id</strong> is optional.</li>
+    <li>Preferences: one column per seat attribute (such as <strong>lefty</strong>), with <strong>true</strong> for wants and <strong>false</strong> for avoids; blank is no preference. A <strong>room:&lt;room id&gt;</strong> column does the same for a room.</li>
+    <li>Seats, optional: <strong>seat id</strong>, or <strong>session name</strong> and <strong>seat name</strong>.</li>
+    <li>The students page's export downloads a file in this format, to edit and import again.</li>
+  </ul>
 </div>
 <script>
   // one source per import: the server would use the first one anyway, so say so before sending. The

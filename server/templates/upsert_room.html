@@ -2,61 +2,51 @@
 {% import 'macros.html' as macros with context %}
 
 {% block body %}
-<div class="rooms mdl-grid">
-  <div class="mdl-cell mdl-cell--12-col">
-    {% if room %}
-      <h4>Update Information for: {{ room.display_name }}</h4>
-    {% else %}
-      <h4>Manually Create New Room</h4>
-    {% endif %}
-  </div>
-  <div class="mdl-cell mdl-cell--12-col">
-    {% call macros.form(form) %}
-      <h5>Basic Information</h5>
-      <div class="mdl-cell mdl-cell--12-col">
-        <div class="mdl-textfield mdl-js-textfield mdl-textfield--floating-label mdl-cell--12-col">
-          {{ form.display_name(class="mdl-textfield__input", type="Room Name", id="roomname") }}
-          <label class="mdl-textfield__label" for="roomname">Room Name</label>
-        </div>
-      </div>
-      <div class="mdl-cell mdl-cell--12-col">
-        <div class="mdl-textfield mdl-js-textfield mdl-textfield--floating-label mdl-cell--12-col">
-          {{ form.start_at(class="mdl-textfield__input", type="datetime-local", id="start_at") }}
-          <label class="mdl-textfield__label" for="start_at">Start At</label>
-        </div>
-      </div>
-      <div class="mdl-cell mdl-cell--12-col">
-        <div class="mdl-textfield mdl-js-textfield mdl-textfield--floating-label mdl-cell--12-col">
-          {{ form.duration_minutes(class="mdl-textfield__input", type="number", id="duration_minutes") }}
-          <label class="mdl-textfield__label" for="duration_minutes">Duration (Minutes)</label>
-        </div>
-      </div>
-      <h5>Movable Seats</h5>
-      <div id="manual_form_movable_seat_list" class="mdl-cell mdl-cell--12-col">
-        {% for movable_seat_form in form.movable_seats %}
-          <fieldset class="mdl-cell mdl-cell--12-col">
-            <div class="mdl-textfield mdl-js-textfield mdl-textfield--floating-label mdl-cell--8-col">
-              {{ movable_seat_form.attributes(class="mdl-textfield__input") }}
-              <label class="mdl-textfield__label">Seat Attributes</label>
-            </div>
-            <div class="mdl-textfield mdl-js-textfield mdl-textfield--floating-label mdl-cell--3-col">
-              {{ movable_seat_form.count(class="mdl-textfield__input", type="number") }}
-              <label class="mdl-textfield__label">Seat Count</label>
-            </div>
-            <div class="material-icons mdl-cell--1-col" style="text-align: center; margin: 0; cursor: pointer; display:none;" id="seat-delete-0" style="float: right;"
-              onclick="deleteSeat(this.id);">
-              clear
-            </div>
-          </fieldset>
-        {% endfor %}
-      </div>
-      <div class="form-buttons">
-        <button class="mdl-button mdl-js-button mdl-button--raised" type="button" id="movable-seat-list-add-button">Add Seat Type</button>
-        {{ form.submit(class="mdl-button mdl-js-button mdl-button--raised") }}
-        {{ form.cancel(class="mdl-button mdl-js-button mdl-button--raised") }}
-      </div>
-    {% endcall %}
-  </div>
+<div class="rooms">
+  {% if room %}
+    <h2 class="h4">Update Information for: {{ room.display_name }}</h2>
+  {% else %}
+    <h2 class="h4">Manually Create New Room</h2>
+  {% endif %}
+  {% call macros.form(form) %}
+    <h3 class="h5">Basic Information</h3>
+    <div class="mb-3">
+      <label class="form-label" for="roomname">Room Name</label>
+      {{ form.display_name(class="form-control", type="Room Name", id="roomname") }}
+    </div>
+    <div class="mb-3">
+      <label class="form-label" for="start_at">Start At</label>
+      {{ form.start_at(class="form-control", type="datetime-local", id="start_at") }}
+    </div>
+    <div class="mb-3">
+      <label class="form-label" for="duration_minutes">Duration (Minutes)</label>
+      {{ form.duration_minutes(class="form-control", type="number", id="duration_minutes") }}
+    </div>
+    <h3 class="h5">Movable Seats</h3>
+    <div id="manual_form_movable_seat_list">
+      {% for movable_seat_form in form.movable_seats %}
+        <fieldset class="row align-items-end mb-2">
+          <label class="col-8 form-label">Seat Attributes
+            {{ movable_seat_form.attributes(class="form-control seat-attributes") }}
+          </label>
+          <label class="col-3 form-label">Seat Count
+            {{ movable_seat_form.count(class="form-control seat-count", type="number") }}
+          </label>
+          <div class="col-1 mb-2">
+            <button type="button" class="icon-button seat-delete" style="display:none;" id="seat-delete-0"
+              aria-label="Remove this seat type" onclick="deleteSeat(this.id);">
+              <i class="bi bi-x-lg" aria-hidden="true"></i>
+            </button>
+          </div>
+        </fieldset>
+      {% endfor %}
+    </div>
+    <div class="form-buttons">
+      <button class="btn btn-outline-primary" type="button" id="movable-seat-list-add-button">Add Seat Type</button>
+      {{ form.submit(class="btn btn-primary") }}
+      {{ form.cancel(class="btn btn-outline-secondary") }}
+    </div>
+  {% endcall %}
 </div>
 
 
@@ -83,12 +73,13 @@
     var container = document.getElementById("manual_form_movable_seat_list");
     for (var i = startIndex; i < container.children.length; i++) {
       var seat = container.children[i];
-      var attribute_input = seat.children[0].children[0];
-      var count_input = seat.children[1].children[0];
-      var delete_button = seat.children[2];
-      new_name = attribute_input.name.replace(/\d+/g, i);
-      attribute_input.name = new_name;
+      var attribute_input = seat.querySelector('.seat-attributes');
+      var count_input = seat.querySelector('.seat-count');
+      var delete_button = seat.querySelector('.seat-delete');
+      attribute_input.name = attribute_input.name.replace(/\d+/g, i);
+      attribute_input.id = attribute_input.id.replace(/\d+/g, i);
       count_input.name = count_input.name.replace(/\d+/g, i);
+      count_input.id = count_input.id.replace(/\d+/g, i);
       delete_button.id = delete_button.id.replace(/\d+/g, i);
       
       if (i == 0) {

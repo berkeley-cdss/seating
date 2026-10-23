@@ -1,15 +1,12 @@
-<!DOCTYPE html PUBLIC "-//W3C//DTD HTML 4.01//EN"
-    "http://www.w3.org/TR/html4/strict.dtd">
+<!DOCTYPE html>
 <html lang="en">
 
   <head>
     <meta charset="utf-8">
-    <meta http-equiv="X-UA-Compatible" content="IE=edge">
     <meta name="description" content="Exam Seat Assignments">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, minimum-scale=1.0">
-    <link rel="stylesheet" href="https://fonts.googleapis.com/css?family=Roboto:regular,bold,italic,thin,light,bolditalic,black,medium&amp;lang=en">
-    <link rel="stylesheet" href="https://fonts.googleapis.com/icon?family=Material+Icons">
-    <link rel="stylesheet" href="{{ url_for('static', filename='vendor/material-design-lite/material.indigo-blue.min.css') }}">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <link rel="stylesheet" href="{{ url_for('static', filename='vendor/bootstrap/bootstrap.min.css') }}">
+    <link rel="stylesheet" href="{{ url_for('static', filename='vendor/bootstrap-icons/bootstrap-icons.min.css') }}">
     <link rel="stylesheet" type="text/css" href="{{ url_for('static', filename='css/style.css') }}">
     <link rel="stylesheet" type="text/css" href="{{ url_for('static', filename='css/flash.css') }}">
     <script src="{{ url_for('static', filename='js/utils.js') }}"></script>
@@ -18,112 +15,99 @@
   </head>
 
   <body>
-    <div class="mdl-layout mdl-js-layout mdl-layout--fixed-header">
-      <header class="mdl-layout__header">
-        <div class="mdl-layout__header-row">
-        
-          {% if exam %}
-            <a href="{{ url_for('exam', exam=exam) }}">
-              <span class="hidden-small mdl-layout__title">
-                {{ exam.offering.name + " - " + exam.display_name }}
-              </span>
-            </a>
-          {% elif offering %}
-            <a href="{{ url_for('offering', offering=offering) }}">
-              <span class="hidden-small mdl-layout__title">
-                {{ offering.name }}
-              </span>
-            </a>
-          {% else %}
-            <a href="{{ url_for('index') }}">
-              <span class="hidden-small mdl-layout__title">
-                {{ title }}
-              </span>
-            </a>
-          {% endif %}
-          
-          <div class="hidden-small mdl-layout-spacer"></div>
-
-          {% if exam %}
-            <nav class="mdl-navigation">
-              <a id="room-menu" class="mdl-navigation__link" href="#">
-                Rooms <span class="dropdown-caret" aria-hidden="true"></span>
-              </a>
-              <ul class="mdl-menu mdl-menu--bottom-left mdl-js-menu" for="room-menu">
-                <a class="mdl-menu__item add-item" href="{{ url_for('import_room', exam=exam) }}"><i class="material-icons">add</i>
-                  <span>Add rooms...</span>
-                </a>
-              {% for room in exam.rooms %}
-              <a href="{{ url_for('room', exam=exam, id=room.id) }}">
-                <li class="mdl-menu__item">
-                    {{ room.display_name }}
-                    {% if room.start_at %}
-                      <span style="margin-right: 5px;"><small>
-                        {{ room.start_at_time_display() }}
-                      </small></span>
-                    {% endif %}
-                    {% if room.duration_minutes %}
-                      <span><small>
-                        {{ room.duration_display }}
-                      </small></span>
-                    {% endif %}
-                </li>
-              </a>
-              {% endfor %}
-              </ul>
-              <a class="mdl-navigation__link" href="{{ url_for('students', exam=exam) }}">Students</a>
-              <a class="mdl-navigation__link" href="{{ url_for('offering', offering=exam.offering) }}">All Exams</a>
-              <a class="mdl-navigation__link" href="{{ url_for('index') }}">Home</a>
-              <a class="mdl-navigation__link" href="{{ wiki_base_url }}" target="_blank">Wiki</a>
-            </nav>
-          {% elif offering %} 
-            <nav class="mdl-navigation">
-                <a class="mdl-navigation__link" href="{{ url_for('index') }}">Home</a>
-                <a class="mdl-navigation__link" href="{{ wiki_base_url }}" target="_blank">Wiki</a>
-            </nav>
-          {% else %}
-            <nav class="mdl-navigation">
-                <a class="mdl-navigation__link" href="{{ url_for('index') }}">Home</a>
-                <a class="mdl-navigation__link" href="{{ wiki_base_url }}" target="_blank">Wiki</a>
-            </nav>
-          {% endif %}
-          {% if current_user.is_authenticated %}
-            <a class="mdl-navigation__link" href="{{ url_for('preview_layout') }}">Layout Preview</a>
-            <a id="auth-menu" class="mdl-navigation__link" href="#">
-                {{ current_user.name }} <span class="dropdown-caret" aria-hidden="true"></span>
-            </a>
-            <ul class="mdl-menu mdl-menu--bottom-left mdl-js-menu" for="auth-menu">
-              <a class="mdl-navigation__link" href="{{ url_for('auth.logout') }}">
-              <li class="mdl-menu__item">Log Out</li>
-              </a>
-            </ul>
-          {% else %}
-            <a class="mdl-navigation__link" href="{{ url_for('auth.login') }}">
-              Login
-            </a>
-          {% endif %}
-        </div>
-      </header>
-
-      {% with messages = get_flashed_messages(with_categories=true) %}
-        {% if messages %}
-            <div class="flash-messages">
-                {% for category, message in messages %}
-                    <div class="alert alert-{{ category }}">
-                        <span class="alert-icon">🔔</span>
-                        <span class="alert-message">{% for line in message.split("\n") %}{{ line }}{% if not loop.last %}<br>{% endif %}{% endfor %}</span>
-                        <button type="button" class="close-alert" onclick="this.parentElement.style.display='none';">&times;</button>
-                    </div>
-                {% endfor %}
-            </div>
+    <nav class="navbar navbar-expand-lg bg-primary site-header" data-bs-theme="dark">
+      <div class="container-fluid">
+        {# the course, exam or page this is; the page's top-level heading #}
+        <h1 class="site-title">
+        {% if exam %}
+          <a class="navbar-brand" href="{{ url_for('exam', exam=exam) }}">
+            {{ exam.offering.name + " - " + exam.display_name }}
+          </a>
+        {% elif offering %}
+          <a class="navbar-brand" href="{{ url_for('offering', offering=offering) }}">
+            {{ offering.name }}
+          </a>
+        {% else %}
+          <a class="navbar-brand" href="{{ url_for('index') }}">
+            {{ title }}
+          </a>
         {% endif %}
-      {% endwith %}
+        </h1>
 
-      <main class="mdl-layout__content">
-        {% block body %}{% endblock %}
-      </main>
-    </div>
+        <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#site-nav"
+                aria-controls="site-nav" aria-expanded="false" aria-label="Toggle navigation">
+          <span class="navbar-toggler-icon"></span>
+        </button>
 
-    <script src="{{ url_for('static', filename='vendor/material-design-lite/material.min.js') }}"></script>
+        <div class="collapse navbar-collapse" id="site-nav">
+          <ul class="navbar-nav ms-auto">
+            {% if exam %}
+              <li class="nav-item dropdown">
+                <a id="room-menu" class="nav-link dropdown-toggle" href="#" role="button" data-bs-toggle="dropdown" aria-expanded="false">
+                  Rooms
+                </a>
+                <ul class="dropdown-menu" data-bs-theme="light" aria-labelledby="room-menu">
+                  <li>
+                    <a class="dropdown-item add-item" href="{{ url_for('import_room', exam=exam) }}">
+                      <i class="bi bi-plus-lg" aria-hidden="true"></i> Add rooms...
+                    </a>
+                  </li>
+                  {% for room in exam.rooms %}
+                  <li>
+                    <a class="dropdown-item" href="{{ url_for('room', exam=exam, id=room.id) }}">
+                      {{ room.display_name }}
+                      {% if room.start_at %}
+                        <small class="me-1">{{ room.start_at_time_display() }}</small>
+                      {% endif %}
+                      {% if room.duration_minutes %}
+                        <small>{{ room.duration_display }}</small>
+                      {% endif %}
+                    </a>
+                  </li>
+                  {% endfor %}
+                </ul>
+              </li>
+              <li class="nav-item"><a class="nav-link" href="{{ url_for('students', exam=exam) }}">Students</a></li>
+              <li class="nav-item"><a class="nav-link" href="{{ url_for('offering', offering=exam.offering) }}">All Exams</a></li>
+            {% endif %}
+            <li class="nav-item"><a class="nav-link" href="{{ url_for('index') }}">Home</a></li>
+            <li class="nav-item"><a class="nav-link" href="{{ wiki_base_url }}" target="_blank">Wiki</a></li>
+            {% if current_user.is_authenticated %}
+              <li class="nav-item"><a class="nav-link" href="{{ url_for('preview_layout') }}">Layout Preview</a></li>
+              <li class="nav-item dropdown">
+                <a id="auth-menu" class="nav-link dropdown-toggle" href="#" role="button" data-bs-toggle="dropdown" aria-expanded="false">
+                  {{ current_user.name }}
+                </a>
+                <ul class="dropdown-menu dropdown-menu-end" data-bs-theme="light" aria-labelledby="auth-menu">
+                  <li><a class="dropdown-item" href="{{ url_for('auth.logout') }}">Log Out</a></li>
+                </ul>
+              </li>
+            {% else %}
+              <li class="nav-item"><a class="nav-link" href="{{ url_for('auth.login') }}">Login</a></li>
+            {% endif %}
+          </ul>
+        </div>
+      </div>
+    </nav>
+
+    {% with messages = get_flashed_messages(with_categories=true) %}
+      {% if messages %}
+          <div class="flash-messages">
+              {% for category, message in messages %}
+                  {# the app flashes 'error', which Bootstrap calls 'danger' #}
+                  <div class="alert alert-{{ 'danger' if category == 'error' else category }} alert-dismissible fade show" role="alert">
+                      <span class="alert-message">{% for line in message.split("\n") %}{{ line }}{% if not loop.last %}<br>{% endif %}{% endfor %}</span>
+                      <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+                  </div>
+              {% endfor %}
+          </div>
+      {% endif %}
+    {% endwith %}
+
+    <main class="site-content">
+      {% block body %}{% endblock %}
+    </main>
+
+    <script src="{{ url_for('static', filename='vendor/bootstrap/bootstrap.bundle.min.js') }}"></script>
   </body>
 </html>

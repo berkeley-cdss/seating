@@ -37,7 +37,7 @@
 
 .layout-preview__csv-help summary {
   cursor: pointer;
-  color: #1976d2;
+  color: var(--bs-link-color);
 }
 
 .layout-preview__csv-help pre {

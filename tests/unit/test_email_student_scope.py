@@ -46,7 +46,7 @@ def test_own_student_is_prefilled(seeded_db, login_as):
 def test_students_page_link_opens_the_email_page(seeded_db, login_as):
     client = login_as(1)
     page = client.get(f'{EXAM_URL}/students/').get_data(as_text=True)
-    url = re.search(r"location.href = '([^']*/students/\d+/email/)'", page).group(1)
+    url = re.search(r'href="([^"]*/students/\d+/email/)"', page).group(1)
     assert client.get(url).status_code == 200
 
 

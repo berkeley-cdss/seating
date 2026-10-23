@@ -138,7 +138,7 @@ def test_first_source_given_is_used(staff, sheet):
 
 def test_page_has_one_form_with_one_set_of_options(staff):
     page = staff.get(IMPORT_URL).get_data(as_text=True)
-    assert 'mdl-tabs' not in page
+    assert 'nav-tabs' not in page
     assert re.findall(r'<form[^>]*action="([^"]+)"', page) == [IMPORT_URL]
     # its second button imports the Canvas roster, with the same options
     assert page.count('value="Import"') == 1
@@ -149,8 +149,8 @@ def test_page_has_one_form_with_one_set_of_options(staff):
 
 def test_page_says_which_options_the_canvas_roster_ignores(staff):
     page = staff.get(IMPORT_URL).get_data(as_text=True)
-    options = re.findall(r'<div class="mdl-cell mdl-cell--12-col">(.*?)</div>\s*(?=<div class="mdl-cell|</div>)',
-                         page.split('<div class="mdl-grid import-strategies">')[1], re.S)
+    options = re.findall(r'<div class="mb-3">(.*?)</div>\s*(?=<div class="mb-3"|</div>)',
+                         page.split('<div class="import-strategies">')[1], re.S)
     ignored = [re.search(r'name="(\w+)"', option).group(1) for option in options
                if 'Not used when importing the Canvas roster.' in option]
     assert ignored == ['assignment_import_strategy']
