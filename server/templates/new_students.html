@@ -2,93 +2,83 @@
 {% import 'macros.html' as macros with context %}
 
 {% block body %}
-<ul class="nav nav-tabs" role="tablist">
-  <li class="nav-item" role="presentation">
-    <button class="nav-link active" id="sheet-tab" data-bs-toggle="tab" data-bs-target="#sheet-panel" type="button" role="tab" aria-controls="sheet-panel" aria-selected="true">Import from Custom Sheet</button>
-  </li>
-  <li class="nav-item" role="presentation">
-    <button class="nav-link" id="canvas-tab" data-bs-toggle="tab" data-bs-target="#canvas-panel" type="button" role="tab" aria-controls="canvas-panel" aria-selected="false">Import from Canvas Roster</button>
-  </li>
-  <li class="nav-item" role="presentation">
-    <button class="nav-link" id="upload-tab" data-bs-toggle="tab" data-bs-target="#upload-panel" type="button" role="tab" aria-controls="upload-panel" aria-selected="false">Import from CSV upload</button>
-  </li>
-  <li class="nav-item" role="presentation">
-    <button class="nav-link" id="manual-tab" data-bs-toggle="tab" data-bs-target="#manual-panel" type="button" role="tab" aria-controls="manual-panel" aria-selected="false">Manual Entry</button>
-  </li>
-</ul>
-<div class="tab-content pt-3">
-  <div class="tab-pane show active" id="sheet-panel" role="tabpanel" aria-labelledby="sheet-tab" tabindex="0">
-    <form action="{{ url_for('import_students_from_custom_sheet', exam=exam) }}" method="post">
-        {{ from_sheet_form.hidden_tag() }}
+<div class="import-students">
+  <h2 class="h4">Import students</h2>
+  <p>Import Canvas/bCourses roster (below), or import students via a file, pasting rows, or a Google Sheet URL. See below for formatting.</p>
+  <form id="import-students" action="{{ url_for('import_students', exam=exam) }}" method="post" enctype="multipart/form-data">
+    {{ form.hidden_tag() }}
+    <div class="import-source">
+      <label class="form-label" for="import_file">Upload a CSV, TSV or Excel (.xlsx) file:</label>
+      {{ form.file(class="form-control", id="import_file", accept=".csv,.tsv,.txt,.xlsx,text/csv,text/tab-separated-values,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet") }}
+      <p class="form-text">An Excel file's first sheet is imported.</p>
+    </div>
+    <div class="import-source">
+      <label class="form-label" for="import_text">Or paste rows, comma or tab separated (straight from a spreadsheet works):</label>
+      {{ form.text(class="form-control", id="import_text", rows=8, cols=80) }}
+    </div>
+    <div class="import-source">
       <div class="row">
-        <div class="col-md-6 mb-3">
-          <label class="form-label" for="gsurl">Google Sheet URL</label>
-          {{ from_sheet_form.sheet_url(class="form-control", type="Google Sheet URL", id="gsurl") }}
-          <div class="errormsg">
-            {% if from_sheet_form.sheet_url.errors %}
-              {% for error in from_sheet_form.sheet_url.errors %}
-                <span>{{ from_sheet_form.sheet_url.errors }}</span>
-              {% endfor %}
-            {% endif %}
-          </div>
+        <div class="col-md-9">
+          <label class="form-label" for="import_sheet_url">Or link a Google Sheet:</label>
+          {{ form.sheet_url(class="form-control", id="import_sheet_url", type="url", placeholder="https://docs.google.com/spreadsheets/d/...") }}
         </div>
-        <div class="col-md-6 mb-3">
-          <label class="form-label" for="sheetname">Sheet Name</label>
-          {{ from_sheet_form.sheet_range(class="form-control", type="Sheet Name", id="sheetname") }}
-          <div class="errormsg">
-            {% if from_sheet_form.sheet_range.errors %}
-              {% for error in from_sheet_form.sheet_range.errors %}
-                <span>{{ from_sheet_form.sheet_range.errors }}</span>
-              {% endfor %}
-            {% endif %}
-          </div>
+        <div class="col-md-3">
+          <label class="form-label" for="import_sheet_range">tab:</label>
+          {{ form.sheet_range(class="form-control", id="import_sheet_range", placeholder="Sheet1") }}
         </div>
       </div>
-      {{ macros.render_import_strategies_choices(from_sheet_form) }}
-      <div class="form-buttons">
-        {{ from_sheet_form.submit(class="btn btn-primary") }}
-      </div>
-    </form>
-  </div>
+      {% if config.GCP_SA_EMAIL %}
+      <p class="form-text">The sheet stays private: share it with <strong class="share-email">{{ config.GCP_SA_EMAIL }}</strong> as a Viewer.</p>
+      {% else %}
+      <p class="form-text">The sheet stays private: share it with the seating tool's Google account as a Viewer.</p>
+      {% endif %}
+    </div>
+    <p id="import-source-error" class="import-source-error" role="alert"></p>
 
-  <div class="tab-pane" id="canvas-panel" role="tabpanel" aria-labelledby="canvas-tab" tabindex="0">
-    <form action="{{ url_for('import_students_from_canvas_roster', exam=exam) }}" method="post">
-        {{ from_canvas_form.hidden_tag() }}
-        {{ macros.render_import_strategies_choices(from_canvas_form) }}
-        <div class="form-buttons">
-          {{ from_canvas_form.submit(class="btn btn-primary") }}
-        </div>
-    </form>
-  </div>
+    <h3 class="h5">Options</h3>
+    {{ macros.render_import_strategies_choices(form, canvas_notes=True) }}
+    <div class="form-buttons">
+      {{ form.submit(id="import-submit", class="btn btn-primary", value="Import") }}
+      <input id="import-canvas-roster" class="btn btn-outline-primary" type="submit" value="Import Canvas roster"
+             formaction="{{ url_for('import_students_from_canvas_roster', exam=exam) }}">
+    </div>
+    <p class="form-text">Import Canvas roster takes the course's students from bCourses: names, emails and ids, but no seats or preferences, so replacing preferences clears them.</p>
+  </form>
 
-  <div class="tab-pane" id="upload-panel" role="tabpanel" aria-labelledby="upload-tab" tabindex="0">
-    <form action="{{ url_for('import_students_from_csv_upload', exam=exam) }}" method="post" enctype="multipart/form-data">
-        {{ from_csv_form.hidden_tag() }}
-        <div class="mb-3">
-          {{ from_csv_form.file(class="form-control", type="file", id="upload_csv_file", **{"aria-label": "CSV file"})}}
-        </div>
-        {{ macros.render_import_strategies_choices(from_csv_form) }}
-        <div class="form-buttons">
-          {{ from_csv_form.submit(class="btn btn-primary") }}
-        </div>
-    </form>
-  </div>
-
-  <div class="tab-pane" id="manual-panel" role="tabpanel" aria-labelledby="manual-tab" tabindex="0">
-    <form action="{{ url_for('import_students_from_manual_input', exam=exam) }}" method="post">
-        {{ from_manual_input_form.hidden_tag() }}
-        <div class="mb-3">
-          <label class="form-label" for="students">Enter student roster here (CSV format):</label>
-          {{ from_manual_input_form.text(class="form-control", id="students", rows=10, cols=70) }}
-        </div>
-        {{ macros.render_import_strategies_choices(from_manual_input_form) }}
-        <div class="form-buttons">
-          {{ from_manual_input_form.submit(class="btn btn-primary") }}
-        </div>
-    </form>
-  </div>
+  <h3 class="h5">Format</h3>
+  <ul class="import-format">
+    <li>The first row names the columns. <strong>canvas id</strong>, <strong>email</strong> and <strong>name</strong> are required; <strong>student id</strong> is optional.</li>
+    <li>Preferences: one column per seat attribute (such as <strong>lefty</strong>), with <strong>true</strong> for wants and <strong>false</strong> for avoids; blank is no preference. A <strong>room:&lt;room id&gt;</strong> column does the same for a room.</li>
+    <li>Seats, optional: <strong>seat id</strong>, or <strong>session name</strong> and <strong>seat name</strong>.</li>
+    <li>The students page's export downloads a file in this format, to edit and import again.</li>
+  </ul>
 </div>
 <script>
+  // one source per import: the server would use the first one anyway, so say so before sending. The
+  // Canvas roster button imports none of them, so a source filled in there is likely a wrong click.
+  (function () {
+    var form = document.getElementById('import-students');
+    var error = document.getElementById('import-source-error');
+    form.addEventListener('submit', function (event) {
+      var given = [
+        document.getElementById('import_file').files.length > 0,
+        document.getElementById('import_text').value.trim() !== '',
+        document.getElementById('import_sheet_url').value.trim() !== '',
+      ].filter(Boolean).length;
+      if (event.submitter && event.submitter.id === 'import-canvas-roster') {
+        error.textContent = given > 0
+          ? 'Import Canvas roster doesn\'t use a file, pasted rows or a sheet link: clear them, or choose Import.' : '';
+      } else {
+        error.textContent = given === 0 ? 'Choose a file, paste rows or link a Google Sheet.'
+          : given > 1 ? 'Choose only one: a file, pasted rows or a Google Sheet link.' : '';
+      }
+      if (error.textContent) {
+        event.preventDefault();
+        event.stopImmediatePropagation();
+      }
+    });
+  })();
+
   // removing students is hard to undo, so confirm it before importing
   document.querySelectorAll('select.missing-students').forEach(function (select) {
     select.form.addEventListener('submit', function (event) {

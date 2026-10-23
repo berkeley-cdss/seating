@@ -406,3 +406,22 @@ p a,
   display: block;
   width: 100%;
 }
+
+.import-source {
+  margin: 12px 0;
+}
+
+/* the import page: one centered column, as wide as its widest row (the option dropdowns) */
+.import-students {
+  max-width: 800px;
+  margin: 0 auto;
+}
+
+.import-source-error {
+  color: #c62828;
+  min-height: 1em;
+}
+
+.import-format li {
+  margin-bottom: 4px;
+}
