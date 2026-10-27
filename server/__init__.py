@@ -88,8 +88,8 @@ def handle_invalid_access_token(e):
 
 
 # Defense in depth should a script ever get injected again: pages load scripts, styles, fonts and
-# images only from this app (and Google Fonts), and fetch() only from this app, so an injected
-# script cannot fetch() or load an image to hand data to another site.
+# images only from this app, and fetch() only from this app, so an injected script cannot fetch()
+# or load an image to hand data to another site.
 # Inline <script> blocks and onclick= handlers are still allowed, as the templates use them
 # throughout; dropping 'unsafe-inline' from script-src needs those moved into static/js first.
 # There is no form-action: browsers apply it to the redirects after a form is posted, and a post
@@ -97,9 +97,9 @@ def handle_invalid_access_token(e):
 CONTENT_SECURITY_POLICY = '; '.join([
     "default-src 'self'",
     "script-src 'self' 'unsafe-inline'",
-    "style-src 'self' 'unsafe-inline' https://fonts.googleapis.com",
-    "font-src 'self' https://fonts.gstatic.com",
-    # material-design-lite draws its checkboxes and radios with data: SVGs
+    "style-src 'self' 'unsafe-inline'",
+    "font-src 'self'",
+    # Bootstrap draws its checkboxes, selects and close buttons with data: SVGs
     "img-src 'self' data:",
     "connect-src 'self'",
     "base-uri 'self'",
