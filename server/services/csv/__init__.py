@@ -1,5 +1,10 @@
 import csv
 import io
+import zipfile
+
+from openpyxl import load_workbook
+
+from server.typings.exception import DataValidationError
 
 
 class LowerCaseDictReader(csv.DictReader):
@@ -28,6 +33,35 @@ def parse_csv_str(csv_str, delimiter=','):
     headers = list(reader.fieldnames)
     rows = [row for row in reader]
     return headers, rows
+
+
+def parse_xlsx(content):
+    """
+    Parse the first sheet of an Excel (.xlsx) file, like parse_csv_str: lowercase headers, and every
+    cell a string. Excel stores numbers as floats, so whole numbers (canvas ids, say) lose their ".0",
+    and TRUE and FALSE cells read as "true" and "false". Empty lines are skipped.
+    """
+    try:
+        sheet = load_workbook(io.BytesIO(content), read_only=True, data_only=True).worksheets[0]
+    except (zipfile.BadZipFile, KeyError, IndexError, OSError):
+        raise DataValidationError("Couldn't read the Excel file: save it as .xlsx or as CSV")
+
+    def cell(value):
+        if value is None:
+            return ''
+        if isinstance(value, bool):
+            return str(value).lower()
+        if isinstance(value, float) and value.is_integer():
+            return str(int(value))
+        return str(value).strip()
+
+    lines = [[cell(value) for value in line] for line in sheet.iter_rows(values_only=True)]
+    lines = [line for line in lines if any(line)]
+    if not lines:
+        return [], []
+    headers = [header.lower() for header in lines[0]]
+    rows = [{header: value for header, value in zip(headers, line) if header} for line in lines[1:]]
+    return [header for header in headers if header], rows
 
 
 def original_csv_headers(csv_str, delimiter=','):

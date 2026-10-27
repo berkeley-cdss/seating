@@ -40,13 +40,15 @@ def _post(client, source, **options):
     data = {'csrf_token': re.search(r'name="csrf_token" type="hidden" value="([^"]+)"', page).group(1),
             **DEFAULTS, **options}
     data = {key: value for key, value in data.items() if value is not None}
-    response = client.post(f'{EXAM_URL}/students/import/from_{source}/', data=data, follow_redirects=True)
+    # the Canvas roster button posts the same form elsewhere; files, pasted rows and sheet links to the page
+    url = f'{EXAM_URL}/students/import/' + ('from_canvas_roster/' if source == 'canvas_roster' else '')
+    response = client.post(url, data=data, follow_redirects=True)
     return [' '.join(message.split()) for message in
             re.findall(r'<span class="alert-message">(.*?)</span>', response.get_data(as_text=True), re.S)]
 
 
 def _manual(client, text, **options):
-    return _post(client, 'manual_input', text=text, **options)
+    return _post(client, 'paste', text=text, **options)
 
 
 @pytest.fixture
@@ -92,6 +94,22 @@ def test_roster_import_keeps_preferences(staff):
     db.session.commit()
     _post(staff, 'canvas_roster')
     assert (_student('345678').wants, _student('345678').avoids) == ({'lefty'}, {'broken'})
+
+
+@pytest.mark.parametrize('strategy, wants', [('merge', {'Lefty'}), ('overwrite', set()), ('ignore', {'Lefty'})])
+def test_roster_import_uses_the_preference_option(staff, strategy, wants):
+    # the roster has no preferences, so replacing clears them: the page says so
+    _post(staff, 'canvas_roster', updated_preference_import_strategy=strategy)
+    assert _student('345678').wants == wants
+
+
+@pytest.mark.parametrize('revalidate, seated', [('y', False), (None, True)])
+def test_roster_import_uses_the_unseat_option(staff, sharon_wants_the_impossible, revalidate, seated):
+    # Sharon sits in seat 2, which doesn't fit what she wants
+    _student('345678').assignment = SeatAssignment(seat=db.session.get(Seat, 2))
+    db.session.commit()
+    _post(staff, 'canvas_roster', revalidate_existing_assignments=revalidate)
+    assert (_student('345678').assignment is not None) == seated
 
 
 def test_basic_info_keep(staff):
