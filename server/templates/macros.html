@@ -21,7 +21,7 @@
 {% set proctor = proctor and staff %}
 {% if room.seats %}
 <div class="room">
-  <h4>{{ room.display_name }}
+  <h2 class="h4">{{ room.display_name }}
     {% if room.start_at %}
         <span style="margin-right: 5px;"><small>
           {{ room.start_at_time_display() }}
@@ -32,10 +32,10 @@
           {{ room.duration_display }}
         </small></span>
     {% endif %}
-  </h4>
+  </h2>
 
   {% if room.movable_seats %}
-    <h5>Movable Seats</h5>
+    <h3 class="h5">Movable Seats</h3>
     {% set circle_size = 24 %}
     <div style="width: 40%; margin: 0 auto; text-align: left;">
     <div style="text-align: center;">There are {{ room.movable_seats|length }} movable seats in this room.</div>
@@ -60,7 +60,7 @@
             </span>
           {% endif %}
         {% endif %}
-        <div class="seat-tooltip mdl-tooltip mdl-tooltip--large" for="{{ seat.id }}">
+        <div class="seat-tooltip">
         {{ seat.id }}
           {% if show_attributes %}
             {% for attribute in seat.attributes %}
@@ -91,8 +91,8 @@
   {% endif %}
 
   {% if room.fixed_seats %}
-  <h5>Fixed Seats</h5>
-  <h6>{{ 'Back' if proctor else 'Front' }}</h6>
+  <h3 class="h5">Fixed Seats</h3>
+  <h4 class="h6">{{ 'Back' if proctor else 'Front' }}</h4>
   {% set x_min = room.fixed_seats|map(attribute='x')|min %}
   {% set x_max = room.fixed_seats|map(attribute='x')|max %}
   {% set y_min = room.fixed_seats|map(attribute='y')|min %}
@@ -129,7 +129,7 @@
       {% if linkable %}
       </a>
       {% endif %}
-      <div class="seat-tooltip mdl-tooltip mdl-tooltip--large" for="{{ seat.id }}">
+      <div class="seat-tooltip">
         {{ seat.name }}
         {% if show_attributes %}
         {% for attribute in seat.attributes %}
@@ -150,9 +150,9 @@
   {% endfor %}
   </div>
   </div>
-  <h6>{{ 'Front' if proctor else 'Back' }}</h6>
+  <h4 class="h6">{{ 'Front' if proctor else 'Back' }}</h4>
   {% if staff and not remove_link and room.id %}
-  <h6>Click on any assigned seat (blue) to view student details. Clicking on an unoccupied seat will lead you to a shareable link for that seat.</h6>
+  <h4 class="h6">Click on any assigned seat (blue) to view student details. Clicking on an unoccupied seat will lead you to a shareable link for that seat.</h4>
   {% endif %}
   {% endif %}
 </div>
@@ -160,38 +160,42 @@
 {% endmacro %}
 
 {% macro render_checkbox(form, field_name, label) %}
-<div class="checkbox" id="{{ field_name }}">
-  {{ form[field_name] }}
-  <label for="{{ field_name }}">{{ label }}</label>
+<div class="form-check">
+  {{ form[field_name](class="form-check-input") }}
+  <label class="form-check-label" for="{{ form[field_name].id }}">{{ label }}</label>
 </div>
 {% endmacro %}
 
-{% macro render_import_strategies_choices(form) %}
-<div class="mdl-grid import-strategies">
-  <div class="mdl-cell mdl-cell--12-col">
+{% macro render_import_strategies_choices(form, canvas_notes=False) %}
+{# canvas_notes: the options sit in a form that can also import the Canvas roster, which has no seats,
+   so say which option that import doesn't use #}
+{% set canvas_note %}{% if canvas_notes %}<p class="form-text">Not used when importing the Canvas roster.</p>{% endif %}{% endset %}
+<div class="import-strategies">
+  <div class="mb-3">
     {{ render_checkbox(form, 'revalidate_existing_assignments', 'Unseat students whose seat no longer fits their updated preferences') }}
   </div>
-  <div class="mdl-cell mdl-cell--12-col">
-    <label for="{{ form.assignment_import_strategy.id }}">Seats listed in the import:</label>
-    {{ form.assignment_import_strategy() }}
+  <div class="mb-3">
+    <label class="form-label" for="{{ form.assignment_import_strategy.id }}">Seats listed in the import:</label>
+    {{ form.assignment_import_strategy(class="form-select") }}
+    {{ canvas_note }}
   </div>
-  <div class="mdl-cell mdl-cell--12-col">
-    <label for="{{ form.updated_student_info_import_strategy.id }}">Name, email and student id of students already in this exam:</label>
-    {{ form.updated_student_info_import_strategy() }}
+  <div class="mb-3">
+    <label class="form-label" for="{{ form.updated_student_info_import_strategy.id }}">Name, email and student id of students already in this exam:</label>
+    {{ form.updated_student_info_import_strategy(class="form-select") }}
   </div>
-  <div class="mdl-cell mdl-cell--12-col">
-    <label for="{{ form.updated_preference_import_strategy.id }}">Preferences of students already in this exam:</label>
-    {{ form.updated_preference_import_strategy() }}
+  <div class="mb-3">
+    <label class="form-label" for="{{ form.updated_preference_import_strategy.id }}">Preferences of students already in this exam:</label>
+    {{ form.updated_preference_import_strategy(class="form-select") }}
   </div>
-  <div class="mdl-cell mdl-cell--12-col">
-    <label for="{{ form.new_student_import_strategy.id }}">Students in the import but not yet in this exam:</label>
-    {{ form.new_student_import_strategy() }}
+  <div class="mb-3">
+    <label class="form-label" for="{{ form.new_student_import_strategy.id }}">Students in the import but not yet in this exam:</label>
+    {{ form.new_student_import_strategy(class="form-select") }}
   </div>
-  <div class="mdl-cell mdl-cell--12-col">
-    <label for="{{ form.missing_student_import_strategy.id }}">Students in this exam but not in the import:</label>
-    {{ form.missing_student_import_strategy(class="missing-students") }}
-    <p class="import-strategy-help">Choose "Remove them" with the Canvas roster to drop students who have left the course in bCourses.
-      It removes every student of this exam missing from the import, including ones added by CSV.</p>
+  <div class="mb-3">
+    <label class="form-label" for="{{ form.missing_student_import_strategy.id }}">Students in this exam but not in the import:</label>
+    {{ form.missing_student_import_strategy(class="form-select missing-students") }}
+    <p class="form-text">Choose "Remove them" with the Canvas roster to drop students who have left the course in bCourses.
+      It removes every student of this exam missing from the import.</p>
   </div>
 </div>
 {% endmacro %}

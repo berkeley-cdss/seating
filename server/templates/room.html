@@ -8,10 +8,10 @@
 <div class="room-view-toggle">
   {% set url_args = {'seat': seat_id} if seat_id else {} %}
   {% if proctor %}
-    <a class="mdl-button mdl-js-button mdl-button--raised" href="{{ url_for('room', exam=exam, id=room.id, **url_args) }}">Student view</a>
+    <a class="btn btn-outline-primary" href="{{ url_for('room', exam=exam, id=room.id, **url_args) }}">Student view</a>
     <span>Showing the room from the front, as a proctor sees it.</span>
   {% else %}
-    <a class="mdl-button mdl-js-button mdl-button--raised" href="{{ url_for('room', exam=exam, id=room.id, view='proctor', **url_args) }}">Proctor view</a>
+    <a class="btn btn-outline-primary" href="{{ url_for('room', exam=exam, id=room.id, view='proctor', **url_args) }}">Proctor view</a>
     <span>Showing the room from the seats, facing the front.</span>
   {% endif %}
 </div>

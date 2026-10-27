@@ -33,6 +33,8 @@ class ConfigBase(object):
     GCP_SA_CRED_TYPE = getenv('GCP_SA_CRED_TYPE', GcpSaCredType.FILE.value)
     GCP_SA_CRED_FILE = getenv('GCP_SA_CRED_FILE', optional=True)
     GCP_SA_CRED_VALUE = getenv('GCP_SA_CRED_VALUE', optional=True)
+    # the Google account's email, shown on the import page so staff know who to share a sheet with
+    GCP_SA_EMAIL = getenv('GCP_SA_EMAIL', optional=True)
 
     # Canvas API setup
     CANVAS_SERVER_URL = getenv('CANVAS_SERVER_URL')

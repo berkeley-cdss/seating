@@ -24,7 +24,7 @@
       }
       textarea.value = sample.textContent.trim() + '\n';
       // The example lands in the paste box, so bring that tab forward.
-      var tab = document.querySelector('.mdl-tabs__tab[href="#preview-paste-panel"]');
+      var tab = document.getElementById('preview-paste-tab');
       if (tab) {
         tab.click();
       }
@@ -116,7 +116,7 @@
       seat.setAttribute('aria-label', label);
       seat.querySelector('.layout-seat__badge').textContent = badge;
 
-      var tooltip = root.querySelector('.seat-tooltip[for="' + seat.id + '"]');
+      var tooltip = seatTooltip(seat);
       if (tooltip) {
         tooltip.innerHTML = '';
         tooltip.appendChild(document.createTextNode(name));
@@ -227,7 +227,7 @@
      * ---------------------------------------------------------------- */
 
     var menu = document.createElement('div');
-    menu.className = 'layout-menu mdl-shadow--4dp';
+    menu.className = 'layout-menu shadow';
     menu.hidden = true;
     menu.innerHTML = '<div class="layout-menu__title"></div><div class="layout-menu__body"></div>';
     document.body.appendChild(menu);

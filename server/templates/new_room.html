@@ -3,50 +3,52 @@
 
 {% block body %}
 
-<div class="mdl-tabs mdl-js-tabs mdl-js-ripple-effect">
-  <div class="mdl-tabs__tab-bar">
-    <a href="#sheet-panel" class="mdl-tabs__tab is-active">Import from Custom Sheet</a>
-    <a href="#choice-panel" class="mdl-tabs__tab">Import from Master Sheet</a>
-    <a href="#upload-panel" class="mdl-tabs__tab">Import from CSV Upload</a>
-    <a href="#manual-panel" class="mdl-tabs__tab">Manual Entry</a>
-  </div>
+<ul class="nav nav-tabs" role="tablist">
+  <li class="nav-item" role="presentation">
+    <button class="nav-link active" id="sheet-tab" data-bs-toggle="tab" data-bs-target="#sheet-panel" type="button" role="tab" aria-controls="sheet-panel" aria-selected="true">Import from Custom Sheet</button>
+  </li>
+  <li class="nav-item" role="presentation">
+    <button class="nav-link" id="choice-tab" data-bs-toggle="tab" data-bs-target="#choice-panel" type="button" role="tab" aria-controls="choice-panel" aria-selected="false">Import from Master Sheet</button>
+  </li>
+  <li class="nav-item" role="presentation">
+    <button class="nav-link" id="upload-tab" data-bs-toggle="tab" data-bs-target="#upload-panel" type="button" role="tab" aria-controls="upload-panel" aria-selected="false">Import from CSV Upload</button>
+  </li>
+  <li class="nav-item" role="presentation">
+    <button class="nav-link" id="manual-tab" data-bs-toggle="tab" data-bs-target="#manual-panel" type="button" role="tab" aria-controls="manual-panel" aria-selected="false">Manual Entry</button>
+  </li>
+</ul>
 
-  <div class="mdl-tabs__panel is-active" id="sheet-panel">
+<div class="tab-content pt-3">
+  <div class="tab-pane show active" id="sheet-panel" role="tabpanel" aria-labelledby="sheet-tab" tabindex="0">
     <form action="{{ url_for('import_room_from_custom_sheet', exam=exam) }}" method="post">
       {{ new_form.hidden_tag() }}
-      <div class="mdl-grid">
-        <div class="mdl-layout-spacer"></div>
-        <div class="mdl-cell mdl-cell--12-col">
-          <div class="mdl-textfield mdl-js-textfield mdl-textfield--floating-label mdl-cell--10-col">
-            {{ new_form.sheet_url(class="mdl-textfield__input", type="Google Sheet URL", id="gsurl") }}
-            <label class="mdl-textfield__label" for="gsurl">Google Sheet URL</label>
-          </div>
-          <div class="mdl-textfield mdl-js-textfield mdl-textfield--floating-label mdl-cell--2-col">
-            {{ new_form.sheet_range(class="mdl-textfield__input", type="Sheet Name", id="sheetname") }}
-            <label class="mdl-textfield__label" for="sheetname">Sheet Name</label>
-          </div>
+      <div class="row">
+        <div class="col-md-9 mb-3">
+          <label class="form-label" for="gsurl">Google Sheet URL</label>
+          {{ new_form.sheet_url(class="form-control", type="Google Sheet URL", id="gsurl") }}
         </div>
-        <div class="mdl-cell mdl-cell--12-col">
-          <div class="mdl-textfield mdl-js-textfield mdl-textfield--floating-label mdl-cell--4-col">
-            {{ new_form.display_name(class="mdl-textfield__input", type="Room Name", id="roomname") }}
-            <label class="mdl-textfield__label" for="roomname">Room Name</label>
-          </div>
-          <div class="mdl-textfield mdl-js-textfield mdl-textfield--floating-label mdl-cell--4-col">
-            {{ new_form.start_at(class="mdl-textfield__input", type="datetime-local", id="start_at") }}
-            <label class="mdl-textfield__label" for="start_at">Start At</label>
-          </div>
-          <div class="mdl-textfield mdl-js-textfield mdl-textfield--floating-label mdl-cell--4-col">
-            {{ new_form.duration_minutes(class="mdl-textfield__input", type="number", id="duration_minutes") }}
-            <label class="mdl-textfield__label" for="duration_minutes">Duration (Minutes)</label>
-          </div>
+        <div class="col-md-3 mb-3">
+          <label class="form-label" for="sheetname">Sheet Name</label>
+          {{ new_form.sheet_range(class="form-control", type="Sheet Name", id="sheetname") }}
         </div>
-        <div class="form-buttons">
-          {{ new_form.preview_room(class="mdl-button mdl-js-button") }}
+      </div>
+      <div class="row">
+        <div class="col-md-4 mb-3">
+          <label class="form-label" for="roomname">Room Name</label>
+          {{ new_form.display_name(class="form-control", type="Room Name", id="roomname") }}
         </div>
-        <div class="form-buttons">
-          {{ new_form.create_room(class="mdl-button mdl-js-button mdl-button--raised") }}
+        <div class="col-md-4 mb-3">
+          <label class="form-label" for="start_at">Start At</label>
+          {{ new_form.start_at(class="form-control", type="datetime-local", id="start_at") }}
         </div>
-        <div class="mdl-layout-spacer"></div>
+        <div class="col-md-4 mb-3">
+          <label class="form-label" for="duration_minutes">Duration (Minutes)</label>
+          {{ new_form.duration_minutes(class="form-control", type="number", id="duration_minutes") }}
+        </div>
+      </div>
+      <div class="form-buttons">
+        {{ new_form.preview_room(class="btn btn-outline-primary") }}
+        {{ new_form.create_room(class="btn btn-primary") }}
       </div>
     </form>
     {% if room %}
@@ -54,76 +56,60 @@
     {% endif %}
   </div>
 
-  <div class="mdl-tabs__panel" id="choice-panel">
-    <div class="mdl-grid">
-      <div class="mdl-layout-spacer"></div>
-      <div class="mdl-cell mdl-cell--10-col">
-        <div>
-        Master Sheet URL: <a href="{{ master_sheet_url }}" target="_blank">{{ master_sheet_url }}</a>
+  <div class="tab-pane" id="choice-panel" role="tabpanel" aria-labelledby="choice-tab" tabindex="0">
+    <div class="mb-3">
+    Master Sheet URL: <a href="{{ master_sheet_url }}" target="_blank">{{ master_sheet_url }}</a>
+    </div>
+    <form action="{{ url_for('import_room_from_master_sheet', exam=exam) }}" method="post">
+      {{ choose_form.hidden_tag() }}
+      <div class="checkbox">{{ choose_form.rooms }}</div>
+      <div class="row">
+        <div class="col-md-4 mb-3">
+          <label class="form-label" for="choose_start_at">Start At</label>
+          {{ choose_form.start_at(class="form-control", type="datetime-local", id="choose_start_at") }}
         </div>
-        <form action="{{ url_for('import_room_from_master_sheet', exam=exam) }}" method="post">
-          {{ choose_form.hidden_tag() }}
-          <div class="checkbox">{{ choose_form.rooms }}</div>
-          <div class="mdl-cell mdl-cell--12-col">
-            <div class="mdl-textfield mdl-js-textfield mdl-textfield--floating-label mdl-cell--4-col">
-              {{ choose_form.start_at(class="mdl-textfield__input", type="datetime-local", id="choose_start_at") }}
-              <label class="mdl-textfield__label" for="choose_start_at">Start At</label>
-            </div>
-            <div class="mdl-textfield mdl-js-textfield mdl-textfield--floating-label mdl-cell--4-col">
-              {{ choose_form.duration_minutes(class="mdl-textfield__input", type="number", id="choose_duration_minutes") }}
-              <label class="mdl-textfield__label" for="choose_duration_minutes">Duration (Minutes)</label>
-            </div>
-          </div>
-          <div class="form-buttons">{{ choose_form.submit(class="mdl-button mdl-js-button mdl-button--raised") }}</div>
-        </form>
+        <div class="col-md-4 mb-3">
+          <label class="form-label" for="choose_duration_minutes">Duration (Minutes)</label>
+          {{ choose_form.duration_minutes(class="form-control", type="number", id="choose_duration_minutes") }}
+        </div>
       </div>
-      <div class="mdl-layout-spacer"></div>
-    </div>
+      <div class="form-buttons">{{ choose_form.submit(class="btn btn-primary") }}</div>
+    </form>
   </div>
 
-  <div class="mdl-tabs__panel" id="upload-panel">
-    <div class="mdl-grid">
-      <div class="mdl-layout-spacer"></div>
-      <div class="mdl-cell mdl-cell--10-col">
-        <form action="{{ url_for('import_room_from_csv_upload', exam=exam) }}" method="post" enctype="multipart/form-data">
-          {{ upload_form.hidden_tag() }}
-          {{ upload_form.file(class="mdl-textfield__input", type="file", id="upload_csv_file")}}
-          <div class="mdl-cell mdl-cell--12-col">
-            <div class="mdl-textfield mdl-js-textfield mdl-textfield--floating-label mdl-cell--4-col">
-              {{ upload_form.display_name(class="mdl-textfield__input", type="Room Name", id="upload_roomname") }}
-              <label class="mdl-textfield__label" for="upload_roomname">Room Name</label>
-            </div>
-            <div class="mdl-textfield mdl-js-textfield mdl-textfield--floating-label mdl-cell--4-col">
-              {{ upload_form.start_at(class="mdl-textfield__input", type="datetime-local", id="upload_start_at") }}
-              <label class="mdl-textfield__label" for="upload_start_at">Start At</label>
-            </div>
-            <div class="mdl-textfield mdl-js-textfield mdl-textfield--floating-label mdl-cell--4-col">
-              {{ upload_form.duration_minutes(class="mdl-textfield__input", type="number", id="upload_duration_minutes") }}
-              <label class="mdl-textfield__label" for="upload_duration_minutes">Duration (Minutes)</label>
-            </div>
-          </div>
-          <div class="form-buttons">{{ upload_form.submit(class="mdl-button mdl-js-button mdl-button--raised") }}</div>
-        </form>
-        <p>
-          Not sure the file is right? <a href="{{ url_for('preview_layout') }}">Preview a layout CSV</a>
-          without saving it to this exam.
-        </p>
+  <div class="tab-pane" id="upload-panel" role="tabpanel" aria-labelledby="upload-tab" tabindex="0">
+    <form action="{{ url_for('import_room_from_csv_upload', exam=exam) }}" method="post" enctype="multipart/form-data">
+      {{ upload_form.hidden_tag() }}
+      <div class="mb-3">
+        {{ upload_form.file(class="form-control", type="file", id="upload_csv_file", **{"aria-label": "CSV file"})}}
       </div>
-      <div class="mdl-layout-spacer"></div>
-    </div>
-
+      <div class="row">
+        <div class="col-md-4 mb-3">
+          <label class="form-label" for="upload_roomname">Room Name</label>
+          {{ upload_form.display_name(class="form-control", type="Room Name", id="upload_roomname") }}
+        </div>
+        <div class="col-md-4 mb-3">
+          <label class="form-label" for="upload_start_at">Start At</label>
+          {{ upload_form.start_at(class="form-control", type="datetime-local", id="upload_start_at") }}
+        </div>
+        <div class="col-md-4 mb-3">
+          <label class="form-label" for="upload_duration_minutes">Duration (Minutes)</label>
+          {{ upload_form.duration_minutes(class="form-control", type="number", id="upload_duration_minutes") }}
+        </div>
+      </div>
+      <div class="form-buttons">{{ upload_form.submit(class="btn btn-primary") }}</div>
+    </form>
+    <p>
+      Not sure the file is right? <a href="{{ url_for('preview_layout') }}">Preview a layout CSV</a>
+      without saving it to this exam.
+    </p>
   </div>
 
-  <div class="mdl-tabs__panel" id="manual-panel">
-    <div class="mdl-grid">
-      <div class="mdl-layout-spacer"></div>
-      <div class="form-buttons">
-      <button class="mdl-button mdl-js-button mdl-button--raised" onclick="window.location.href='{{ url_for('import_room_manually', exam=exam) }}'">Create New Room</button>
-      </div>
-      <div class="mdl-layout-spacer"></div>
+  <div class="tab-pane" id="manual-panel" role="tabpanel" aria-labelledby="manual-tab" tabindex="0">
+    <div class="form-buttons">
+      <a class="btn btn-primary" href="{{ url_for('import_room_manually', exam=exam) }}">Create New Room</a>
     </div>
   </div>
-
 </div>
 
 {% endblock %}

@@ -6,25 +6,25 @@
 {% block head %}
 <style>
   /* Override global .students { max-width: 960px } so the table can use the wider container */
-  section#student-table.students.mdl-grid {
+  section#student-table.students {
     max-width: min(90vw, 1680px);
-    margin-left: auto;
-    margin-right: auto;
     width: 100%;
   }
 
-  .mdl-data-table td.mdl-data-table__cell--non-numeric {
+  .students-table-container td {
+    width: auto;
     word-wrap: break-word;
     white-space: normal;
+    text-align: center;
   }
 
-  .mdl-data-table {
+  .students-table-container th {
+    text-align: center;
+  }
+
+  .students-table-container table {
     table-layout: fixed;
     width: 100%;
-  }
-
-  .students-table-container .mdl-data-table td {
-    width: auto;
   }
 
   .deleted-rooms-notice {
@@ -53,8 +53,8 @@
     margin: 0 auto;
   }
 
-  .students-actions .material-icons {
-    vertical-align: middle;
+  .students-search {
+    max-width: 360px;
   }
 
   .canvas-id-column {
@@ -63,35 +63,27 @@
 </style>
 {% endblock %}
 {% block body %}
-<section id="student-table" class="students mdl-grid">
-  <div class="mdl-cell mdl-cell--12-col">
-    <h4>Students</h4>
-    <div class="mdl-textfield mdl-js-textfield mdl-textfield--expandable">
-      <label class="mdl-button mdl-js-button mdl-button--icon" for="search">
-        <i class="material-icons">search</i>
-      </label>
-      <div class="mdl-textfield__expandable-holder">
-        <input class="search mdl-textfield__input" type="text" id="search" aria-label="Search by name, email, or SID" title="Search by name, email, or SID">
-        <label class="mdl-textfield__label" for="search-expandable">Search by name, email, or SID</label>
+<section id="student-table" class="students">
+  <div>
+    <h2 class="h4">Students</h2>
+    <div class="d-flex flex-wrap align-items-center gap-2 mb-2">
+      <div class="input-group students-search me-auto">
+        <span class="input-group-text"><i class="bi bi-search" aria-hidden="true"></i></span>
+        <input class="search form-control" type="text" id="search" aria-label="Search by name, email, or SID" placeholder="Search by name, email, or SID">
       </div>
+      <a class="icon-button" href="{{ url_for('import_students', exam=exam) }}" aria-label="Add/Update Students"
+        data-bs-toggle="tooltip" data-bs-title="Add/Update Students"><i class="bi bi-person-plus" aria-hidden="true"></i></a>
+      <a class="icon-button" href="{{ url_for('assign', exam=exam) }}" aria-label="Assign"
+        data-bs-toggle="tooltip" data-bs-title="Assign"><i class="bi bi-clipboard" aria-hidden="true"></i></a>
+      <a class="icon-button" href="{{ url_for('edit_students', exam=exam) }}" aria-label="Edit All Students"
+        data-bs-toggle="tooltip" data-bs-title="Edit All Students"><i class="bi bi-pencil" aria-hidden="true"></i></a>
+      <a class="icon-button" href="{{ url_for('delete_students', exam=exam) }}" aria-label="Delete Students"
+        data-bs-toggle="tooltip" data-bs-title="Delete Students"><i class="bi bi-trash" aria-hidden="true"></i></a>
+      <a class="icon-button" href="{{ url_for('email_all_students', exam=exam) }}" aria-label="Email"
+        data-bs-toggle="tooltip" data-bs-title="Email"><i class="bi bi-envelope" aria-hidden="true"></i></a>
+      <a class="icon-button" href="{{ url_for('export_students_as_csv', exam=exam) }}" aria-label="Export"
+        data-bs-toggle="tooltip" data-bs-title="Export"><i class="bi bi-download" aria-hidden="true"></i></a>
     </div>
-      <div id="tt6" class="material-icons std" onclick="location.href = '{{ url_for('export_students_as_csv', exam=exam) }}';" style="float: right;">file_download</div>
-      <div class="mdl-tooltip" data-mdl-for="tt6">Export</div>
-      
-      <div id="tt5" class="material-icons std" onclick="location.href = '{{ url_for('email_all_students', exam=exam) }}';" style="float: right;">email</div>
-      <div class="mdl-tooltip" data-mdl-for="tt5">Email</div>
-
-      <div id="tt4" class="material-icons std" onclick="location.href = '{{ url_for('delete_students', exam=exam) }}';" style="float: right;">delete</div>
-      <div class="mdl-tooltip" data-mdl-for="tt4">Delete Students</div>
-
-      <div id="tt3" class="material-icons std" onclick="location.href = '{{ url_for('edit_students', exam=exam) }}';" style="float: right;">edit</div>
-      <div class="mdl-tooltip" data-mdl-for="tt3">Edit All Students</div>
-
-      <div id="tt2" class="material-icons std" onclick="location.href = '{{ url_for('assign', exam=exam) }}';" style="float: right;">assignment</div>
-      <div class="mdl-tooltip" data-mdl-for="tt2">Assign</div>
-
-      <div id="tt1" class="material-icons std" onclick="location.href = '{{ url_for('import_students', exam=exam) }}';" style="float: right;">person_add</div>
-      <div class="mdl-tooltip" data-mdl-for="tt1">Add/Update Students</div>
     {% if students_with_deleted_rooms %}
     <div class="deleted-rooms-notice">
       {% call macros.form(remove_deleted_rooms_form, action=url_for('remove_deleted_room_preferences', exam=exam)) %}
@@ -99,41 +91,41 @@
           {{ students_with_deleted_rooms }} {{ 'student has' if students_with_deleted_rooms == 1 else 'students have' }}
           room preferences for deleted rooms. A student who only wants deleted rooms can't be assigned a seat.
         </span>
-        {{ remove_deleted_rooms_form.submit(class="mdl-button mdl-js-button mdl-button--raised") }}
+        {{ remove_deleted_rooms_form.submit(class="btn btn-outline-primary btn-sm") }}
       {% endcall %}
     </div>
     {% endif %}
     <div class="students-table-container">
-    <table class="mdl-data-table mdl-js-data-table mdl-shadow--2dp">
+    <table class="table table-hover align-middle bg-white shadow-sm">
       <thead>
         <tr>
-          <th class="sort mdl-data-table__cell--non-numeric" data-sort="name" style="text-align: center;">Name</th>
-          <th class="sort mdl-data-table__cell--non-numeric" data-sort="email" style="text-align: center;">Email</th>
-          <th class="sort mdl-data-table__cell--non-numeric" data-sort="sid" style="text-align: center;">Student ID</th>
-          <th class="sort mdl-data-table__cell--non-numeric canvas-id-column" data-sort="canvas_id" style="text-align: center;">Canvas ID</th>
-          <th class="sort mdl-data-table__cell--non-numeric" data-sort="wants" style="text-align: center;">Wants</th>
-          <th class="sort mdl-data-table__cell--non-numeric" data-sort="avoids" style="text-align: center;">Avoids</th>
-          <th class="sort mdl-data-table__cell--non-numeric" data-sort="seat" style="text-align: center;">Seat</th>
-          <th class="sort mdl-data-table__cell--non-numeric" data-sort="emailed" style="text-align: center;">Emailed?</th>
-          <th class="sort mdl-data-table__cell--non-numeric" data-sort="assignment" style="text-align: center;">Assign</th>
-          <th class="mdl-data-table__cell--non-numeric" style="text-align: center;" title="Edit or delete student">Actions</th>
+          <th class="sort" data-sort="name">Name</th>
+          <th class="sort" data-sort="email">Email</th>
+          <th class="sort" data-sort="sid">Student ID</th>
+          <th class="sort canvas-id-column" data-sort="canvas_id">Canvas ID</th>
+          <th class="sort" data-sort="wants">Wants</th>
+          <th class="sort" data-sort="avoids">Avoids</th>
+          <th class="sort" data-sort="seat">Seat</th>
+          <th class="sort" data-sort="emailed">Emailed?</th>
+          <th class="sort" data-sort="assignment">Assign</th>
+          <th title="Edit or delete student">Actions</th>
         </tr>
       </thead>
       <tbody class="list">
         {% for student in students %}
         <tr>
-          <td class="mdl-data-table__cell--non-numeric" style="text-align: center;">
+          <td>
             <a class="name" href="{{ url_for('student', exam_student=(exam, student)) }}">
               {{ student.name }}
             </a>
           </td>
-          <td class="mdl-data-table__cell--non-numeric" style="text-align: center;">
+          <td>
             <span class="email">{{ student.email.replace("@berkeley.edu", "@") if student.email else "" }}</span>
             <span class="email_search" style="display:none;">{{ student.email }}</span>
           </td>
-          <td class="sid mdl-data-table__cell--non-numeric" style="text-align: center;">{{ student.sid }}</td>
-          <td class="canvas_id mdl-data-table__cell--non-numeric canvas-id-column" style="text-align: center;">{{ student.canvas_id }}</td>
-          <td class="wants mdl-data-table__cell--non-numeric" style="text-align: center;">
+          <td class="sid">{{ student.sid }}</td>
+          <td class="canvas_id canvas-id-column">{{ student.canvas_id }}</td>
+          <td class="wants">
             <small>
             {% for want in student.wants %}
               <div class="pref-card">{{ want }}</div>
@@ -146,7 +138,7 @@
             {% endfor %}
             </small>
           </td>
-          <td class="avoids mdl-data-table__cell--non-numeric" style="text-align: center;">
+          <td class="avoids">
             <small>
             {% for avoid in student.avoids %}
               <div class="pref-card">{{ avoid }}</div>
@@ -159,7 +151,7 @@
             {% endfor %}
             </small>
           </td>
-          <td class="mdl-data-table__cell--non-numeric" style="text-align: center;">
+          <td>
           {% if student.assignment %}
             {% set seat = student.assignment.seat %}
             <a class="assignment" href="{{ url_for('room', exam=exam, id=seat.room.id, seat=seat.id) }}">
@@ -169,26 +161,26 @@
             <div>NO SEAT</div>
           {% endif %}
           </td>
-          <td class="mdl-data-table__cell--non-numeric" style="text-align: center;">
+          <td>
           {% if student.assignment %}
             {% if student.assignment.emailed %}
               <div class="emailed" title="Emailed">✔️</div>
             {% else %}
               <div class="emailed" title="Not emailed">❌</div>
             {% endif %}
-            <a class="material-icons" style="text-align: center; margin: 0; cursor: pointer;" onclick="location.href = '{{ url_for('email_single_student', exam_student=(exam, student)) }}';">email</a>
+            <a class="icon-button" href="{{ url_for('email_single_student', exam_student=(exam, student)) }}" aria-label="Email {{ student.name }}"><i class="bi bi-envelope" aria-hidden="true"></i></a>
           {% else %}
             <div>NO SEAT</div>
           {% endif %}
           </td>
-          <td class="mdl-data-table__cell--non-numeric" style="text-align: center;">
-            <div class="material-icons" style="text-align: center; margin: 0; cursor: pointer;" onclick="location.href = '{{ url_for('assign_student', exam_student=(exam, student)) }}';">assignment</div>
+          <td>
+            <a class="icon-button" href="{{ url_for('assign_student', exam_student=(exam, student)) }}" aria-label="Assign {{ student.name }}"><i class="bi bi-clipboard" aria-hidden="true"></i></a>
           </td>
-          <td class="mdl-data-table__cell--non-numeric students-actions" style="text-align: center;">
-            <span class="material-icons" title="Edit student" style="cursor: pointer;" onclick="location.href = '{{ url_for('edit_student', exam_student=(exam, student)) }}';">edit</span>
-            <span class="material-icons" title="Delete student" style="cursor: pointer;"
+          <td class="students-actions">
+            <a class="icon-button" href="{{ url_for('edit_student', exam_student=(exam, student)) }}" title="Edit student" aria-label="Edit {{ student.name }}"><i class="bi bi-pencil" aria-hidden="true"></i></a>
+            <button type="button" class="icon-button" title="Delete student" aria-label="Delete {{ student.name }}"
             onclick="confirmAction('Are you sure you want to delete this student?', '{{ url_for('delete_student', exam_student=(exam, student)) }}');"
-            >clear</span>
+            ><i class="bi bi-x-lg" aria-hidden="true"></i></button>
           </td>
         </tr>
         {% endfor %}

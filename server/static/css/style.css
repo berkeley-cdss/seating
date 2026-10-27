@@ -1,23 +1,142 @@
+/* UC Berkeley colors (https://brand.berkeley.edu/visual-identity/colors/), as in
+   layout_preview.css: Berkeley Blue #003262 takes the place of Bootstrap's blue, and
+   California Gold #FDB515 underlines the header. */
+:root {
+  --berkeley-blue: #003262;
+  --berkeley-blue-dark: #00243f;
+  --berkeley-blue-darker: #001a2e;
+  --berkeley-blue-light: #8098b0;
+  --california-gold: #fdb515;
+
+  --bs-primary: var(--berkeley-blue);
+  --bs-primary-rgb: 0, 50, 98;
+  --bs-primary-text-emphasis: var(--berkeley-blue-darker);
+  --bs-primary-bg-subtle: #ccd6e0;
+  --bs-primary-border-subtle: #99adc0;
+  --bs-link-color: var(--berkeley-blue);
+  --bs-link-color-rgb: 0, 50, 98;
+  --bs-link-hover-color: var(--berkeley-blue-dark);
+  --bs-link-hover-color-rgb: 0, 36, 63;
+  --bs-focus-ring-color: rgba(0, 50, 98, 0.25);
+
+  /* Bootstrap scrolls smoothly; jump instead, as the pages did before, so scrolling
+     to a seat or a form field lands at once */
+  scroll-behavior: auto;
+}
+
+/* Bootstrap's components set their own copy of its blue rather than reading --bs-primary */
+.btn-primary {
+  --bs-btn-bg: var(--berkeley-blue);
+  --bs-btn-border-color: var(--berkeley-blue);
+  --bs-btn-hover-bg: var(--berkeley-blue-dark);
+  --bs-btn-hover-border-color: var(--berkeley-blue-dark);
+  --bs-btn-focus-shadow-rgb: 0, 50, 98;
+  --bs-btn-active-bg: var(--berkeley-blue-darker);
+  --bs-btn-active-border-color: var(--berkeley-blue-darker);
+  --bs-btn-disabled-bg: var(--berkeley-blue);
+  --bs-btn-disabled-border-color: var(--berkeley-blue);
+}
+
+.btn-outline-primary {
+  --bs-btn-color: var(--berkeley-blue);
+  --bs-btn-border-color: var(--berkeley-blue);
+  --bs-btn-hover-bg: var(--berkeley-blue);
+  --bs-btn-hover-border-color: var(--berkeley-blue);
+  --bs-btn-focus-shadow-rgb: 0, 50, 98;
+  --bs-btn-active-bg: var(--berkeley-blue);
+  --bs-btn-active-border-color: var(--berkeley-blue);
+  --bs-btn-disabled-color: var(--berkeley-blue);
+  --bs-btn-disabled-border-color: var(--berkeley-blue);
+}
+
+.dropdown-menu {
+  --bs-dropdown-link-active-bg: var(--berkeley-blue);
+}
+
+.form-control:focus,
+.form-select:focus,
+.form-check-input:focus {
+  border-color: var(--berkeley-blue-light);
+  box-shadow: 0 0 0 0.25rem var(--bs-focus-ring-color);
+}
+
+.form-check-input:checked {
+  background-color: var(--berkeley-blue);
+  border-color: var(--berkeley-blue);
+}
+
+.nav-link:focus-visible {
+  box-shadow: 0 0 0 0.25rem var(--bs-focus-ring-color);
+}
+
+.btn-close {
+  --bs-btn-close-focus-shadow: 0 0 0 0.25rem var(--bs-focus-ring-color);
+}
+
 a {
-  color: #1976d2;
   text-decoration: none;
 }
 
-body {
-  color: #333;
-  background-color: #f7f7f7;
+/* Berkeley Blue is too close to the text color to mark a link on its own, so links
+   within a sentence are underlined too */
+p a,
+.recipients-note a {
+  text-decoration: underline;
 }
 
-header a {
-  color: inherit;
-  font-weight: inherit;
+.navbar.site-header {
+  border-bottom: 4px solid var(--california-gold);
+  /* Bootstrap's dark navbar dims its links to 55% white, too faint to read on the blue */
+  --bs-navbar-color: #fff;
+  --bs-navbar-hover-color: #fff;
+  --bs-navbar-active-color: #fff;
+}
+
+.site-header .nav-link:hover,
+.site-header .nav-link:focus-visible {
+  text-decoration: underline;
+  text-decoration-color: var(--california-gold);
+  text-decoration-thickness: 2px;
+  text-underline-offset: 4px;
+}
+
+.site-title {
+  margin: 0;
+  font-size: 1.25rem;
+}
+
+/* while the links are folded behind the menu button, the title takes the room left
+   beside it, so a long course name wraps instead of pushing the button onto its own line */
+@media (max-width: 991.98px) {
+  .site-title {
+    flex: 1;
+    min-width: 0;
+  }
+}
+
+.site-title .navbar-brand {
+  white-space: normal;
+}
+
+.site-content {
+  padding: 16px 16px 10em;
+}
+
+/* pages that keep to a column in the middle of the screen */
+.landing,
+.main-container,
+.rooms,
+.students,
+.student {
+  margin: 0 auto;
+}
+
+.landing {
+  max-width: 840px;
 }
 
 .main-container {
-  /* margin: 0 auto;
-  padding: 20px 0; */
   max-width: 960px;
-  /* justify-content: center; */
 }
 
 .add-item {
@@ -33,26 +152,6 @@ header a {
   padding-left: 40px;
 }
 
-.delitem {
-  font-size: 14px;
-  line-height: 2px;
-  min-height: 0px;
-}
-
-/* The "opens a menu" chevron. Drawn in CSS rather than set as a Material Icons
-   ligature, which renders as the literal word "expand_more" whenever the icon
-   font is slow, blocked or unavailable. */
-.dropdown-caret {
-  display: inline-block;
-  width: 0;
-  height: 0;
-  margin-left: 6px;
-  vertical-align: middle;
-  border-top: 5px solid currentColor;
-  border-right: 4px solid transparent;
-  border-left: 4px solid transparent;
-}
-
 .errormsg {
   color: #ff0000;
 }
@@ -61,37 +160,34 @@ header a {
   padding: 20px 10px 5px 10px;
 }
 
-.material-icons.help {
-  margin-right: 30px;
-  padding-bottom: 0px;
-}
-
-.material-icons.std {
-  font-size: 30px;
-  margin-left: 30px;
-  padding-bottom: 0px;
-}
-
-.material-icons.std:hover {
-  cursor: pointer;
-  background-color: rgba(0, 0, 0, 0.12);
+/* an icon that is a link or button, such as edit and delete in a list */
+.icon-button {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: 4px 6px;
+  border: 0;
   border-radius: 5px;
+  background: none;
+  color: inherit;
+  font-size: 1.4rem;
+  line-height: 1;
+  cursor: pointer;
 }
 
-.mdl-layout__content {
-  padding-bottom: 10em;
+.icon-button:hover,
+.icon-button:focus-visible {
+  background-color: rgba(0, 0, 0, 0.12);
+}
+
+.offering-term {
+  min-width: 4.5em;
+  color: #424242;
+  font-weight: bold;
 }
 
 .rooms {
   max-width: 620px;
-}
-
-.rooms li {
-  padding-left: 0;
-}
-
-.roomspg-add-room-button {
-  padding-left: 0;
 }
 
 .room h1,
@@ -157,7 +253,7 @@ header a {
   position: sticky;
   top: 0;
   z-index: 2;
-  background-color: #f7f7f7;
+  background-color: var(--bs-body-bg);
   border-bottom: 1px solid #ccc;
 }
 
@@ -179,11 +275,12 @@ header a {
   white-space: nowrap;
 }
 
-.seat-tooltip:not(.is-active) {
+/* the content of a seat's tooltip, which Bootstrap shows on hover or focus */
+.seat-tooltip {
   display: none;
 }
 
-.seat-tooltip .photo {
+.tooltip-inner .photo {
   display: inline-block;
   width: 94px;
   height: 125px;
@@ -239,18 +336,6 @@ header a {
   border-top: 5px solid #000;
 }
 
-@media (max-width: 400px) {
-  .hidden-small {
-    display: none;
-  }
-}
-
-@media (max-width: 767px) {
-  .mdl-layout__header-row {
-    padding: 0 16px 0 16px;
-  }
-}
-
 .room-view-toggle {
   margin: 16px;
   text-align: center;
@@ -276,19 +361,36 @@ header a {
   max-width: 100%;
 }
 
-/* MDL's grey for an empty field's label is too light to read (1.87:1 on this background);
-   once the label floats, MDL's more specific focused/filled rules make it blue */
-.test-email .mdl-textfield__label {
+.email-help {
+  margin: 0;
   color: #616161;
 }
 
-.import-strategies label {
-  margin-right: 8px;
+.email-preview {
+  margin: 12px 0;
 }
 
-.import-strategy-help {
-  margin: 4px 0 0 24px;
-  color: #616161;
+.email-preview iframe {
+  width: 100%;
+  height: 420px;
+  border: 1px solid #ccc;
+  background: #fff;
+}
+
+.email-preview pre {
+  white-space: pre-wrap;
+  background: #fff;
+  border: 1px solid #ccc;
+  padding: 8px;
+}
+
+.email-preview-error {
+  color: #c62828;
+}
+
+.email-variables {
+  margin-top: 24px;
+  border-top: 1px solid #ccc;
 }
 
 .send-progress {
@@ -303,4 +405,23 @@ header a {
 .send-progress progress {
   display: block;
   width: 100%;
+}
+
+.import-source {
+  margin: 12px 0;
+}
+
+/* the import page: one centered column, as wide as its widest row (the option dropdowns) */
+.import-students {
+  max-width: 800px;
+  margin: 0 auto;
+}
+
+.import-source-error {
+  color: #c62828;
+  min-height: 1em;
+}
+
+.import-format li {
+  margin-bottom: 4px;
 }

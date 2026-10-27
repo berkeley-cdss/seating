@@ -21,7 +21,6 @@ def test_clicking_seat_selects_it(get_authed_driver, seeded_db):
 
     field = driver.find_element(By.ID, 'seat_id')
     assert field.get_attribute('value') == '3'
-    assert 'is-dirty' in field.find_element(By.XPATH, '..').get_attribute('class')
     assert 'selected' in seat.get_attribute('class')
     assert driver.find_element(By.ID, 'selected-seat').text == 'Selected seat: B1'
 
@@ -47,19 +46,17 @@ def test_assign_bar_stays_in_view(get_authed_driver, seeded_db):
     # in a short window, scrolling down the room maps would hide the form without the sticky bar
     driver = _open_assign_page(get_authed_driver, height=500)
     positions = driver.execute_script("""
-        var content = document.querySelector('.mdl-layout__content');
         // scroll partway; at the very end, content after the page body pushes sticky elements up
-        content.scrollTop = 150;
+        window.scrollTo(0, 150);
         var submit = document.getElementById('submit').getBoundingClientRect();
         return {
-            scrolled: content.scrollTop,
-            contentTop: content.getBoundingClientRect().top,
+            scrolled: window.scrollY,
             barTop: document.querySelector('.assign-bar').getBoundingClientRect().top,
             submitVisible: submit.top >= 0 && submit.bottom <= window.innerHeight,
         };
     """)
     assert positions['scrolled'] > 0
-    assert positions['barTop'] == positions['contentTop']
+    assert positions['barTop'] == 0
     assert positions['submitVisible']
 
 
@@ -88,7 +85,7 @@ def test_seat_photos_load_only_when_shown(get_authed_driver, seeded_db):
     seat = driver.find_element(By.ID, '1')
     driver.execute_script('arguments[0].scrollIntoView({block: "center"})', seat)
     ActionChains(driver).move_to_element(seat).perform()
-    photo = driver.find_element(By.CSS_SELECTOR, '.seat-tooltip[for="1"] img.photo')
+    photo = WebDriverWait(driver, 5).until(lambda d: d.find_element(By.CSS_SELECTOR, '.tooltip img.photo'))
     WebDriverWait(driver, 5).until(
         lambda d: d.execute_script('return arguments[0].complete && arguments[0].naturalWidth > 0', photo))
     assert driver.execute_script(photo_requests) == 1
