@@ -1,5 +1,6 @@
 from flask import redirect, session, url_for
 from flask_login import login_user, logout_user, login_required
+from markupsafe import escape
 import server.services.canvas as canvas_client
 
 from server.models import db, User
@@ -24,7 +25,9 @@ def authorized():
         # `state` does not match the one we generated, or when the code exchange fails.
         resp = oauth_provider.authorize_access_token()
     except OAuthError as e:
-        return 'Access denied: {}'.format(e.description or e.error or 'unknown error')
+        # the provider's error is copied from the `error`/`error_description` query parameters,
+        # which anyone can put in a link, and a returned str is served as HTML: escape it
+        return 'Access denied: {}'.format(escape(e.description or e.error or 'unknown error')), 403
     session['access_token'] = resp['access_token']
     user_info = resp['user']
 
