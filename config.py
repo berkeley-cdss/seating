@@ -23,6 +23,12 @@ class ConfigBase(object):
     SQLALCHEMY_TRACK_MODIFICATIONS = False
     LOCAL_TIMEZONE = getenv('TIMEZONE', 'US/Pacific')
 
+    # Both cookies are HttpOnly by default. Lax still sends them on the top-level redirect back
+    # from Canvas to /authorized/, but not on cross-site POSTs, fetches or embeds. (Strict would
+    # drop the session on that redirect and break login.)
+    SESSION_COOKIE_SAMESITE = 'Lax'
+    REMEMBER_COOKIE_SAMESITE = 'Lax'
+
     # Coogle Service Account Cred setup
     GCP_SA_CRED_TYPE = getenv('GCP_SA_CRED_TYPE', GcpSaCredType.FILE.value)
     GCP_SA_CRED_FILE = getenv('GCP_SA_CRED_FILE', optional=True)
@@ -60,6 +66,9 @@ class ConfigBase(object):
 class ProductionConfig(ConfigBase):
     FLASK_ENV = AppEnvironment.PRODUCTION.value
     MOCK_CANVAS = False
+    # served over HTTPS only, so never send the session or remember cookie over plain HTTP
+    SESSION_COOKIE_SECURE = True
+    REMEMBER_COOKIE_SECURE = True
 
     @property
     def SECRET_KEY(self):
@@ -75,6 +84,9 @@ class StagingConfig(ConfigBase):
     SECRET_KEY = 'staging'
     # Staging talks to real Canvas, so the dev login is never available here.
     MOCK_CANVAS = False
+    # the PR previews are served over HTTPS only, like production
+    SESSION_COOKIE_SECURE = True
+    REMEMBER_COOKIE_SECURE = True
 
     @property
     def SQLALCHEMY_DATABASE_URI(self):
