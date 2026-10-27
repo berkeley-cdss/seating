@@ -27,7 +27,7 @@ def authorized():
     except OAuthError as e:
         # the provider's error is copied from the `error`/`error_description` query parameters,
         # which anyone can put in a link, and a returned str is served as HTML: escape it
-        return 'Access denied: {}'.format(escape(e.description or e.error or 'unknown error'))
+        return 'Access denied: {}'.format(escape(e.description or e.error or 'unknown error')), 403
     session['access_token'] = resp['access_token']
     user_info = resp['user']
 

