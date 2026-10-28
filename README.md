@@ -3,6 +3,7 @@
 [![codecov](https://codecov.io/gh/berkeley-cdss/seating/graph/badge.svg?token=0FJ178HK0N)](https://codecov.io/gh/berkeley-cdss/seating)
 ![CodeQL](https://github.com/berkeley-cdss/seating/actions/workflows/codeql.yml/badge.svg)
 ![Tests](https://github.com/berkeley-cdss/seating/actions/workflows/test.yml/badge.svg)
+[![A11y](https://github.com/berkeley-cdss/seating/actions/workflows/a11y.yml/badge.svg)](docs/a11y.md)
 
 One stop solution to manage and access exam seating assignments of all your Berkeley courses, for course staff and students.
 

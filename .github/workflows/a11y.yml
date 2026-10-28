@@ -29,4 +29,12 @@ jobs:
         uses: ./.github/actions/bootstrap
       - name: Run A11y Audit
         run: |
-          pytest -s tests/a11y
+          pytest tests/a11y
+      - name: Keep axe reports and screenshots
+        uses: actions/upload-artifact@v4
+        if: failure()
+        with:
+          name: axe
+          path: axe
+          if-no-files-found: ignore
+          retention-days: 7
