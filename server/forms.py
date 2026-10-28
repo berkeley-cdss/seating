@@ -238,7 +238,7 @@ class EmailPreviewForm(FlaskForm):
 
 class EmailForm(EmailPreviewForm):
     from_addr = StringField('from_addr', [Email(), InputRequired()])
-    to_addr = StringField('to_addr', [InputRequired()])
+    to_addr = StringField('to_addr', [Optional()])
     cc_addr = StringField('cc_addr', [])
     bcc_addr = StringField('bcc_addr', [])
     submit = SubmitField('send')
