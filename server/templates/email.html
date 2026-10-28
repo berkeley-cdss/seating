@@ -76,7 +76,7 @@
     <div class="test-email-fields">
       <label for="test_to_addr">Send test to:</label>
       {{ form.test_to_addr(class="form-control w-auto", type="email", id="test_to_addr") }}
-      {{ form.send_test(class="btn btn-outline-primary") }}
+      {{ form.send_test(class="btn btn-outline-primary", formnovalidate=true) }}
     </div>
     {% else %}
     <p>No student has a seat yet, so there is nothing to preview or test the email with.</p>
@@ -142,6 +142,10 @@
               var recipients = document.getElementById('to_addr').value.split(',')
                   .map(function (address) { return address.trim(); })
                   .filter(function (address) { return address; });
+              if (!recipients.length) {
+                  progress.textContent = 'Enter at least one student email address.';
+                  return;
+              }
               var buttons = form.querySelectorAll('button, input[type=submit]');
               buttons.forEach(function (button) { button.disabled = true; });
               progress.textContent = '';

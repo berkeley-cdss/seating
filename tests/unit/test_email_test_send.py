@@ -38,8 +38,8 @@ def _student(canvas_id):
     return Student.query.filter_by(exam_id=1, canvas_id=canvas_id).one()
 
 
-def _post(client, url, **fields):
-    page = client.get(url).get_data(as_text=True)
+def _post(client, url, page_url=None, **fields):
+    page = client.get(page_url or url).get_data(as_text=True)
     data = {
         'csrf_token': re.search(r'name="csrf_token" type="hidden" value="([^"]+)"', page).group(1),
         'from_addr': 'staff@berkeley.edu', 'to_addr': 'jx@berkeley.edu',
@@ -82,6 +82,21 @@ def test_send_test_goes_to_staff_filled_in_with_the_student(staff, sent):
     db.session.expire_all()
     assert _student('234567').assignment.emailed is False
     assert '{{NAME}}' in response.get_data(as_text=True)
+
+
+def test_send_test_works_when_every_student_was_already_emailed(staff, sent):
+    jimmy = _student('234567')
+    jimmy.assignment.emailed = True
+    db.session.commit()
+
+    response = _post(staff, EMAIL_URL, to_addr=None, send_test='y', test_student=str(jimmy.id),
+                     test_to_addr='me@berkeley.edu')
+
+    assert response.status_code == 200
+    (message,) = sent
+    assert message['To'] == 'me@berkeley.edu'
+    assert _flashes(response) == [
+        "Sent a test email to me@berkeley.edu, filled in with Jimmy Xu's seat."]
 
 
 def test_send_test_has_a_text_and_an_html_part(staff, sent):
@@ -138,6 +153,31 @@ def test_send_works_without_any_seated_student(staff, sent):
     response = _post(staff, EMAIL_URL, submit='y')
     assert response.status_code == 302
     assert _flashes(staff.get(f'{EXAM_URL}/students/')) == ['Failed to email students: jx@berkeley.edu']
+
+
+def test_real_send_requires_a_recipient(staff, sent):
+    response = _post(staff, EMAIL_URL, submit='y', to_addr=None)
+
+    assert response.status_code == 200
+    assert _flashes(response) == ['to_addr: This field is required.']
+    assert sent == []
+
+
+def test_single_student_send_requires_a_recipient(staff, sent):
+    jimmy = _student('234567')
+    response = _post(staff, f'{EXAM_URL}/students/{jimmy.id}/email/', submit='y', to_addr=None)
+
+    assert response.status_code == 200
+    assert _flashes(response) == ['to_addr: This field is required.']
+    assert sent == []
+
+
+def test_batch_send_requires_a_recipient(staff, sent):
+    response = _post(staff, f'{EMAIL_URL}send/', page_url=EMAIL_URL, to_addr=None)
+
+    assert response.status_code == 400
+    assert response.json == {'errors': {'to_addr': ['This field is required.']}}
+    assert sent == []
 
 
 def test_invalid_send_keeps_the_typed_email(staff, sent):

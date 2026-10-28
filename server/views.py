@@ -903,6 +903,14 @@ def _flash_form_errors(form):
             flash("{}: {}".format(field, error), 'error')
 
 
+def _has_email_recipients(form):
+    """Require recipients for a real send, but not for a test email."""
+    if form.to_addr.data and form.to_addr.data.strip():
+        return True
+    form.to_addr.errors.append('This field is required.')
+    return False
+
+
 @app.route('/<exam:exam>/students/email/', methods=['GET', 'POST'])
 def email_all_students(exam):
     form = _email_form(exam)
@@ -911,6 +919,9 @@ def email_all_students(exam):
     if form.validate_on_submit():
         if form.send_test.data:
             return _send_test_email(exam, form, **page)
+        if not _has_email_recipients(form):
+            _flash_form_errors(form)
+            return _render_email_page(exam, form, **page)
         successful_emails, failed_emails = email_about_assignment(exam, form, form.to_addr.data)
         if successful_emails:
             flash(f"Successfully emailed {len(successful_emails)} students.", 'success')
@@ -949,6 +960,8 @@ def email_students_batch(exam):
     form = _email_form(exam)
     if not form.validate_on_submit():
         return jsonify(errors=form.errors), 400
+    if not _has_email_recipients(form):
+        return jsonify(errors={'to_addr': form.to_addr.errors}), 400
     successful_emails, failed_emails = email_about_assignment(exam, form, form.to_addr.data)
     return jsonify(sent=sorted(successful_emails), failed=sorted(failed_emails))
 
@@ -960,6 +973,9 @@ def email_single_student(exam_student):
     if form.validate_on_submit():
         if form.send_test.data:
             return _send_test_email(exam, form)
+        if not _has_email_recipients(form):
+            _flash_form_errors(form)
+            return _render_email_page(exam, form)
         successful_emails, failed_emails = email_about_assignment(exam, form, form.to_addr.data)
         if successful_emails:
             flash(f"Successfully emailed {len(successful_emails)} students.", 'success')
