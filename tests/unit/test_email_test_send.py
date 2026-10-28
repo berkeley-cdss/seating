@@ -163,6 +163,15 @@ def test_real_send_requires_a_recipient(staff, sent):
     assert sent == []
 
 
+def test_single_student_send_requires_a_recipient(staff, sent):
+    jimmy = _student('234567')
+    response = _post(staff, f'{EXAM_URL}/students/{jimmy.id}/email/', submit='y', to_addr=None)
+
+    assert response.status_code == 200
+    assert _flashes(response) == ['to_addr: This field is required.']
+    assert sent == []
+
+
 def test_batch_send_requires_a_recipient(staff, sent):
     response = _post(staff, f'{EMAIL_URL}send/', page_url=EMAIL_URL, to_addr=None)
 
