@@ -123,7 +123,8 @@
       {# unsaved seats (room preview) have no id to link to #}
       {% set linkable = staff and not remove_link and seat.id %}
       {% if linkable %}
-      <a href="{{ url_for('student', exam_student=(exam, seat.assignment.student)) if seat.assignment else url_for('student_single_seat', seat_id=seat.id) }}" target="_blank">
+      <a href="{{ url_for('student', exam_student=(exam, seat.assignment.student)) if seat.assignment else url_for('student_single_seat', seat_id=seat.id) }}" target="_blank"
+         aria-label="Seat {{ seat.name or seat.id }}{{ ', ' ~ seat.assignment.student.name if seat.assignment else ', empty' }} (opens in a new tab)">
       {% endif %}
         <div id="{{ seat.id }}" class="{{ class }}" style="left:{{ x }}px;top:{{ y }}px"></div>
       {% if linkable %}

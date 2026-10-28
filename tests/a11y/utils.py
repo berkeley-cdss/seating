@@ -8,7 +8,7 @@ AXE_SCRIPT_CONTENT = None
 # axe-core tags, see https://github.com/dequelabs/axe-core/blob/develop/doc/API.md#axe-core-tags
 # Berkeley requires WCAG 2.1 AA (https://dap.berkeley.edu/), so every page must pass these.
 REQUIRED_A11Y_STANDARDS = ['wcag2a', 'wcag2aa', 'wcag21a', 'wcag21aa']
-# WCAG 2.2 AA is the current standard; these are reported but not (yet) required.
+# WCAG 2.2 AA is the current standard, so every page must pass these too.
 COMPLETE_A11Y_STANDARDS = ['wcag22aa', 'best-practice', 'section508']
 
 # axe-core rules that do not apply. It should be rare to add to this list.

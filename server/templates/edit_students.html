@@ -1,6 +1,8 @@
 {% extends 'base.html' %}
 {% import 'macros.html' as macros with context %}
 
+{% block title %}{{ 'Edit ' ~ student.name if student else 'Edit Students' }} | {{ super() }}{% endblock %}
+
 {% block body %}
 <div class="row">
     {% set edit_multiple = false if student else true %}
