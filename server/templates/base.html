@@ -11,7 +11,7 @@
     <link rel="stylesheet" type="text/css" href="{{ url_for('static', filename='css/flash.css') }}">
     <script src="{{ url_for('static', filename='js/utils.js') }}"></script>
     {% block head %}{% endblock %}
-    <title>{% block title %}{{ title }}{% endblock %}</title>
+    <title>{% block title %}{{ title or (exam.display_name ~ ' | ' ~ exam.offering.name if exam else 'Exam Seating') }}{% endblock %}</title>
   </head>
 
   <body>
@@ -29,7 +29,7 @@
           </a>
         {% else %}
           <a class="navbar-brand" href="{{ url_for('index') }}">
-            {{ title }}
+            {{ title or 'Exam Seating' }}
           </a>
         {% endif %}
         </h1>

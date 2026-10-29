@@ -1,6 +1,8 @@
 {% extends 'base.html' %}
 {% import 'macros.html' as macros with context %}
 
+{% block title %}Assign a Seat | {{ super() }}{% endblock %}
+
 {% block body %}
 <div class="assign-bar">
 {% call macros.form(form) %}

@@ -1,6 +1,8 @@
 {% extends 'base.html' %}
 {% import 'macros.html' as macros with context %}
 
+{% block title %}Email Students | {{ super() }}{% endblock %}
+
 {% block body %}
 {% call macros.form(form) %}
 <div class="email-form">
