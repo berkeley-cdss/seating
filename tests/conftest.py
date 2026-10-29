@@ -1,6 +1,7 @@
 import os
 import subprocess
 import time
+from contextlib import contextmanager
 
 import pytest
 import responses
@@ -45,8 +46,8 @@ def mocker():
         yield rsps
 
 
-@pytest.fixture()
-def start_flask_app():
+@contextmanager
+def flask_server():
     import requests
     TIMEOUT = 5
     server = subprocess.Popen(['coverage', 'run', '--source', 'server', '-m', 'flask', 'run'])
@@ -61,17 +62,30 @@ def start_flask_app():
                 raise TimeoutError("Flask server did not start within 5 seconds")
             time.sleep(0.5)
 
-    yield
+    try:
+        yield
+    finally:
+        server.terminate()
 
-    server.terminate()
+
+def chrome_driver(*arguments):
+    options = Options()
+    options.add_argument('--headless')
+    options.add_argument('--disable-gpu')
+    for argument in arguments:
+        options.add_argument(argument)
+    return webdriver.Chrome(options=options)
+
+
+@pytest.fixture()
+def start_flask_app():
+    with flask_server():
+        yield
 
 
 @pytest.fixture()
 def driver(start_flask_app):
-    options = Options()
-    options.add_argument('--headless')
-    options.add_argument('--disable-gpu')
-    driver = webdriver.Chrome(options=options)
+    driver = chrome_driver()
     yield driver
     driver.close()
 

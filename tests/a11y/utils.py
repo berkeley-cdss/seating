@@ -1,51 +1,69 @@
+import json
+import re
+from pathlib import Path
+
+AXE_SCRIPT_PATH = Path(__file__).parent / 'axe.min.js'
 AXE_SCRIPT_CONTENT = None
-AXE_CONFIG_SCRIPT_CONTENT = None
+
+# axe-core tags, see https://github.com/dequelabs/axe-core/blob/develop/doc/API.md#axe-core-tags
+# Berkeley requires WCAG 2.1 AA (https://dap.berkeley.edu/), so every page must pass these.
+REQUIRED_A11Y_STANDARDS = ['wcag2a', 'wcag2aa', 'wcag21a', 'wcag21aa']
+# WCAG 2.2 AA is the current standard; these are reported but not (yet) required.
+COMPLETE_A11Y_STANDARDS = ['wcag22aa', 'best-practice', 'section508']
+
+# axe-core rules that do not apply. It should be rare to add to this list.
+# See https://github.com/dequelabs/axe-core/blob/develop/doc/rule-descriptions.md
+SKIPPED_RULES = []
+# Elements that every rule skips, e.g. <div data-a11y-errors="true">. This is a last resort:
+# match the smallest part of the page you can, and say why in the template.
+EXCLUDED_ELEMENTS = ['[data-a11y-errors="true"]']
+
+REPORT_DIR = Path('axe')
 
 
-def load_axe_scripts():
-    print("Loading axe scripts...")
-    global AXE_SCRIPT_CONTENT, AXE_CONFIG_SCRIPT_CONTENT
-    with open('tests/a11y/axe.min.js', 'r') as f:
-        AXE_SCRIPT_CONTENT = f.read()
-    with open('tests/a11y/axe_config.js', 'r') as f:
-        AXE_CONFIG_SCRIPT_CONTENT = f.read()
+def load_axe_script():
+    global AXE_SCRIPT_CONTENT
+    if AXE_SCRIPT_CONTENT is None:
+        AXE_SCRIPT_CONTENT = AXE_SCRIPT_PATH.read_text()
+    return AXE_SCRIPT_CONTENT
 
 
-def run_axe(driver):
-    if AXE_SCRIPT_CONTENT is None or AXE_CONFIG_SCRIPT_CONTENT is None:
-        load_axe_scripts()
+def run_axe(driver, standards=REQUIRED_A11Y_STANDARDS):
+    """Runs axe on the page the driver is on and returns its report."""
+    driver.execute_script(load_axe_script())
+    report = driver.execute_async_script("""
+        const [tags, exclude, skipped, done] = arguments;
+        const rules = Object.fromEntries(skipped.map(id => [id, {enabled: false}]));
+        axe.run({include: [document], exclude: exclude},
+                {runOnly: {type: 'tag', values: tags}, rules: rules})
+            .then(done, error => done({error: String(error)}));
+    """, standards, EXCLUDED_ELEMENTS, SKIPPED_RULES)
+    assert 'error' not in report, report.get('error')
+    return report
 
-    driver.execute_script(AXE_SCRIPT_CONTENT)
-    driver.execute_script(AXE_CONFIG_SCRIPT_CONTENT)
-    return driver.execute_script("return axe.run(AXE_CONFIG);")
 
-
-def print_violations(report):
-    violations = report.get('violations', [])
-    if len(violations) == 0:
-        print("No violations found!")
-        return
-    for i, violation in enumerate(violations, start=1):
-        print(f"Violation {i}:")
-        print(f"  ID: {violation['id']}")
-        print(f"  Description: {violation['description']}")
-        print(f"  Impact: {violation['impact']}")
+def format_violations(report):
+    lines = []
+    for violation in report.get('violations', []):
+        lines.append(f"{violation['id']} ({violation['impact']}): {violation['help']}")
+        lines.append(f"  {violation['helpUrl']}")
         for node in violation['nodes']:
-            print(f"  - Selector: {node['target']}")
-            print(f"    HTML: {node['html']}")
-            if len(node['any']) > 0:
-                print(f"    Remediation: {node['any'][0]['message']}")
+            lines.append(f"  - {' '.join(map(str, node['target']))}")
+            lines.append(f"    {node['html']}")
+            for summary in node.get('failureSummary', '').splitlines():
+                lines.append(f"    {summary}")
+    return '\n'.join(lines)
 
 
 def save_report(title, report):
-    from pathlib import Path
-    Path("axe").mkdir(parents=True, exist_ok=True)
-    with open(f"axe/{title}.json", "w") as f:
-        import json
+    REPORT_DIR.mkdir(parents=True, exist_ok=True)
+    with open(REPORT_DIR / f"{slugify(title)}.json", 'w') as f:
         json.dump(report, f, indent=2)
 
 
-def assert_no_violations(report, print_if_violations=True):
-    if len(report.get('violations', [])) > 0 and print_if_violations:
-        print_violations(report)
-    assert len(report['violations']) == 0
+def slugify(text):
+    return re.sub(r'[^\w.-]+', '-', text).strip('-')
+
+
+def assert_no_violations(report):
+    assert not report.get('violations'), '\n' + format_violations(report)
