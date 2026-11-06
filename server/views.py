@@ -66,7 +66,7 @@ def offerings():
     other_offering_canvas_ids = set([o.canvas_id for o in other_offerings])
     wanted_offering_canvas_ids = staff_offering_canvas_ids | student_offering_canvas_ids | other_offering_canvas_ids
     existing_offerings = Offering.query.filter(
-        Offering.canvas_id.in_(wanted_offering_canvas_ids)).all()
+        Offering.canvas_id.in_(wanted_offering_canvas_ids), Offering.is_hidden.is_(False)).all()
     # Now split existing_offerings back to 3 lists
     staff_offerings_existing = []
     student_offerings_existing = []
@@ -102,9 +102,13 @@ def add_offerings():
     staff_offerings = [canvas_client.api_course_to_model(o) for o in staff_course_dics]
     staff_offerings_id_to_model = {o.canvas_id: o for o in staff_offerings}
     staff_offering_ids_wanted = list(staff_offerings_id_to_model.keys())
+    # Hidden offerings can be imported again, which shows them again with their exams
+    hidden_offerings = {o.canvas_id: o for o in Offering.query.filter(
+        Offering.canvas_id.in_(staff_offering_ids_wanted), Offering.is_hidden.is_(True))}
     staff_offering_ids_existing = set([x[0] for x in Offering.query.filter(
         Offering.canvas_id.in_(staff_offering_ids_wanted)).with_entities(Offering.canvas_id)])
-    staff_offering_ids_not_existing = set(staff_offering_ids_wanted) - staff_offering_ids_existing
+    staff_offering_ids_not_existing = set(staff_offering_ids_wanted) - staff_offering_ids_existing \
+        | set(hidden_offerings)
     if skipped:
         flash("Skipped invalid courses from Canvas: " + str([s.__dict__ for s in skipped]), 'warning')
     if not staff_offering_ids_not_existing:
@@ -113,14 +117,18 @@ def add_offerings():
     staff_offerings_not_existing = [staff_offerings_id_to_model[canvas_id] for canvas_id in staff_offering_ids_not_existing]
     form = ChooseCourseOfferingForm(offering_list=staff_offerings_not_existing)
     if form.validate_on_submit():
-        to_be_saved = [staff_offerings_id_to_model[canvas_id] for canvas_id in form.offerings.data]
-        if not to_be_saved:
+        chosen = form.offerings.data
+        if not chosen:
             flash("No course offering imported.", 'info')
             return redirect(url_for('offerings'))
         try:
-            db.session.bulk_save_objects(to_be_saved)
+            for canvas_id in chosen:
+                if canvas_id in hidden_offerings:
+                    hidden_offerings[canvas_id].is_hidden = False
+            db.session.bulk_save_objects([staff_offerings_id_to_model[canvas_id]
+                                          for canvas_id in chosen if canvas_id not in hidden_offerings])
             db.session.commit()
-            flash(f"Imported {len(to_be_saved)} course offerings.", 'success')
+            flash(f"Imported {len(chosen)} course offerings.", 'success')
             return redirect(url_for('offerings'))
         except Exception as e:
             db.session.rollback()
@@ -150,23 +158,24 @@ def offering(offering):
                            is_staff=is_staff)
 
 
-@app.route('/<offering:offering>/delete/', methods=['GET', 'DELETE'])
-def delete_offering(offering):
+@app.route('/<offering:offering>/hide/')
+def hide_offering(offering):
     """
-    Path: /offerings/<canvas_id>/delete
-    Deletes a course offering.
+    Path: /offerings/<canvas_id>/hide
+    Hides a course offering from the offerings page. Its exams are kept,
+    and importing the course again shows it again.
     """
     # offering urls convertor only checks login but does not check staff status
     # we need to do it here
     if str(offering.canvas_id) not in current_user.staff_offerings:
         abort(403, "You are not a staff member in this offering.")
     try:
-        db.session.delete(offering)
+        offering.is_hidden = True
         db.session.commit()
-        flash("Deleted offering.", 'success')
+        flash(f"Hid {offering.name}. Its exams are kept; import it again from Canvas to show it again.", 'success')
     except Exception as e:
         db.session.rollback()
-        flash(f"Failed to delete offering {offering.name} (Canvas ID: {offering.canvas_id}) due to an error:\n{e}", 'error')
+        flash(f"Failed to hide offering {offering.name} (Canvas ID: {offering.canvas_id}) due to an error:\n{e}", 'error')
     return redirect(url_for('offerings'))
 
 
