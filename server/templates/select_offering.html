@@ -18,9 +18,10 @@
       <a class="item-link flex-grow-1" href="{{ url_for('offering', offering=offering) }}">
         {{ offering.name }}
       </a>
-      <button type="button" class="icon-button" aria-label="Delete {{ offering.name }}"
-          onclick="confirmAction('Are you sure you want to delete this offering?', '{{ url_for('delete_offering', offering=offering) }}');"
-          ><i class="bi bi-x-lg" aria-hidden="true"></i></button>
+      <button type="button" class="icon-button" aria-label="Hide {{ offering.name }}"
+          data-bs-toggle="tooltip" data-bs-title="Hide"
+          onclick="confirmAction('Hide this offering? Its exams are kept, and importing it again from Canvas shows it again.', '{{ url_for('hide_offering', offering=offering) }}');"
+          ><i class="bi bi-eye-slash" aria-hidden="true"></i></button>
     </li>
   {% endfor %}
   </ul>

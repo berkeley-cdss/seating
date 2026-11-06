@@ -84,7 +84,7 @@ SKIPPED_ENDPOINTS = {
     'add_offerings': 'redirects when every Canvas course is already added, as in the seed data',
     'import_room': 'reads the master room sheet from Google Sheets',
     'import_room_from_master_sheet': 'reads the master room sheet from Google Sheets',
-    'delete_offering': 'deletes on GET, then redirects',
+    'hide_offering': 'hides on GET, then redirects',
     'delete_exam': 'deletes on GET, then redirects',
     'toggle_exam': 'changes the exam on GET, then redirects',
     'delete_room': 'deletes on GET',

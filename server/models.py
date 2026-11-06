@@ -7,7 +7,7 @@ from flask_login import UserMixin
 from flask_sqlalchemy import SQLAlchemy
 from sqlalchemy import PrimaryKeyConstraint, types
 from sqlalchemy.orm import backref, contains_eager, joinedload
-from sqlalchemy import UniqueConstraint, desc, text
+from sqlalchemy import UniqueConstraint, desc, false, text
 from sqlalchemy.ext.associationproxy import association_proxy
 
 from server import app
@@ -50,6 +50,9 @@ class Offering(db.Model):
     name = db.Column(db.String(255), nullable=False)
     code = db.Column(db.String(255), nullable=False)
     start_at = db.Column(db.String(255), nullable=False)
+    # Hidden offerings are left off the offerings page but keep their exams;
+    # importing the course again shows them again.
+    is_hidden = db.Column(db.Boolean, nullable=False, default=False, server_default=false())
 
     exams = db.relationship('Exam', uselist=True, cascade='all, delete-orphan',
                             order_by='Exam.display_name',
