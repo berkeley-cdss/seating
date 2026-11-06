@@ -36,7 +36,13 @@ def app_config(request):
 @pytest.fixture()
 def app(app_config):
     """A new app for each test, so settings never carry over from one test to the next."""
-    yield create_app(app_config)
+    app = create_app(app_config)
+    yield app
+    # each app has its own database engine: close its connections
+    with app.app_context():
+        sqlalchemy_db.session.remove()
+        for engine in sqlalchemy_db.engines.values():
+            engine.dispose()
 
 
 @pytest.fixture()
