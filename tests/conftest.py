@@ -9,14 +9,40 @@ import responses
 from selenium import webdriver
 from selenium.webdriver.chrome.options import Options
 
-from server import app as flask_app
+from config import TestingConfig
+from server.application import create_app
 from server.models import db as sqlalchemy_db
 from tests.fixtures import seed_db
 
 
+def pytest_configure(config):
+    config.addinivalue_line('markers', 'app_config(**settings): build the test\'s app with these settings')
+
+
 @pytest.fixture()
-def app():
-    yield flask_app
+def app_config(request):
+    """
+    The config each test's app is built with: TestingConfig, plus the settings of any
+    @pytest.mark.app_config(...) on the test, its class or its module.
+    """
+    app_config = TestingConfig()
+    # closest first, so apply them in reverse for a test's own settings to win
+    for marker in reversed(list(request.node.iter_markers('app_config'))):
+        for key, value in marker.kwargs.items():
+            setattr(app_config, key, value)
+    return app_config
+
+
+@pytest.fixture()
+def app(app_config):
+    """A new app for each test, so settings never carry over from one test to the next."""
+    app = create_app(app_config)
+    yield app
+    # each app has its own database engine: close its connections
+    with app.app_context():
+        sqlalchemy_db.session.remove()
+        for engine in sqlalchemy_db.engines.values():
+            engine.dispose()
 
 
 @pytest.fixture()
@@ -50,11 +76,13 @@ def mocker():
 def flask_server():
     import requests
     TIMEOUT = 5
-    server = subprocess.Popen(['coverage', 'run', '--source', 'server', '-m', 'flask', 'run'])
+    # the tests seed TestingConfig's database, so the server must serve that config too
+    server = subprocess.Popen(['coverage', 'run', '--source', 'server', '-m', 'flask', 'run'],
+                              env={**os.environ, 'FLASK_ENV': 'testing'})
     start_time = time.time()
     while True:
         try:
-            response = requests.get(flask_app.config.get("SERVER_BASE_URL"))
+            response = requests.get(TestingConfig().SERVER_BASE_URL)
             if response.status_code < 400:
                 break
         except requests.ConnectionError:

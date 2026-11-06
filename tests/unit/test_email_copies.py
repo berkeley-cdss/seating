@@ -6,7 +6,6 @@ list several addresses. The SMTP checks go through a real (local) SMTP server, t
 import pytest
 
 import server.services.email as email_service
-from server import app as flask_app
 from server.forms import EmailForm
 from server.models import db, Exam, Seat, SeatAssignment, Student
 from server.services.email import email_about_assignment
@@ -73,8 +72,8 @@ def sent(monkeypatch):
     yield sent_messages
 
 
-def test_every_student_email_is_copied(seated, sent):
-    with flask_app.test_request_context():
+def test_every_student_email_is_copied(app, seated, sent):
+    with app.test_request_context():
         form = EmailForm(formdata=None, data={
             'from_addr': 'staff@berkeley.edu', 'subject': 'Seat', 'body': 'Dear {{NAME}}',
             'cc_addr': 'ta1@berkeley.edu, ta2@berkeley.edu', 'bcc_addr': 'hidden@berkeley.edu'})

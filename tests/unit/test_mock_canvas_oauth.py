@@ -4,16 +4,12 @@ and must only send the browser back to this app.
 """
 import pytest
 
-from server import app as flask_app
-
 AUTH_URL = '/dev_login/oauth2/auth/'
 TOKEN_URL = '/dev_login/oauth2/token/'
 CALLBACK = 'http://localhost/authorized/'
 
 
-@pytest.fixture
-def real_canvas(monkeypatch):
-    monkeypatch.setitem(flask_app.config, 'MOCK_CANVAS', False)
+real_canvas = pytest.mark.app_config(MOCK_CANVAS=False)
 
 
 def test_authorize_redirects_to_own_callback(client):
@@ -47,16 +43,19 @@ def test_token_returns_fake_user(client):
     assert response.get_json()['user']['name'] == 'Yu Long'
 
 
-def test_authorize_is_hidden_with_real_canvas(client, real_canvas):
+@real_canvas
+def test_authorize_is_hidden_with_real_canvas(client):
     response = client.get(AUTH_URL, query_string={'redirect_uri': CALLBACK, 'state': 'abc', 'user_id': '123456'})
     assert response.status_code == 404
 
 
-def test_token_is_hidden_with_real_canvas(client, real_canvas):
+@real_canvas
+def test_token_is_hidden_with_real_canvas(client):
     assert client.post(TOKEN_URL, data={'code': '123456'}).status_code == 404
 
 
-def test_dev_login_page_still_redirects_home_with_real_canvas(client, real_canvas):
+@real_canvas
+def test_dev_login_page_still_redirects_home_with_real_canvas(client):
     response = client.get('/dev_login/')
     assert response.status_code == 302
     assert '/dev_login' not in response.headers['Location']

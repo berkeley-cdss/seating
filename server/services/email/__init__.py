@@ -1,18 +1,20 @@
-import os
-from server import app
 from server.models import db
 from server.services.email.smtp import SMTPConfig, construct_email, send_emails
 import server.services.email.templates as templates
-from flask import url_for
+from flask import current_app, url_for
 from urllib.parse import urljoin
 
-_email_config = SMTPConfig(
-    app.config.get('EMAIL_SERVER'),
-    app.config.get('EMAIL_PORT'),
-    app.config.get('EMAIL_USERNAME'),
-    app.config.get('EMAIL_PASSWORD'),
-    os.environ.get('EMAIL_SENDER')
-)
+
+def email_config():
+    """The SMTP server settings of the current app."""
+    config = current_app.config
+    return SMTPConfig(
+        config.get('EMAIL_SERVER'),
+        config.get('EMAIL_PORT'),
+        config.get('EMAIL_USERNAME'),
+        config.get('EMAIL_PASSWORD'),
+        config.get('EMAIL_SENDER')
+    )
 
 
 # how many emails go out over one SMTP connection before the students are marked as emailed
@@ -30,7 +32,7 @@ def assignment_values(exam, student):
         "SEAT": seat.display_name,
         "START_TIME": seat.room.start_at_time_display(),
         "DURATION": seat.room.duration_display,
-        "URL": urljoin(app.config.get('SERVER_BASE_URL'), url_for('student_single_seat', seat_id=seat.id)),
+        "URL": urljoin(current_app.config.get('SERVER_BASE_URL'), url_for('views.student_single_seat', seat_id=seat.id)),
     }
 
 
@@ -74,9 +76,10 @@ def email_about_assignment(exam, form, to_addrs):
         email_messages.append(email_message)
     # save who was emailed after each batch, not once at the end: a send that stops partway (a server
     # timeout, an SMTP error) then still records the students who did get their email
+    smtp = email_config()
     for start in range(0, len(email_messages), SEND_BATCH_SIZE):
         successful_emails, failed_emails = send_emails(
-            smtp=_email_config, messages=email_messages[start:start + SEND_BATCH_SIZE])
+            smtp=smtp, messages=email_messages[start:start + SEND_BATCH_SIZE])
         for msg, _ in failed_emails:
             failure_addrs.add(msg['To'])
         for msg, _ in successful_emails:
@@ -104,5 +107,5 @@ def send_test_email(exam, form, student, to_addr):
         body=body,
         body_html=body_html,
     )
-    successful_emails, _ = send_emails(smtp=_email_config, messages=[message])
+    successful_emails, _ = send_emails(smtp=email_config(), messages=[message])
     return bool(successful_emails)

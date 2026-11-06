@@ -1,10 +1,8 @@
-import importlib
+from urllib.parse import parse_qs, urlsplit
 
 import pytest
-from flask import redirect
 
 import config
-from server import app as flask_app
 from server.controllers.dev_login_controllers import _mock_user_roster
 
 
@@ -14,34 +12,22 @@ class TestEnvironmentGating:
     staging and production, and must never be reachable inside them.
     """
 
-    def test_staging_and_production_never_mock_canvas(self):
-        assert config.StagingConfig.MOCK_CANVAS is False
-        assert config.ProductionConfig.MOCK_CANVAS is False
+    def test_staging_and_production_never_mock_canvas(self, monkeypatch):
+        monkeypatch.setenv('MOCK_CANVAS', 'true')
+        assert config.StagingConfig().MOCK_CANVAS is False
+        assert config.ProductionConfig().MOCK_CANVAS is False
 
-    def test_development_and_testing_mock_canvas(self, unset_mock_canvas):
-        assert config.DevelopmentConfig.MOCK_CANVAS is True
-        assert config.TestingConfig.MOCK_CANVAS is True
+    def test_development_and_testing_mock_canvas(self, monkeypatch):
+        monkeypatch.delenv('MOCK_CANVAS', raising=False)
+        assert config.DevelopmentConfig().MOCK_CANVAS is True
+        assert config.TestingConfig().MOCK_CANVAS is True
 
-    def test_development_can_opt_out_of_the_fake_canvas(self, monkeypatch, reloaded_config):
+    def test_development_can_opt_out_of_the_fake_canvas(self, monkeypatch):
+        # the environment is read when a config is made, so no reloading is needed
         monkeypatch.setenv('MOCK_CANVAS', 'false')
-        assert reloaded_config().DevelopmentConfig.MOCK_CANVAS is False
+        assert config.DevelopmentConfig().MOCK_CANVAS is False
         # ...but staging and production do not read the environment at all.
-        assert reloaded_config().StagingConfig.MOCK_CANVAS is False
-
-
-@pytest.fixture()
-def reloaded_config():
-    """Re-evaluate config.py so environment-driven defaults can be exercised."""
-    def _reload():
-        return importlib.reload(config)
-    yield _reload
-    importlib.reload(config)
-
-
-@pytest.fixture()
-def unset_mock_canvas(monkeypatch, reloaded_config):
-    monkeypatch.delenv('MOCK_CANVAS', raising=False)
-    return reloaded_config()
+        assert config.StagingConfig().MOCK_CANVAS is False
 
 
 class TestMockUserRoster:
@@ -59,15 +45,6 @@ class TestMockUserRoster:
         assert roles['Computer Architecture (Fall 2022)'] == ['student']
 
 
-@pytest.fixture()
-def no_csrf():
-    """The dev login posts a form; these tests are not about its CSRF token."""
-    was_enabled = flask_app.config.get('WTF_CSRF_ENABLED', True)
-    flask_app.config['WTF_CSRF_ENABLED'] = False
-    yield
-    flask_app.config['WTF_CSRF_ENABLED'] = was_enabled
-
-
 class TestDevLoginPage:
     def test_login_lands_on_the_dev_login_page(self, client):
         response = client.get('/login/')
@@ -81,18 +58,21 @@ class TestDevLoginPage:
             assert name.encode() in response.data
         assert response.data.count(b'name="user_id" value=') == 4
 
-    def test_a_pasted_id_is_trimmed(self, client, no_csrf):
+    @pytest.mark.app_config(WTF_CSRF_ENABLED=False)  # these tests are not about the CSRF token
+    def test_a_pasted_id_is_trimmed(self, client):
         # Copying an ID out of a spreadsheet brings whitespace with it.
         response = client.post('/dev_login/', data={'user_id': '  345678\n'})
         assert response.status_code == 302
         assert 'user_id=345678' in response.headers['Location']
 
-    def test_an_unknown_id_is_explained_rather_than_crashing(self, client, no_csrf):
+    @pytest.mark.app_config(WTF_CSRF_ENABLED=False)  # these tests are not about the CSRF token
+    def test_an_unknown_id_is_explained_rather_than_crashing(self, client):
         response = client.post('/dev_login/', data={'user_id': '999999'}, follow_redirects=True)
         assert response.status_code == 200
         assert b'No seeded user has Canvas ID 999999' in response.data
 
-    def test_a_missing_id_is_reported(self, client, no_csrf):
+    @pytest.mark.app_config(WTF_CSRF_ENABLED=False)  # these tests are not about the CSRF token
+    def test_a_missing_id_is_reported(self, client):
         response = client.post('/dev_login/', data={'user_id': ''}, follow_redirects=True)
         assert response.status_code == 200
         assert b'This field is required' in response.data
@@ -103,26 +83,18 @@ class TestDevLoginPage:
         assert client.post('/dev_login/oauth2/token/', data={}).status_code == 400
         assert client.post('/dev_login/oauth2/token/', data={'code': '123456'}).status_code == 200
 
-    def test_page_is_hidden_when_canvas_is_real(self, client, monkeypatch):
-        monkeypatch.setitem(flask_app.config, 'MOCK_CANVAS', False)
+
+@pytest.mark.app_config(MOCK_CANVAS=False)
+class TestRealCanvas:
+    def test_dev_login_page_is_hidden(self, client):
         response = client.get('/dev_login/')
         assert response.status_code == 302
         assert '/dev_login' not in response.headers['Location']
 
-    def test_login_redirects_to_real_canvas_when_canvas_is_real(self, client, monkeypatch):
-        # The OAuth client is registered once at import time, for the fake Canvas under
-        # testing, so flipping MOCK_CANVAS here cannot swap in the real one. Check that
-        # /login/ hands off to the OAuth client instead of the dev login page.
-        from server.controllers import auth_controllers
-        redirect_uris = []
-
-        def authorize_redirect(redirect_uri):
-            redirect_uris.append(redirect_uri)
-            return redirect('https://canvas.example.edu/login/oauth2/auth')
-
-        monkeypatch.setitem(flask_app.config, 'MOCK_CANVAS', False)
-        monkeypatch.setattr(auth_controllers.oauth_provider, 'authorize_redirect', authorize_redirect)
+    def test_login_redirects_to_real_canvas(self, app, client):
         response = client.get('/login/')
         assert response.status_code == 302
-        assert response.headers['Location'] == 'https://canvas.example.edu/login/oauth2/auth'
-        assert redirect_uris == ['https://localhost/authorized/']
+        location = urlsplit(response.headers['Location'])
+        assert f'{location.scheme}://{location.netloc}{location.path}' == \
+            app.config['CANVAS_SERVER_URL'] + 'login/oauth2/auth'
+        assert parse_qs(location.query)['redirect_uri'] == ['https://localhost/authorized/']

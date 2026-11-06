@@ -1,11 +1,12 @@
 import click
 
 from server.models import db, Exam
-from server import app
+from flask.cli import with_appcontext
 from tests.fixtures import seed_db as _seed_db
 
 
-@app.cli.command('initdb')
+@click.command('initdb')
+@with_appcontext
 def init_db():
     """
     Initializes the database
@@ -15,7 +16,8 @@ def init_db():
     db.session.commit()
 
 
-@app.cli.command('dropdb')
+@click.command('dropdb')
+@with_appcontext
 def drop_db():
     """
     Drops all tables from the database
@@ -26,7 +28,8 @@ def drop_db():
         db.drop_all()
 
 
-@app.cli.command('seeddb')
+@click.command('seeddb')
+@with_appcontext
 def seed_db():
     """
     Seeds the database with data
@@ -37,7 +40,8 @@ def seed_db():
     _seed_db()
 
 
-@app.cli.command('resetdb')
+@click.command('resetdb')
+@with_appcontext
 @click.pass_context
 def reset_db(ctx):
     "Drops, initializes, then seeds tables with data"
@@ -46,7 +50,8 @@ def reset_db(ctx):
     ctx.invoke(seed_db)
 
 
-@app.cli.command('cleanroomprefs')
+@click.command('cleanroomprefs')
+@with_appcontext
 @click.option('--dry-run', is_flag=True, help='Report what would change without saving it.')
 def clean_room_prefs(dry_run):
     """

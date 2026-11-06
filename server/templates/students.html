@@ -71,22 +71,22 @@
         <span class="input-group-text"><i class="bi bi-search" aria-hidden="true"></i></span>
         <input class="search form-control" type="text" id="search" aria-label="Search by name, email, or SID" placeholder="Search by name, email, or SID">
       </div>
-      <a class="icon-button" href="{{ url_for('import_students', exam=exam) }}" aria-label="Add/Update Students"
+      <a class="icon-button" href="{{ url_for('views.import_students', exam=exam) }}" aria-label="Add/Update Students"
         data-bs-toggle="tooltip" data-bs-title="Add/Update Students"><i class="bi bi-person-plus" aria-hidden="true"></i></a>
-      <a class="icon-button" href="{{ url_for('assign', exam=exam) }}" aria-label="Assign"
+      <a class="icon-button" href="{{ url_for('views.assign', exam=exam) }}" aria-label="Assign"
         data-bs-toggle="tooltip" data-bs-title="Assign"><i class="bi bi-clipboard" aria-hidden="true"></i></a>
-      <a class="icon-button" href="{{ url_for('edit_students', exam=exam) }}" aria-label="Edit All Students"
+      <a class="icon-button" href="{{ url_for('views.edit_students', exam=exam) }}" aria-label="Edit All Students"
         data-bs-toggle="tooltip" data-bs-title="Edit All Students"><i class="bi bi-pencil" aria-hidden="true"></i></a>
-      <a class="icon-button" href="{{ url_for('delete_students', exam=exam) }}" aria-label="Delete Students"
+      <a class="icon-button" href="{{ url_for('views.delete_students', exam=exam) }}" aria-label="Delete Students"
         data-bs-toggle="tooltip" data-bs-title="Delete Students"><i class="bi bi-trash" aria-hidden="true"></i></a>
-      <a class="icon-button" href="{{ url_for('email_all_students', exam=exam) }}" aria-label="Email"
+      <a class="icon-button" href="{{ url_for('views.email_all_students', exam=exam) }}" aria-label="Email"
         data-bs-toggle="tooltip" data-bs-title="Email"><i class="bi bi-envelope" aria-hidden="true"></i></a>
-      <a class="icon-button" href="{{ url_for('export_students_as_csv', exam=exam) }}" aria-label="Export"
+      <a class="icon-button" href="{{ url_for('views.export_students_as_csv', exam=exam) }}" aria-label="Export"
         data-bs-toggle="tooltip" data-bs-title="Export"><i class="bi bi-download" aria-hidden="true"></i></a>
     </div>
     {% if students_with_deleted_rooms %}
     <div class="deleted-rooms-notice">
-      {% call macros.form(remove_deleted_rooms_form, action=url_for('remove_deleted_room_preferences', exam=exam)) %}
+      {% call macros.form(remove_deleted_rooms_form, action=url_for('views.remove_deleted_room_preferences', exam=exam)) %}
         <span>
           {{ students_with_deleted_rooms }} {{ 'student has' if students_with_deleted_rooms == 1 else 'students have' }}
           room preferences for deleted rooms. A student who only wants deleted rooms can't be assigned a seat.
@@ -115,7 +115,7 @@
         {% for student in students %}
         <tr>
           <td>
-            <a class="name" href="{{ url_for('student', exam_student=(exam, student)) }}">
+            <a class="name" href="{{ url_for('views.student', exam_student=(exam, student)) }}">
               {{ student.name }}
             </a>
           </td>
@@ -154,7 +154,7 @@
           <td>
           {% if student.assignment %}
             {% set seat = student.assignment.seat %}
-            <a class="assignment" href="{{ url_for('room', exam=exam, id=seat.room.id, seat=seat.id) }}">
+            <a class="assignment" href="{{ url_for('views.room', exam=exam, id=seat.room.id, seat=seat.id) }}">
               {{ seat.room.display_name }} {{ seat.display_name }}
             </a>
           {% else %}
@@ -168,18 +168,18 @@
             {% else %}
               <div class="emailed" title="Not emailed">❌</div>
             {% endif %}
-            <a class="icon-button" href="{{ url_for('email_single_student', exam_student=(exam, student)) }}" aria-label="Email {{ student.name }}"><i class="bi bi-envelope" aria-hidden="true"></i></a>
+            <a class="icon-button" href="{{ url_for('views.email_single_student', exam_student=(exam, student)) }}" aria-label="Email {{ student.name }}"><i class="bi bi-envelope" aria-hidden="true"></i></a>
           {% else %}
             <div>NO SEAT</div>
           {% endif %}
           </td>
           <td>
-            <a class="icon-button" href="{{ url_for('assign_student', exam_student=(exam, student)) }}" aria-label="Assign {{ student.name }}"><i class="bi bi-clipboard" aria-hidden="true"></i></a>
+            <a class="icon-button" href="{{ url_for('views.assign_student', exam_student=(exam, student)) }}" aria-label="Assign {{ student.name }}"><i class="bi bi-clipboard" aria-hidden="true"></i></a>
           </td>
           <td class="students-actions">
-            <a class="icon-button" href="{{ url_for('edit_student', exam_student=(exam, student)) }}" title="Edit student" aria-label="Edit {{ student.name }}"><i class="bi bi-pencil" aria-hidden="true"></i></a>
+            <a class="icon-button" href="{{ url_for('views.edit_student', exam_student=(exam, student)) }}" title="Edit student" aria-label="Edit {{ student.name }}"><i class="bi bi-pencil" aria-hidden="true"></i></a>
             <button type="button" class="icon-button" title="Delete student" aria-label="Delete {{ student.name }}"
-            onclick="confirmAction('Are you sure you want to delete this student?', '{{ url_for('delete_student', exam_student=(exam, student)) }}');"
+            onclick="confirmAction('Are you sure you want to delete this student?', '{{ url_for('views.delete_student', exam_student=(exam, student)) }}');"
             ><i class="bi bi-x-lg" aria-hidden="true"></i></button>
           </td>
         </tr>

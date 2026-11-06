@@ -57,7 +57,7 @@
   </div>
 
   <div>
-    <form action="{{ url_for('preview_layout') }}" method="post" enctype="multipart/form-data">
+    <form action="{{ url_for('views.preview_layout') }}" method="post" enctype="multipart/form-data">
       {{ form.hidden_tag() }}
       <ul class="nav nav-tabs" role="tablist">
         <li class="nav-item" role="presentation">

@@ -15,18 +15,18 @@
   {% for offering in staff_offerings_existing %}
     <li class="list-group-item d-flex align-items-center gap-3">
       <small class="offering-term">{{ offering.start_at_date.strftime('%Y-%m') }}</small>
-      <a class="item-link flex-grow-1" href="{{ url_for('offering', offering=offering) }}">
+      <a class="item-link flex-grow-1" href="{{ url_for('views.offering', offering=offering) }}">
         {{ offering.name }}
       </a>
       <button type="button" class="icon-button" aria-label="Hide {{ offering.name }}"
           data-bs-toggle="tooltip" data-bs-title="Hide"
-          onclick="confirmAction('Hide this offering? Its exams are kept, and importing it again from Canvas shows it again.', '{{ url_for('hide_offering', offering=offering) }}');"
+          onclick="confirmAction('Hide this offering? Its exams are kept, and importing it again from Canvas shows it again.', '{{ url_for('views.hide_offering', offering=offering) }}');"
           ><i class="bi bi-eye-slash" aria-hidden="true"></i></button>
     </li>
   {% endfor %}
   </ul>
   <div class="text-center mb-4">
-    <a class="btn btn-primary" href="{{ url_for('add_offerings') }}">Import courses from canvas</a>
+    <a class="btn btn-primary" href="{{ url_for('views.add_offerings') }}">Import courses from canvas</a>
   </div>
   <h2 class="h4">Student Course Offerings</h2>
   <p>The following course offerings that you are a student of already have exams set up. You can now view your own seat assignments and exam schedule. If you expect to see a course here but it is not here, your course staff have not yet set up exams for the course yet in this system. Contact your course staff.
@@ -40,7 +40,7 @@
   {% for offering in student_offerings_existing %}
     <li class="list-group-item d-flex align-items-center gap-3">
       <small class="offering-term">{{ offering.start_at_date.strftime('%Y-%m') }}</small>
-      <a class="item-link flex-grow-1" href="{{ url_for('offering', offering=offering) }}">
+      <a class="item-link flex-grow-1" href="{{ url_for('views.offering', offering=offering) }}">
          {{ offering.name }}
       </a>
     </li>

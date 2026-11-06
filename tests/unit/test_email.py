@@ -1,6 +1,6 @@
 import pytest
 from unittest.mock import patch
-from server.services.email import _email_config, SMTPConfig
+from server.services.email import SMTPConfig
 from server.services.email.smtp import construct_email, send_single_email, send_emails
 import server.services.email.templates as templates
 from server.typings.enum import EmailTemplate
@@ -11,6 +11,9 @@ TEST_TO_EMAIL = 'recipient@example.com'
 TEST_SUBJECT = 'Test Subject'
 TEST_BODY = 'Test Body'
 TEST_BODY_HTML = '<html><body><h1>Test Body</h1></body></html>'
+
+# the SMTP server is stubbed out in the tests that use this
+_email_config = SMTPConfig('smtp.example.com', 587, 'user', 'pass', TEST_FROM_EMAIL)
 
 
 def _get_content(msg: Message, type='text/html'):

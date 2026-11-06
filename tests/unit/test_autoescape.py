@@ -8,7 +8,6 @@ import re
 
 import pytest
 
-from server import app as flask_app
 from server.models import db, Exam, SeatAssignment, Seat, Student
 
 EXAM_URL = '/offerings/1234567/exams/midterm1'
@@ -39,18 +38,18 @@ NOT_HTML_TEMPLATES = set()
     ('students.html.j2', False),  # why templates are named by their real extension
     (None, True),  # render_template_string
 ])
-def test_autoescape_follows_flasks_rule(filename, escaped):
+def test_autoescape_follows_flasks_rule(app, filename, escaped):
     # Flask escapes templates whose name ends in .html, .htm, .xml, .xhtml or .svg
-    assert flask_app.select_jinja_autoescape(filename) is escaped
+    assert app.select_jinja_autoescape(filename) is escaped
 
 
-def test_every_template_is_autoescaped():
+def test_every_template_is_autoescaped(app):
     # an HTML template named so that Flask does not escape it (say foo.j2 or foo.html.j2) would print
     # imported data as raw HTML: name it *.html, or list it in NOT_HTML_TEMPLATES if it really is not HTML
-    templates_dir = os.path.join(flask_app.root_path, flask_app.template_folder)
+    templates_dir = os.path.join(app.root_path, app.template_folder)
     templates = sorted(os.listdir(templates_dir))
     assert templates
-    not_escaped = [t for t in templates if not flask_app.select_jinja_autoescape(t)]
+    not_escaped = [t for t in templates if not app.select_jinja_autoescape(t)]
     assert set(not_escaped) == NOT_HTML_TEMPLATES
 
 

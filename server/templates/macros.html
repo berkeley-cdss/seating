@@ -48,7 +48,7 @@
           {% set class = 's highlight' if seat.id and seat.id == highlight_seat_id else 's' %}
           {% if seat.assignment %}
             {% if not remove_link %}
-            <a href="{{ url_for('student', exam_student=(exam, seat.assignment.student)) }}">
+            <a href="{{ url_for('views.student', exam_student=(exam, seat.assignment.student)) }}">
             {% endif %}
               <span class="{{ class }}" id={{ seat.id }} style="font-size: {{ circle_size }}px;">&#x25CF;</span>
             {% if not remove_link %}
@@ -70,7 +70,7 @@
           {% if staff and seat.assignment %}
             <br>{{ seat.assignment.student.name }}
             <br>
-              <img class="photo" loading="lazy" src="{{ url_for('student_photo', exam_student=(room.exam, seat.assignment.student)) }}" alt="photo for: {{ seat.assignment.student.name }}"/>
+              <img class="photo" loading="lazy" src="{{ url_for('views.student_photo', exam_student=(room.exam, seat.assignment.student)) }}" alt="photo for: {{ seat.assignment.student.name }}"/>
             <br>{{ seat.assignment.student.sid }}
           {% endif %}
         </div>
@@ -123,7 +123,7 @@
       {# unsaved seats (room preview) have no id to link to #}
       {% set linkable = staff and not remove_link and seat.id %}
       {% if linkable %}
-      <a href="{{ url_for('student', exam_student=(exam, seat.assignment.student)) if seat.assignment else url_for('student_single_seat', seat_id=seat.id) }}" target="_blank"
+      <a href="{{ url_for('views.student', exam_student=(exam, seat.assignment.student)) if seat.assignment else url_for('views.student_single_seat', seat_id=seat.id) }}" target="_blank"
          aria-label="Seat {{ seat.name or seat.id }}{{ ', ' ~ seat.assignment.student.name if seat.assignment else ', empty' }} (opens in a new tab)">
       {% endif %}
         <div id="{{ seat.id }}" class="{{ class }}" style="left:{{ x }}px;top:{{ y }}px"></div>
@@ -140,7 +140,7 @@
         {% if staff and seat.assignment %}
           <br>{{ seat.assignment.student.name }}
           <br>
-            <img class="photo" loading="lazy" src="{{ url_for('student_photo', exam_student=(room.exam, seat.assignment.student)) }}" alt="photo for: {{ seat.assignment.student.name }}"/>
+            <img class="photo" loading="lazy" src="{{ url_for('views.student_photo', exam_student=(room.exam, seat.assignment.student)) }}" alt="photo for: {{ seat.assignment.student.name }}"/>
           <br>{{ seat.assignment.student.sid }}
         {% endif %}
       </div>

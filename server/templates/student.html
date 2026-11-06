@@ -6,7 +6,7 @@
 {% block body %}
 <section class="student">
   <div>
-    <img class="photo" src="{{ url_for('student_photo', exam_student=(exam, student)) }}" alt="photo for: {{ student.name }}" />
+    <img class="photo" src="{{ url_for('views.student_photo', exam_student=(exam, student)) }}" alt="photo for: {{ student.name }}" />
     <h2 class="h6">{{ student.name }}</h2>
     <p>{{ student.email }}</p>
     <p>Student ID: {{ student.sid }}</p>
@@ -14,10 +14,10 @@
     <p>
     {% if student.assignment %}
       {% set seat = student.assignment.seat %}
-      <a href="{{ url_for('room', exam=exam, id=seat.room.id, seat=seat.id) }}">
+      <a href="{{ url_for('views.room', exam=exam, id=seat.room.id, seat=seat.id) }}">
         {{ seat.room.display_name }} {{ seat.display_name }}
       </a><br><br>
-      <a target="_blank" href="{{ url_for('student_single_seat', seat_id=seat.id) }}">
+      <a target="_blank" href="{{ url_for('views.student_single_seat', seat_id=seat.id) }}">
         Sharable Link to This Seat
       </a>
     {% else %}

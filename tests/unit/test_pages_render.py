@@ -11,7 +11,6 @@ import pytest
 from flask import template_rendered
 
 import server.views as views
-from server import app as flask_app
 from server.models import Offering
 
 EXAM_URL = '/offerings/1234567/exams/midterm1'
@@ -54,17 +53,17 @@ LOGGED_OUT_PAGES = [
 
 
 @contextmanager
-def rendered_templates():
+def rendered_templates(app):
     names = []
 
     def record(sender, template, context, **extra):
         names.append(template.name)
 
-    template_rendered.connect(record, flask_app)
+    template_rendered.connect(record, app)
     try:
         yield names
     finally:
-        template_rendered.disconnect(record, flask_app)
+        template_rendered.disconnect(record, app)
 
 
 @pytest.fixture(autouse=True)
@@ -74,44 +73,44 @@ def master_sheet(monkeypatch):
 
 
 @pytest.mark.parametrize('path, template', STAFF_PAGES)
-def test_staff_page_renders(seeded_db, login_as, path, template):
-    with rendered_templates() as names:
+def test_staff_page_renders(app, seeded_db, login_as, path, template):
+    with rendered_templates(app) as names:
         response = login_as(1).get(path)
     assert response.status_code == 200, response.get_data(as_text=True)[:500]
     assert names == [template]
 
 
 @pytest.mark.parametrize('path, template', LOGGED_OUT_PAGES)
-def test_logged_out_page_renders(seeded_db, client, path, template):
-    with rendered_templates() as names:
+def test_logged_out_page_renders(app, seeded_db, client, path, template):
+    with rendered_templates(app) as names:
         response = client.get(path)
     assert response.status_code == 200
     assert names == [template]
 
 
-def test_add_courses_page_renders(seeded_db, login_as):
+def test_add_courses_page_renders(app, seeded_db, login_as):
     # Jimmy Xu (user 2) is a TA of course 2345678, which has no exams: take it out to have one to add
     seeded_db.session.delete(Offering.query.filter_by(canvas_id='2345678').one())
     seeded_db.session.commit()
     path, template = ADD_COURSES_PAGE
-    with rendered_templates() as names:
+    with rendered_templates(app) as names:
         response = login_as(2).get(path)
     assert response.status_code == 200
     assert names == [template]
 
 
-def test_every_template_is_used():
-    templates_dir = os.path.join(flask_app.root_path, flask_app.template_folder)
+def test_every_template_is_used(app):
+    templates_dir = os.path.join(app.root_path, app.template_folder)
     pages = {template for _, template in STAFF_PAGES + LOGGED_OUT_PAGES + [ADD_COURSES_PAGE]}
     assert set(os.listdir(templates_dir)) == pages | LAYOUT_TEMPLATES
 
 
-def test_every_template_name_in_the_code_exists():
+def test_every_template_name_in_the_code_exists(app):
     # also the ones only reached on an error path, like a failed form
-    templates_dir = os.path.join(flask_app.root_path, flask_app.template_folder)
+    templates_dir = os.path.join(app.root_path, app.template_folder)
     existing = set(os.listdir(templates_dir))
     sources = []
-    for folder, _, files in os.walk(flask_app.root_path):
+    for folder, _, files in os.walk(app.root_path):
         sources += [os.path.join(folder, f) for f in files if f.endswith(('.py', '.html'))]
     named = set()
     for path in sources:
@@ -121,13 +120,13 @@ def test_every_template_name_in_the_code_exists():
     assert named and named <= existing, named - existing
 
 
-def test_student_edit_with_overlapping_preferences_shows_the_form_again(seeded_db, login_as):
+def test_student_edit_with_overlapping_preferences_shows_the_form_again(app, seeded_db, login_as):
     # used to render a template that no longer existed, a 500
     client = login_as(1)
     url = f'{EXAM_URL}/students/1/edit'
     page = client.get(url).get_data(as_text=True)
     token = re.search(r'name="csrf_token" type="hidden" value="([^"]+)"', page).group(1)
-    with rendered_templates() as names:
+    with rendered_templates(app) as names:
         response = client.post(url, data={'csrf_token': token, 'new_email': 'jx@berkeley.edu',
                                           'wants': 'lefty', 'avoids': 'lefty', 'submit': 'y'})
     assert response.status_code == 200
