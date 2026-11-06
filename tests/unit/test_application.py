@@ -52,15 +52,24 @@ def test_flask_app_server_finds_the_factory():
 
 def test_gunicorn_app(monkeypatch):
     monkeypatch.setenv('FLASK_ENV', 'testing')
-    logger = logging.getLogger('server')
-    handlers = list(logger.handlers)
-    try:
-        import server.main
-        main = importlib.reload(server.main)
-        assert main.app.config['FLASK_ENV'] == 'testing'
-        assert 'views.offerings' in {rule.endpoint for rule in main.app.url_map.iter_rules()}
-    finally:
-        logger.handlers = handlers
+    import server.main
+    main = importlib.reload(server.main)
+    assert main.app.config['FLASK_ENV'] == 'testing'
+    assert 'views.offerings' in {rule.endpoint for rule in main.app.url_map.iter_rules()}
+
+
+def test_every_app_logs_info_to_stderr_once():
+    # whichever way the app is loaded (server.main, or `flask --app server`)
+    for _ in range(3):
+        app = server.create_app(config.TestingConfig)
+    assert app.logger.isEnabledFor(logging.INFO)
+    assert sum(getattr(handler, 'seating', False) for handler in app.logger.handlers) == 1
+
+
+def test_a_bad_photo_cache_life_stops_the_app_from_starting(monkeypatch):
+    monkeypatch.setenv('C1C_PHOTO_CACHE_LIFE', '90d')
+    with pytest.raises(ValueError):
+        config.TestingConfig()
 
 
 @pytest.fixture

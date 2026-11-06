@@ -76,7 +76,9 @@ def mocker():
 def flask_server():
     import requests
     TIMEOUT = 5
-    server = subprocess.Popen(['coverage', 'run', '--source', 'server', '-m', 'flask', 'run'])
+    # the tests seed TestingConfig's database, so the server must serve that config too
+    server = subprocess.Popen(['coverage', 'run', '--source', 'server', '-m', 'flask', 'run'],
+                              env={**os.environ, 'FLASK_ENV': 'testing'})
     start_time = time.time()
     while True:
         try:

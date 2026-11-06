@@ -10,4 +10,4 @@ def cache_key_photo(canvas_id: str):
 
 
 def cache_life_photo():
-    return int(current_app.config.get('C1C_PHOTO_CACHE_LIFE'))
+    return current_app.config['C1C_PHOTO_CACHE_LIFE']

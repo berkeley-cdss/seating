@@ -8,9 +8,10 @@ from server.services.canvas.fake_canvas import FakeCanvas, FakeCourse, FakeUser
 from server.typings.exception import Redirect
 
 
-def is_mock_canvas() -> bool:
-    return current_app.config['MOCK_CANVAS'] and \
-        current_app.config['FLASK_ENV'].lower() != 'production'
+def is_mock_canvas(config=None) -> bool:
+    """Whether to use the fake Canvas: only when asked for, and never in production."""
+    config = current_app.config if config is None else config
+    return config['MOCK_CANVAS'] and config['FLASK_ENV'].lower() != 'production'
 
 
 def _get_client(key=None) -> FakeCanvas | Canvas:

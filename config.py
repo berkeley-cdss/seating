@@ -65,7 +65,7 @@ class ConfigBase(object):
         self.C1C_API_DOMAIN = getenv('C1C_API_DOMAIN', optional=True)
         self.C1C_API_USERNAME = getenv('C1C_API_USERNAME', optional=True)
         self.C1C_API_PASSWORD = getenv('C1C_API_PASSWORD', optional=True)
-        self.C1C_PHOTO_CACHE_LIFE = getenv('C1C_PHOTO_CACHE_LIFE', 3600 * 24 * 90)
+        self.C1C_PHOTO_CACHE_LIFE = int(getenv('C1C_PHOTO_CACHE_LIFE', 3600 * 24 * 90))
 
         # Master room sheet
         self.MASTER_ROOM_SHEET_URL = getenv('MASTER_ROOM_SHEET_URL', optional=True)

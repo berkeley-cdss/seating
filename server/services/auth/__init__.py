@@ -3,6 +3,7 @@ from flask import current_app, redirect, request, session, url_for
 from flask_login import LoginManager
 from authlib.integrations.flask_client import OAuth
 from .scope import scopes
+from server.services.canvas import is_mock_canvas
 
 # set up for each app by init_auth
 login_manager = LoginManager()
@@ -21,7 +22,7 @@ def init_auth(app):
     """Sets up logins for `app`, with the real Canvas or the fake one its config asks for."""
     login_manager.init_app(app)
     oauth = OAuth(app)
-    if not (app.config['MOCK_CANVAS'] and app.config['FLASK_ENV'].lower() != 'production'):
+    if not is_mock_canvas(app.config):
         canvas_server_url = app.config.get('CANVAS_SERVER_URL')
         provider = oauth.register(
             'seating',

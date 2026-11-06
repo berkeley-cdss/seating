@@ -1,3 +1,5 @@
+import logging
+
 import flask.ctx
 from canvasapi.exceptions import InvalidAccessToken
 from flask import Flask, redirect
@@ -75,6 +77,7 @@ def create_app(config=None):
     """
     # 'server' keeps the templates, static files and logger where they were
     app = App('server')
+    configure_logging(app)
 
     if config is None:
         config = config_for_environment()
@@ -133,6 +136,16 @@ def create_app(config=None):
     )
 
     return app
+
+
+def configure_logging(app):
+    """Logs INFO and up to stderr, which Cloud Run collects."""
+    # every app built in a process shares the 'server' logger: add the handler once
+    if not any(getattr(handler, 'seating', False) for handler in app.logger.handlers):
+        handler = logging.StreamHandler()
+        handler.seating = True
+        app.logger.addHandler(handler)
+    app.logger.setLevel(logging.INFO)
 
 
 def init_sentry(environment):
