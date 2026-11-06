@@ -8,7 +8,6 @@ import re
 
 import pytest
 
-from server import app as flask_app
 from server.forms import EmailForm
 from server.models import db, Exam, Student
 import server.services.email as email_service
@@ -105,9 +104,9 @@ def test_default_email_uses_only_known_variables_and_no_html():
     assert '<' not in email.body
 
 
-def test_every_variable_has_a_value(seeded_db):
+def test_every_variable_has_a_value(app, seeded_db):
     jimmy = Student.query.filter_by(exam_id=1, canvas_id='234567').one()
-    with flask_app.test_request_context():
+    with app.test_request_context():
         values = email_service.assignment_values(jimmy.exam, jimmy)
     assert set(values) == set(VARIABLES)
 
@@ -128,8 +127,8 @@ def _form(body='Dear {{NAME}}, {{EXAM}}'):
         'from_addr': 'staff@berkeley.edu', 'to_addr': 'x@berkeley.edu', 'subject': 'Seat for {{EXAM}}', 'body': body})
 
 
-def test_substitution_fills_in_all_three(jimmy):
-    with flask_app.test_request_context():
+def test_substitution_fills_in_all_three(app, jimmy):
+    with app.test_request_context():
         subject, text, html = substitute_about_assignment(jimmy.exam, _form(), jimmy)
     assert subject == 'Seat for Midterm <1> & 2'
     assert text == 'Dear Ada & <Bo>, Midterm <1> & 2'
@@ -149,8 +148,8 @@ def sent(monkeypatch):
     yield sent_messages
 
 
-def test_every_email_has_a_text_and_an_html_part(jimmy, sent):
-    with flask_app.test_request_context():
+def test_every_email_has_a_text_and_an_html_part(app, jimmy, sent):
+    with app.test_request_context():
         successful, failed = email_about_assignment(jimmy.exam, _form('Dear {{NAME}}\n\nRoom: {{ROOM}}'),
                                                     [jimmy.email])
     assert successful == {jimmy.email} and not failed
@@ -162,10 +161,10 @@ def test_every_email_has_a_text_and_an_html_part(jimmy, sent):
     assert message['Subject'] == 'Seat for Midterm <1> & 2'
 
 
-def test_backslash_in_a_name_does_not_stop_the_emails(jimmy, sent):
+def test_backslash_in_a_name_does_not_stop_the_emails(app, jimmy, sent):
     jimmy.name = 'Xu, Jo\\hn'
     db.session.commit()
-    with flask_app.test_request_context():
+    with app.test_request_context():
         successful, _ = email_about_assignment(jimmy.exam, _form(), [jimmy.email])
     assert successful == {jimmy.email}
     assert 'Dear Jo\\Hn' in sent[0].get_body(('html',)).get_content()

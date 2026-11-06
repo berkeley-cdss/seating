@@ -1,7 +1,8 @@
 import re
 from unittest.mock import patch
 
-from server import app
+import pytest
+
 from server.models import Room, Seat
 
 EXAM_URL = '/offerings/1234567/exams/midterm1'
@@ -43,9 +44,9 @@ def test_assign_page_seats_are_not_links(seeded_db, login_as):
     assert _seat_links(response) == {}
 
 
-def test_room_preview_renders_unsaved_seats(seeded_db, login_as, monkeypatch):
+@pytest.mark.app_config(WTF_CSRF_ENABLED=False)
+def test_room_preview_renders_unsaved_seats(seeded_db, login_as):
     # a previewed room isn't saved yet, so its seats have no ids to link to
-    monkeypatch.setitem(app.config, 'WTF_CSRF_ENABLED', False)
     preview = Room(name='preview', display_name='Preview')
     preview.seats = [
         Seat(name='A1', row='A', seat='1', fixed=True, x=0, y=0, attributes=set()),

@@ -14,7 +14,7 @@ from authlib.integrations.base_client import OAuthError
 def login():
     if canvas_client.is_mock_canvas():
         return redirect(url_for('dev_login.dev_login_page'))
-    return oauth_provider.authorize_redirect(
+    return oauth_provider().authorize_redirect(
         url_for('auth.authorized', _external=True, _scheme="https"))
 
 
@@ -23,7 +23,7 @@ def authorized():
     try:
         # Authlib raises OAuthError when the provider reports an error, when the
         # `state` does not match the one we generated, or when the code exchange fails.
-        resp = oauth_provider.authorize_access_token()
+        resp = oauth_provider().authorize_access_token()
     except OAuthError as e:
         # the provider's error is copied from the `error`/`error_description` query parameters,
         # which anyone can put in a link, and a returned str is served as HTML: escape it
@@ -50,7 +50,7 @@ def authorized():
     db.session.commit()
 
     login_user(user_model, remember=True)
-    after_login = session.pop('after_login', None) or url_for('index')
+    after_login = session.pop('after_login', None) or url_for('views.index')
     return redirect(after_login)
 
 
@@ -59,4 +59,4 @@ def authorized():
 def logout():
     session.clear()
     logout_user()
-    return redirect(url_for('index'))
+    return redirect(url_for('views.index'))

@@ -10,7 +10,6 @@ import re
 import pytest
 
 import server.services.email as email_service
-from server import app as flask_app
 from server.forms import EmailForm
 from server.models import db, Exam, Seat, SeatAssignment, Student
 from server.services.email import email_about_assignment
@@ -51,7 +50,7 @@ def _form():
         'from_addr': 'staff@berkeley.edu', 'subject': 'Seat', 'body': 'Dear {{NAME}}'})
 
 
-def test_emailed_is_saved_after_each_batch(seated, monkeypatch):
+def test_emailed_is_saved_after_each_batch(app, seated, monkeypatch):
     # the second batch fails the way a killed request or a dropped SMTP connection would
     monkeypatch.setattr(email_service, 'SEND_BATCH_SIZE', 1)
     calls = []
@@ -64,17 +63,17 @@ def test_emailed_is_saved_after_each_batch(seated, monkeypatch):
 
     monkeypatch.setattr(email_service, 'send_emails', send_emails)
     exam = db.session.get(Exam, 1)
-    with flask_app.test_request_context(), pytest.raises(TimeoutError):
+    with app.test_request_context(), pytest.raises(TimeoutError):
         email_about_assignment(exam, _form(), [student.email for student in seated])
     db.session.rollback()  # what the end of the request does with anything not committed
     db.session.expire_all()
     assert [_student(c).assignment.emailed for c in ('234567', '345678', '456789')] == [True, False, False]
 
 
-def test_all_batches_are_sent(seated, sent, monkeypatch):
+def test_all_batches_are_sent(app, seated, sent, monkeypatch):
     monkeypatch.setattr(email_service, 'SEND_BATCH_SIZE', 2)
     exam = db.session.get(Exam, 1)
-    with flask_app.test_request_context():
+    with app.test_request_context():
         successful, failed = email_about_assignment(exam, _form(), [student.email for student in seated])
     assert successful == {student.email for student in seated} and not failed
     assert len(sent) == 3

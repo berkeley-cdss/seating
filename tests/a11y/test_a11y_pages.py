@@ -9,7 +9,6 @@ from dataclasses import dataclass
 
 import pytest
 
-from server import app as flask_app
 from tests.a11y.conftest import BASE_URL, VIOLATIONS_BY_RULE
 from tests.a11y.utils import COMPLETE_A11Y_STANDARDS, REQUIRED_A11Y_STANDARDS, assert_no_violations, run_axe, \
     save_report
@@ -33,47 +32,47 @@ class Page:
 
 
 PAGES = [
-    Page('home', 'index', '/'),
+    Page('home', 'views.index', '/'),
     Page('dev login', 'dev_login.dev_login_page', '/dev_login/'),
 
-    Page('student offerings', 'offerings', '/offerings', STUDENT),
-    Page('student offering', 'offering', '/offerings/1234567/', STUDENT),
-    Page('student seat', 'student_single_seat', '/seats/1/', STUDENT),
-    Page('student exam', 'exam', f'{EXAM}/', STUDENT, lands_on='/seats/1/'),
+    Page('student offerings', 'views.offerings', '/offerings', STUDENT),
+    Page('student offering', 'views.offering', '/offerings/1234567/', STUDENT),
+    Page('student seat', 'views.student_single_seat', '/seats/1/', STUDENT),
+    Page('student exam', 'views.exam', f'{EXAM}/', STUDENT, lands_on='/seats/1/'),
 
-    Page('offerings', 'offerings', '/offerings', STAFF),
-    Page('offering', 'offering', '/offerings/1234567/', STAFF),
-    Page('new exam', 'new_exam', '/offerings/1234567/exams/new/', STAFF),
-    Page('edit exam', 'edit_exam', f'{EXAM}/edit/', STAFF),
-    Page('exam', 'exam', f'{EXAM}/', STAFF),
-    Page('import room from custom sheet', 'import_room_from_custom_sheet',
+    Page('offerings', 'views.offerings', '/offerings', STAFF),
+    Page('offering', 'views.offering', '/offerings/1234567/', STAFF),
+    Page('new exam', 'views.new_exam', '/offerings/1234567/exams/new/', STAFF),
+    Page('edit exam', 'views.edit_exam', f'{EXAM}/edit/', STAFF),
+    Page('exam', 'views.exam', f'{EXAM}/', STAFF),
+    Page('import room from custom sheet', 'views.import_room_from_custom_sheet',
          f'{EXAM}/rooms/import/from_custom_sheet/', STAFF),
-    Page('import room from csv', 'import_room_from_csv_upload', f'{EXAM}/rooms/import/from_csv_upload/', STAFF),
-    Page('import room manually', 'import_room_manually', f'{EXAM}/rooms/import/from_manual/', STAFF),
-    Page('room', 'room', f'{EXAM}/rooms/1/', STAFF),
-    Page('edit room', 'edit_room', f'{EXAM}/rooms/1/edit', STAFF),
-    Page('students', 'students', f'{EXAM}/students/', STAFF),
-    Page('import students', 'import_students', f'{EXAM}/students/import/', STAFF),
-    Page('import students from canvas', 'import_students_from_canvas_roster',
+    Page('import room from csv', 'views.import_room_from_csv_upload', f'{EXAM}/rooms/import/from_csv_upload/', STAFF),
+    Page('import room manually', 'views.import_room_manually', f'{EXAM}/rooms/import/from_manual/', STAFF),
+    Page('room', 'views.room', f'{EXAM}/rooms/1/', STAFF),
+    Page('edit room', 'views.edit_room', f'{EXAM}/rooms/1/edit', STAFF),
+    Page('students', 'views.students', f'{EXAM}/students/', STAFF),
+    Page('import students', 'views.import_students', f'{EXAM}/students/import/', STAFF),
+    Page('import students from canvas', 'views.import_students_from_canvas_roster',
          f'{EXAM}/students/import/from_canvas_roster/', STAFF),
-    Page('edit students', 'edit_students', f'{EXAM}/students/edit', STAFF),
-    Page('delete students', 'delete_students', f'{EXAM}/students/delete/', STAFF),
-    Page('assign', 'assign', f'{EXAM}/students/assign/', STAFF),
-    Page('email', 'email_all_students', f'{EXAM}/students/email/', STAFF),
-    Page('student', 'student', f'{EXAM}/students/1', STAFF),
-    Page('edit student', 'edit_student', f'{EXAM}/students/1/edit', STAFF),
-    Page('assign student', 'assign_student', f'{EXAM}/students/1/assign/', STAFF),
-    Page('email student', 'email_single_student', f'{EXAM}/students/1/email/', STAFF),
-    Page('preview layout', 'preview_layout', '/layouts/preview/', STAFF),
+    Page('edit students', 'views.edit_students', f'{EXAM}/students/edit', STAFF),
+    Page('delete students', 'views.delete_students', f'{EXAM}/students/delete/', STAFF),
+    Page('assign', 'views.assign', f'{EXAM}/students/assign/', STAFF),
+    Page('email', 'views.email_all_students', f'{EXAM}/students/email/', STAFF),
+    Page('student', 'views.student', f'{EXAM}/students/1', STAFF),
+    Page('edit student', 'views.edit_student', f'{EXAM}/students/1/edit', STAFF),
+    Page('assign student', 'views.assign_student', f'{EXAM}/students/1/assign/', STAFF),
+    Page('email student', 'views.email_single_student', f'{EXAM}/students/1/email/', STAFF),
+    Page('preview layout', 'views.preview_layout', '/layouts/preview/', STAFF),
 ]
 
 # GET endpoints that are not audited, and why
 SKIPPED_ENDPOINTS = {
     'static': 'not a page',
-    'favicon': 'not a page',
-    'students_template': 'not a page',
-    'student_photo': 'not a page',
-    'export_students_as_csv': 'not a page',
+    'views.favicon': 'not a page',
+    'views.students_template': 'not a page',
+    'views.student_photo': 'not a page',
+    'views.export_students_as_csv': 'not a page',
     'health.check': 'not a page',
     'health.check_db': 'not a page',
     'health.check_logging': 'not a page',
@@ -81,19 +80,19 @@ SKIPPED_ENDPOINTS = {
     'auth.authorized': 'redirects after login',
     'auth.logout': 'redirects after logout',
     'dev_login.mock_authorize': 'redirects during login',
-    'add_offerings': 'redirects when every Canvas course is already added, as in the seed data',
-    'import_room': 'reads the master room sheet from Google Sheets',
-    'import_room_from_master_sheet': 'reads the master room sheet from Google Sheets',
-    'hide_offering': 'hides on GET, then redirects',
-    'delete_exam': 'deletes on GET, then redirects',
-    'toggle_exam': 'changes the exam on GET, then redirects',
-    'delete_room': 'deletes on GET',
-    'delete_student': 'deletes on GET, then redirects',
+    'views.add_offerings': 'redirects when every Canvas course is already added, as in the seed data',
+    'views.import_room': 'reads the master room sheet from Google Sheets',
+    'views.import_room_from_master_sheet': 'reads the master room sheet from Google Sheets',
+    'views.hide_offering': 'hides on GET, then redirects',
+    'views.delete_exam': 'deletes on GET, then redirects',
+    'views.toggle_exam': 'changes the exam on GET, then redirects',
+    'views.delete_room': 'deletes on GET',
+    'views.delete_student': 'deletes on GET, then redirects',
 }
 
 
-def test_every_page_is_audited():
-    get_endpoints = {rule.endpoint for rule in flask_app.url_map.iter_rules() if 'GET' in rule.methods}
+def test_every_page_is_audited(app):
+    get_endpoints = {rule.endpoint for rule in app.url_map.iter_rules() if 'GET' in rule.methods}
     audited = {page.endpoint for page in PAGES}
     missing = get_endpoints - audited - set(SKIPPED_ENDPOINTS)
     assert not missing, f"Add these to PAGES or SKIPPED_ENDPOINTS in {__file__}: {sorted(missing)}"

@@ -1,9 +1,9 @@
 import re
-from flask import abort, redirect, render_template, request, send_file, url_for, flash, Response
+from flask import Blueprint, abort, current_app, redirect, render_template, request, send_file, url_for, flash, \
+    Response
 from flask.json import jsonify
 from flask_login import current_user, login_required
 
-from server import app
 from server.models import SeatAssignment, db, Exam, Room, Seat, Student
 from server.forms import AssignSingleForm, EditExamForm, EditRoomForm, ExamForm, ImportStudentsForm, \
     RoomForm, ChooseRoomForm, ImportStudentFromCanvasRosterForm, DeleteStudentForm, \
@@ -27,8 +27,11 @@ from server.utils.misc import set_to_str, str_set_to_set
 from sqlalchemy import select
 from sqlalchemy.orm import joinedload
 
+# the app's own pages; create_app registers it
+bp = Blueprint('views', __name__)
 
-@app.route('/')
+
+@bp.route('/')
 def index():
     """
     Path: /
@@ -36,14 +39,14 @@ def index():
     """
     # if already logged in, redirect to offerings page
     if current_user and current_user.is_authenticated:
-        return redirect(url_for('offerings'))
+        return redirect(url_for('views.offerings'))
     return render_template("index.html")
 
 
 # region Offering CRUDI
 
 
-@app.route('/offerings')
+@bp.route('/offerings')
 @login_required
 def offerings():
     from server.models import Offering
@@ -89,7 +92,7 @@ def offerings():
                            other_offerings_existing=other_offerings_existing)
 
 
-@app.route('/offerings/new', methods=['GET', 'POST'])
+@bp.route('/offerings/new', methods=['GET', 'POST'])
 @login_required
 def add_offerings():
     from server.models import Offering
@@ -113,14 +116,14 @@ def add_offerings():
         flash("Skipped invalid courses from Canvas: " + str([s.__dict__ for s in skipped]), 'warning')
     if not staff_offering_ids_not_existing:
         flash("No more new courses to import.", 'info')
-        return redirect(url_for('offerings'))
+        return redirect(url_for('views.offerings'))
     staff_offerings_not_existing = [staff_offerings_id_to_model[canvas_id] for canvas_id in staff_offering_ids_not_existing]
     form = ChooseCourseOfferingForm(offering_list=staff_offerings_not_existing)
     if form.validate_on_submit():
         chosen = form.offerings.data
         if not chosen:
             flash("No course offering imported.", 'info')
-            return redirect(url_for('offerings'))
+            return redirect(url_for('views.offerings'))
         try:
             for canvas_id in chosen:
                 if canvas_id in hidden_offerings:
@@ -129,7 +132,7 @@ def add_offerings():
                                           for canvas_id in chosen if canvas_id not in hidden_offerings])
             db.session.commit()
             flash(f"Imported {len(chosen)} course offerings.", 'success')
-            return redirect(url_for('offerings'))
+            return redirect(url_for('views.offerings'))
         except Exception as e:
             db.session.rollback()
             print("error", str(e))
@@ -139,7 +142,7 @@ def add_offerings():
                            form=form)
 
 
-@app.route('/<offering:offering>/')
+@bp.route('/<offering:offering>/')
 def offering(offering):
     """
     Path: /offerings/<canvas_id>
@@ -158,7 +161,7 @@ def offering(offering):
                            is_staff=is_staff)
 
 
-@app.route('/<offering:offering>/hide/')
+@bp.route('/<offering:offering>/hide/')
 def hide_offering(offering):
     """
     Path: /offerings/<canvas_id>/hide
@@ -176,7 +179,7 @@ def hide_offering(offering):
     except Exception as e:
         db.session.rollback()
         flash(f"Failed to hide offering {offering.name} (Canvas ID: {offering.canvas_id}) due to an error:\n{e}", 'error')
-    return redirect(url_for('offerings'))
+    return redirect(url_for('views.offerings'))
 
 
 # endregion
@@ -184,7 +187,7 @@ def hide_offering(offering):
 # region Exam CRUDI
 
 
-@app.route("/<offering:offering>/exams/new/", methods=["GET", "POST"])
+@bp.route("/<offering:offering>/exams/new/", methods=["GET", "POST"])
 def new_exam(offering):
     """
     Path: /offerings/<canvas_id>/exams/new
@@ -204,17 +207,17 @@ def new_exam(offering):
                         is_active=True)
             db.session.add(exam)
             db.session.commit()
-            return redirect(url_for('offering', offering=offering))
+            return redirect(url_for('views.offering', offering=offering))
         except Exception as e:
             db.session.rollback()
             flash(f"An error occurred when inserting exam of name={form.name.data}\n{str(e)}", 'error')
-            return redirect(url_for('offering', offering=offering))
+            return redirect(url_for('views.offering', offering=offering))
     return render_template("upsert_exam.html",
                            title="Create an Exam for {}".format(offering.name),
                            form=form, exam=None)
 
 
-@app.route("/<exam:exam>/delete/", methods=["GET", "DELETE"])
+@bp.route("/<exam:exam>/delete/", methods=["GET", "DELETE"])
 def delete_exam(exam):
     """
     Path: /offerings/<canvas_id>/exams/<exam_name>/delete
@@ -227,10 +230,10 @@ def delete_exam(exam):
     except Exception as e:
         db.session.rollback()
         flash(f"Failed to delete exam {exam.display_name} (ID: {exam.id}) due to an error:\n{e}", 'error')
-    return redirect(url_for('offering', offering=exam.offering))
+    return redirect(url_for('views.offering', offering=exam.offering))
 
 
-@app.route("/<exam:exam>/edit/", methods=["GET", "POST"])
+@bp.route("/<exam:exam>/edit/", methods=["GET", "POST"])
 def edit_exam(exam):
     """
     Path: /offerings/<canvas_id>/exams/<exam_name>/edit
@@ -242,7 +245,7 @@ def edit_exam(exam):
         form.active.data = exam.is_active
     if form.validate_on_submit():
         if 'cancel' in request.form:
-            return redirect(url_for('offering', offering=exam.offering))
+            return redirect(url_for('views.offering', offering=exam.offering))
         exam.display_name = form.display_name.data
         if form.active.data:
             exam.offering.mark_all_exams_as_inactive()
@@ -253,17 +256,17 @@ def edit_exam(exam):
                 flash("No active exam left. The first exam is activated by default.", 'info')
         try:
             db.session.commit()
-            return redirect(url_for('offering', offering=exam.offering))
+            return redirect(url_for('views.offering', offering=exam.offering))
         except Exception as e:
             db.session.rollback()
             flash(f"Failed to edit exam name={exam.display_name} due to a db error: \n{e}", 'error')
-            return redirect(url_for('offering', offering=exam.offering))
+            return redirect(url_for('views.offering', offering=exam.offering))
     return render_template("upsert_exam.html",
                            title="Edit Exam: {}".format(exam.display_name),
                            form=form, exam=exam)
 
 
-@app.route("/<exam:exam>/toggle/", methods=["GET", "PATCH"])
+@bp.route("/<exam:exam>/toggle/", methods=["GET", "PATCH"])
 def toggle_exam(exam):
     """
     Path: /offerings/<canvas_id>/exams/<exam_name>/toggle
@@ -282,10 +285,10 @@ def toggle_exam(exam):
     except Exception as e:
         db.session.rollback()
         flash(f"Failed to toggle exam name={exam.display_name} due to a db error: \n{e}", 'error')
-    return redirect(url_for('offering', offering=exam.offering))
+    return redirect(url_for('views.offering', offering=exam.offering))
 
 
-@app.route('/<exam:exam>/')
+@bp.route('/<exam:exam>/')
 def exam(exam):
     """
     Path: /offerings/<canvas_id>/exams/<exam_name>
@@ -297,21 +300,21 @@ def exam(exam):
 # region Room CRUDI
 
 
-@app.route('/<exam:exam>/rooms/import/')
+@bp.route('/<exam:exam>/rooms/import/')
 def import_room(exam):
     """
     Path: /offerings/<canvas_id>/exams/<exam_name>/rooms/import
     """
     new_form = RoomForm()
-    choose_form = ChooseRoomForm(room_list=get_spreadsheet_tabs(app.config.get('MASTER_ROOM_SHEET_URL')))
+    choose_form = ChooseRoomForm(room_list=get_spreadsheet_tabs(current_app.config.get('MASTER_ROOM_SHEET_URL')))
     upload_form = UploadRoomForm()
     return render_template('new_room.html',
                            exam=exam, new_form=new_form, choose_form=choose_form,
                            upload_form=upload_form,
-                           master_sheet_url=app.config.get('MASTER_ROOM_SHEET_URL'))
+                           master_sheet_url=current_app.config.get('MASTER_ROOM_SHEET_URL'))
 
 
-@app.route('/<exam:exam>/rooms/import/from_custom_sheet/', methods=['GET', 'POST'])
+@bp.route('/<exam:exam>/rooms/import/from_custom_sheet/', methods=['GET', 'POST'])
 def import_room_from_custom_sheet(exam):
     """
     Path: /offerings/<canvas_id>/exams/<exam_name>/rooms/import/new
@@ -331,7 +334,7 @@ def import_room_from_custom_sheet(exam):
                 db.session.commit()
             except Exception as e:
                 flash(f"Failed to import room due to an db error: {e}", 'error')
-            return redirect(url_for('exam', exam=exam))
+            return redirect(url_for('views.exam', exam=exam))
     for field, errors in new_form.errors.items():
         for error in errors:
             flash("{}: {}".format(field, error), 'error')
@@ -340,22 +343,22 @@ def import_room_from_custom_sheet(exam):
                            new_form=new_form, choose_form=choose_form,
                            upload_form=upload_form,
                            room=room,
-                           master_sheet_url=app.config.get('MASTER_ROOM_SHEET_URL'))
+                           master_sheet_url=current_app.config.get('MASTER_ROOM_SHEET_URL'))
 
 
-@app.route('/<exam:exam>/rooms/import/from_master_sheet/', methods=['GET', 'POST'])
+@bp.route('/<exam:exam>/rooms/import/from_master_sheet/', methods=['GET', 'POST'])
 def import_room_from_master_sheet(exam):
     """
     Path: /offerings/<canvas_id>/exams/<exam_name>/rooms/import/choose
     """
     new_form = RoomForm()
-    choose_form = ChooseRoomForm(room_list=get_spreadsheet_tabs(app.config.get('MASTER_ROOM_SHEET_URL')))
+    choose_form = ChooseRoomForm(room_list=get_spreadsheet_tabs(current_app.config.get('MASTER_ROOM_SHEET_URL')))
     upload_form = UploadRoomForm()
     if choose_form.validate_on_submit():
         for r in choose_form.rooms.data:
             f = RoomForm(
                 display_name=r,
-                sheet_url=app.config.get("MASTER_ROOM_SHEET_URL"),
+                sheet_url=current_app.config.get("MASTER_ROOM_SHEET_URL"),
                 sheet_range=r)
             room = None
             try:
@@ -368,7 +371,7 @@ def import_room_from_master_sheet(exam):
                     db.session.commit()
                 except Exception as e:
                     flash(f"Failed to import room due to an db error: {e}", 'error')
-        return redirect(url_for('exam', exam=exam))
+        return redirect(url_for('views.exam', exam=exam))
     for field, errors in choose_form.errors.items():
         for error in errors:
             flash("{}: {}".format(field, error), 'error')
@@ -376,10 +379,10 @@ def import_room_from_master_sheet(exam):
                            exam=exam,
                            new_form=new_form, choose_form=choose_form,
                            upload_form=upload_form,
-                           master_sheet_url=app.config.get('MASTER_ROOM_SHEET_URL'))
+                           master_sheet_url=current_app.config.get('MASTER_ROOM_SHEET_URL'))
 
 
-@app.route('/<exam:exam>/rooms/import/from_csv_upload/', methods=['GET', 'POST'])
+@bp.route('/<exam:exam>/rooms/import/from_csv_upload/', methods=['GET', 'POST'])
 def import_room_from_csv_upload(exam):
     new_form = RoomForm()
     choose_form = ChooseRoomForm()
@@ -399,7 +402,7 @@ def import_room_from_csv_upload(exam):
                 db.session.commit()
             except Exception as e:
                 flash(f"Failed to import room due to a db error: {e}", 'error')
-        return redirect(url_for('exam', exam=exam))
+        return redirect(url_for('views.exam', exam=exam))
     for field, errors in upload_form.errors.items():
         for error in errors:
             flash("{}: {}".format(field, error), 'error')
@@ -407,10 +410,10 @@ def import_room_from_csv_upload(exam):
                            exam=exam,
                            new_form=new_form, choose_form=choose_form,
                            upload_form=upload_form,
-                           master_sheet_url=app.config.get('MASTER_ROOM_SHEET_URL'))
+                           master_sheet_url=current_app.config.get('MASTER_ROOM_SHEET_URL'))
 
 
-@app.route('/<exam:exam>/rooms/import/from_manual/', methods=['GET', 'POST'])
+@bp.route('/<exam:exam>/rooms/import/from_manual/', methods=['GET', 'POST'])
 def import_room_manually(exam):  # noqa: C901
     form = EditRoomForm()
     if request.method == 'GET':
@@ -435,14 +438,14 @@ def import_room_manually(exam):  # noqa: C901
                 db.session.commit()
             except Exception as e:
                 flash(f"Failed to import room due to a db error: {e}", 'error')
-        return redirect(url_for('exam', exam=exam))
+        return redirect(url_for('views.exam', exam=exam))
     for field, errors in form.errors.items():
         for error in errors:
             flash("{}: {}".format(field, error), 'error')
     return render_template('upsert_room.html', exam=exam, form=form, room=None)
 
 
-@app.route('/<exam:exam>/rooms/<int:id>/delete', methods=['GET', 'DELETE'])
+@bp.route('/<exam:exam>/rooms/<int:id>/delete', methods=['GET', 'DELETE'])
 def delete_room(exam, id):
     """
     Path: /offerings/<canvas_id>/exams/<exam_name>/rooms/<room_name>/delete
@@ -462,7 +465,7 @@ def delete_room(exam, id):
     return render_template('exam.html', exam=exam)
 
 
-@app.route('/<exam:exam>/rooms/<int:id>/edit', methods=['GET', 'POST'])
+@bp.route('/<exam:exam>/rooms/<int:id>/edit', methods=['GET', 'POST'])
 def edit_room(exam, id):  # noqa: C901
     """
     Path: /offerings/<canvas_id>/exams/<exam_name>/rooms/<room_name>/edit
@@ -488,7 +491,7 @@ def edit_room(exam, id):  # noqa: C901
             })
     if form.validate_on_submit():
         if 'cancel' in request.form:
-            return redirect(url_for('exam', exam=exam))
+            return redirect(url_for('views.exam', exam=exam))
         # update other stuff
         room.display_name = form.display_name.data
         start_at_iso = None
@@ -509,11 +512,11 @@ def edit_room(exam, id):  # noqa: C901
             db.session.commit()
         except Exception as e:
             flash(f"Failed to edit room due to a db error: {e}", 'error')
-        return redirect(url_for('exam', exam=exam))
+        return redirect(url_for('views.exam', exam=exam))
     return render_template('upsert_room.html', exam=exam, form=form, room=room)
 
 
-@app.route('/<exam:exam>/rooms/<int:id>/')
+@bp.route('/<exam:exam>/rooms/<int:id>/')
 def room(exam, id):
     """
     Path: /offerings/<canvas_id>/exams/<exam_name>/rooms/<room_name>
@@ -566,7 +569,7 @@ def _render_import_students(exam, form, from_canvas_form):
     return render_template('new_students.html', exam=exam, form=form)
 
 
-@app.route('/<exam:exam>/students/import/', methods=['GET', 'POST'])
+@bp.route('/<exam:exam>/students/import/', methods=['GET', 'POST'])
 def import_students(exam):
     """
     Imports students from a file, pasted text or a Google Sheets link. The same form's other button
@@ -582,11 +585,11 @@ def import_students(exam):
             return _render_import_students(exam, form, from_canvas_form)
         except Exception as e:
             flash(f"Failed to import students due to an unexpected error: {str(e)}", 'error')
-        return redirect(url_for('students', exam=exam))
+        return redirect(url_for('views.students', exam=exam))
     return _render_import_students(exam, form, from_canvas_form)
 
 
-@app.route('/<exam:exam>/students/import/from_canvas_roster/', methods=['GET', 'POST'])
+@bp.route('/<exam:exam>/students/import/from_canvas_roster/', methods=['GET', 'POST'])
 def import_students_from_canvas_roster(exam):
     form = ImportStudentsForm()
     from_canvas_form = ImportStudentFromCanvasRosterForm()
@@ -595,11 +598,11 @@ def import_students_from_canvas_roster(exam):
             _save_student_import(exam, *get_students_from_canvas(exam, from_canvas_form))
         except Exception as e:
             flash(f"Failed to import students due to an unexpected error: {str(e)}", 'error')
-        return redirect(url_for('students', exam=exam))
+        return redirect(url_for('views.students', exam=exam))
     return _render_import_students(exam, form, from_canvas_form)
 
 
-@app.route('/<exam:exam>/students/delete/', methods=['GET', 'POST'])
+@bp.route('/<exam:exam>/students/delete/', methods=['GET', 'POST'])
 def delete_students(exam):
     form = DeleteStudentForm()
     deleted, did_not_exist = set(), set()
@@ -622,7 +625,7 @@ def delete_students(exam):
                            exam=exam, form=form, deleted=deleted, did_not_exist=did_not_exist)
 
 
-@app.route('/<exam:exam>/students/')
+@bp.route('/<exam:exam>/students/')
 def students(exam):
     students_list = exam.get_students(with_seat=True)
     students_with_deleted_rooms = sum(
@@ -632,7 +635,7 @@ def students(exam):
                            remove_deleted_rooms_form=RemoveDeletedRoomPreferencesForm())
 
 
-@app.route('/<exam:exam>/students/remove_deleted_rooms/', methods=['POST'])
+@bp.route('/<exam:exam>/students/remove_deleted_rooms/', methods=['POST'])
 def remove_deleted_room_preferences(exam):
     """
     Removes ids of deleted rooms from every student's room wants/avoids in this exam.
@@ -644,10 +647,10 @@ def remove_deleted_room_preferences(exam):
         flash(f"Removed deleted rooms from the preferences of {changed} students.", 'success')
     else:
         flash("Failed to remove deleted rooms: the form expired, please try again.", 'error')
-    return redirect(url_for('students', exam=exam))
+    return redirect(url_for('views.students', exam=exam))
 
 
-@app.route('/<exam:exam>/students/export/csv')
+@bp.route('/<exam:exam>/students/export/csv')
 def export_students_as_csv(exam):
     from datetime import datetime
     file_content = export_exam_student_info(exam)
@@ -660,7 +663,7 @@ def export_students_as_csv(exam):
     )
 
 
-@app.route('/<exam_student:exam_student>/edit', methods=['GET', 'POST'])
+@bp.route('/<exam_student:exam_student>/edit', methods=['GET', 'POST'])
 def edit_student(exam_student):
     exam, student = exam_student
     form = EditStudentForm(room_list=exam.rooms)
@@ -677,7 +680,7 @@ def edit_student(exam_student):
         form.new_email.data = student.email
     if form.validate_on_submit():
         if 'cancel' in request.form:
-            return redirect(url_for('students', exam=exam))
+            return redirect(url_for('views.students', exam=exam))
         new_wants_set = str_set_to_set(form.wants.data)
         new_avoids_set = str_set_to_set(form.avoids.data)
         new_room_wants_set = set(form.room_wants.data)
@@ -706,7 +709,7 @@ def edit_student(exam_student):
                 db.session.delete(student.assignment)
         student.email = form.new_email.data
         db.session.commit()
-        return redirect(url_for('students', exam=exam))
+        return redirect(url_for('views.students', exam=exam))
     for field, errors in form.errors.items():
         for error in errors:
             flash("{}: {}".format(field, error), 'error')
@@ -714,13 +717,13 @@ def edit_student(exam_student):
                            did_not_exist=did_not_exist, student=student)
 
 
-@app.route('/<exam:exam>/students/edit', methods=['GET', 'POST'])
+@bp.route('/<exam:exam>/students/edit', methods=['GET', 'POST'])
 def edit_students(exam):  # noqa: C901
     form = EditStudentsForm(room_list=exam.rooms)
     edited, did_not_exist = set(), set()
     if form.validate_on_submit():
         if 'cancel' in request.form:
-            return redirect(url_for('students', exam=exam))
+            return redirect(url_for('views.students', exam=exam))
         if not form.use_all_emails.data:
             emails = list(str_set_to_set(form.emails.data))
             students_query = Student.query.filter(
@@ -764,7 +767,7 @@ def edit_students(exam):  # noqa: C901
                 if student.assignment:
                     db.session.delete(student.assignment)
         db.session.commit()
-        # return redirect(url_for('students', exam=exam))
+        # return redirect(url_for('views.students', exam=exam))
     for field, errors in form.errors.items():
         for error in errors:
             flash("{}: {}".format(field, error), 'error')
@@ -772,7 +775,7 @@ def edit_students(exam):  # noqa: C901
                            did_not_exist=did_not_exist, student=None)
 
 
-@app.route('/<exam_student:exam_student>/delete', methods=['GET', 'DELETE'])
+@bp.route('/<exam_student:exam_student>/delete', methods=['GET', 'DELETE'])
 def delete_student(exam_student):
     exam, student = exam_student
     if student:
@@ -784,10 +787,10 @@ def delete_student(exam_student):
             db.session.rollback()
             flash(f"Failed to delete student {student.name}"
                   f"(Canvas id: {student.canvas_id}) due to an error:\n{str(e)}", 'error')
-    return redirect(url_for('students', exam=exam))
+    return redirect(url_for('views.students', exam=exam))
 
 
-@app.route('/<exam:exam>/students/assign/', methods=['GET', 'POST'])
+@bp.route('/<exam:exam>/students/assign/', methods=['GET', 'POST'])
 def assign(exam):
     form = AssignForm()
     if form.validate_on_submit():
@@ -799,7 +802,7 @@ def assign(exam):
         if 'delete_all' in request.form:
             delete_all_assignments_no_sync(exam)
             flash("Successfully deleted all assignments.", 'success')
-            return redirect(url_for('students', exam=exam))
+            return redirect(url_for('views.students', exam=exam))
         elif 'reassign_all' in request.form:
             delete_all_assignments_no_sync(exam)
         try:
@@ -809,11 +812,11 @@ def assign(exam):
             flash(f"Successfully assigned {len(assignments)} students.", 'success')
         except SeatAssignmentError as e:
             flash(str(e), 'error')
-        return redirect(url_for('students', exam=exam))
+        return redirect(url_for('views.students', exam=exam))
     return render_template('assign.html', exam=exam, form=form)
 
 
-@app.route('/<exam_student:exam_student>/assign/', methods=['GET', 'POST'])
+@bp.route('/<exam_student:exam_student>/assign/', methods=['GET', 'POST'])
 def assign_student(exam_student):
     form = AssignSingleForm()
     exam, student = exam_student
@@ -826,7 +829,7 @@ def assign_student(exam_student):
                     flash(f"Successfully deleted assignment for {student.name}.", 'success')
                 else:
                     flash(f"No assignment to delete for {student.name}.", 'warning')
-                return redirect(url_for('students', exam=exam))
+                return redirect(url_for('views.students', exam=exam))
             chosen_seat = Seat.query.filter_by(id=form.seat_id.data).first_or_404() if form.seat_id.data != "" else None
             old_assignment = None
             if student.assignment:
@@ -839,7 +842,7 @@ def assign_student(exam_student):
             flash(f"Successfully assigned {student.name}.", 'success')
         except SeatAssignmentError as e:
             flash(str(e), 'error')
-        return redirect(url_for('students', exam=exam))
+        return redirect(url_for('views.students', exam=exam))
     # The page draws every room with every seat's occupant, so load all of it up front
     # instead of one query per seat (assignment) plus one per occupied seat (student).
     rooms = Room.query.filter_by(exam_id=exam.id).options(
@@ -877,7 +880,7 @@ def _send_test_email(exam, form, **page):
 
 def _render_email_page(exam, form, **page):
     return render_template('email.html', exam=exam, form=form, variables=VARIABLES,
-                           preview_url=url_for('email_preview', exam=exam), **page)
+                           preview_url=url_for('views.email_preview', exam=exam), **page)
 
 
 def _prefill_email(exam, form):
@@ -890,7 +893,7 @@ def _prefill_email(exam, form):
     form.body.data = email_prefill.body
 
 
-@app.route('/<exam:exam>/students/email/preview/', methods=['POST'])
+@bp.route('/<exam:exam>/students/email/preview/', methods=['POST'])
 def email_preview(exam):
     """
     The email one student would get, filled in from the email page's subject and body, as JSON:
@@ -920,11 +923,11 @@ def _has_email_recipients(form):
     return False
 
 
-@app.route('/<exam:exam>/students/email/', methods=['GET', 'POST'])
+@bp.route('/<exam:exam>/students/email/', methods=['GET', 'POST'])
 def email_all_students(exam):
     form = _email_form(exam)
     # the page sends to the students in batches, through this url (see email_students_batch)
-    page = {'batch_url': url_for('email_students_batch', exam=exam)}
+    page = {'batch_url': url_for('views.email_students_batch', exam=exam)}
     if form.validate_on_submit():
         if form.send_test.data:
             return _send_test_email(exam, form, **page)
@@ -938,7 +941,7 @@ def email_all_students(exam):
             flash(f"Failed to email students: {set_to_str(failed_emails)}", 'error')
         if not successful_emails and not failed_emails:
             flash("No email sent.", 'warning')
-        return redirect(url_for('students', exam=exam))
+        return redirect(url_for('views.students', exam=exam))
     elif form.is_submitted():
         # keep what was typed, rather than starting over from the template
         _flash_form_errors(form)
@@ -959,7 +962,7 @@ def email_all_students(exam):
     return _render_email_page(exam, form, **page)
 
 
-@app.route('/<exam:exam>/students/email/send/', methods=['POST'])
+@bp.route('/<exam:exam>/students/email/send/', methods=['POST'])
 def email_students_batch(exam):
     """
     Emails the students in `to_addr` and returns who was emailed, as JSON. The email page sends a
@@ -975,7 +978,7 @@ def email_students_batch(exam):
     return jsonify(sent=sorted(successful_emails), failed=sorted(failed_emails))
 
 
-@app.route('/<exam_student:exam_student>/email/', methods=['GET', 'POST'])
+@bp.route('/<exam_student:exam_student>/email/', methods=['GET', 'POST'])
 def email_single_student(exam_student):
     exam, student = exam_student
     form = _email_form(exam)
@@ -992,7 +995,7 @@ def email_single_student(exam_student):
             flash(f"Failed to email students: {set_to_str(failed_emails)}", 'error')
         if not successful_emails and not failed_emails:
             flash("No email sent.", 'warning')
-        return redirect(url_for('students', exam=exam))
+        return redirect(url_for('views.students', exam=exam))
     elif form.is_submitted():
         _flash_form_errors(form)
     else:
@@ -1002,13 +1005,13 @@ def email_single_student(exam_student):
     return _render_email_page(exam, form)
 
 
-@app.route('/<exam_student:exam_student>', methods=['GET'])
+@bp.route('/<exam_student:exam_student>', methods=['GET'])
 def student(exam_student):
     exam, student = exam_student
     return render_template('student.html', exam=exam, student=student)
 
 
-@app.route('/<exam_student:exam_student>/photo/', methods=['GET'])
+@bp.route('/<exam_student:exam_student>/photo/', methods=['GET'])
 def student_photo(exam_student):
     _, student = exam_student
     sid = student.sid
@@ -1018,10 +1021,10 @@ def student_photo(exam_student):
         photo = cache_store.get(cache_key_photo(sid))
         if photo is not None:
             return send_file(io.BytesIO(photo), mimetype='image/jpeg')
-        from server.services.c1c import c1c_client
-        photo = c1c_client.get_student_photo(sid)
+        from server.services.c1c import get_c1c_client
+        photo = get_c1c_client().get_student_photo(sid)
         if photo is not None:
-            cache_store.set(cache_key_photo(sid), photo, timeout=cache_life_photo)
+            cache_store.set(cache_key_photo(sid), photo, timeout=cache_life_photo())
             return send_file(io.BytesIO(photo), mimetype='image/jpeg')
     return send_file('static/img/photo-placeholder.png', mimetype='image/png')
 
@@ -1030,17 +1033,17 @@ def student_photo(exam_student):
 # region Misc
 
 
-@app.context_processor
+@bp.app_context_processor
 def inject_env_vars():
-    return dict(wiki_base_url=app.config.get('WIKI_BASE_URL'))
+    return dict(wiki_base_url=current_app.config.get('WIKI_BASE_URL'))
 
 
-@app.route('/favicon.ico')
+@bp.route('/favicon.ico')
 def favicon():
     return send_file('static/img/favicon.ico')
 
 
-@app.route('/students-template.png')
+@bp.route('/students-template.png')
 def students_template():
     return send_file('static/img/students-template.png')
 # endregion
@@ -1048,7 +1051,7 @@ def students_template():
 # region Layout preview
 
 
-@app.route('/layouts/preview/', methods=['GET', 'POST'])
+@bp.route('/layouts/preview/', methods=['GET', 'POST'])
 @login_required
 def preview_layout():
     """
@@ -1082,7 +1085,7 @@ def preview_layout():
 # region Student-facing pages
 
 
-@app.route('/seats/<int:seat_id>/')
+@bp.route('/seats/<int:seat_id>/')
 def student_single_seat(seat_id):
     seat = Seat.query.filter_by(id=seat_id).first_or_404()
     return render_template('seat.html', room=seat.room, seat=seat)

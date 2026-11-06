@@ -40,7 +40,7 @@ def dev_login_page():
             # The fake Canvas only knows the seeded users, so anything else
             # would fail later on with a stack trace instead of an explanation.
             if user_id in FAKE_USERS:
-                return oauth_provider.authorize_redirect(
+                return oauth_provider().authorize_redirect(
                     url_for('auth.authorized', _external=True, _scheme="http"),
                     user_id=user_id)
             flash(f"No seeded user has Canvas ID {user_id}. Pick one of the users below.", 'error')
@@ -49,7 +49,7 @@ def dev_login_page():
                 flash("{}: {}".format(field, error), 'error')
         return render_template('dev_login.html', mock_users=_mock_user_roster(),
                                form=form, title="Dev Login")
-    return redirect(url_for('index'))
+    return redirect(url_for('views.index'))
 
 
 def _is_own_callback(redirect_uri):

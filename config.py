@@ -6,6 +6,10 @@ from server.typings.enum import AppEnvironment, GcpSaCredType
 
 
 class ConfigBase(object):
+    """
+    Settings read from the environment when the config is created, not when this module is
+    imported, so an app built later (or in a test) sees the environment as it is then.
+    """
 
     @staticmethod
     def getenv(key, default: Optional[str] = None, *, optional=False):
@@ -14,14 +18,11 @@ class ConfigBase(object):
             raise EnvironmentalVariableMissingError(key)
         return val
 
-    FLASK_APP = "server"
+    FLASK_APP = "server.main"
     BASE_DIR = os.path.abspath(os.path.dirname(__file__))
     FIXTURES_DIRS = [os.path.join('tests', 'fixtures')]
-    SERVER_BASE_URL = getenv('SERVER_BASE_URL', "http://localhost:5000/")
-    WIKI_BASE_URL = getenv('WIKI_BASE_URL', "https://github.com/berkeley-eecs/seating/wiki/")
 
     SQLALCHEMY_TRACK_MODIFICATIONS = False
-    LOCAL_TIMEZONE = getenv('TIMEZONE', 'US/Pacific')
 
     # Both cookies are HttpOnly by default. Lax still sends them on the top-level redirect back
     # from Canvas to /authorized/, but not on cross-site POSTs, fetches or embeds. (Strict would
@@ -29,48 +30,58 @@ class ConfigBase(object):
     SESSION_COOKIE_SAMESITE = 'Lax'
     REMEMBER_COOKIE_SAMESITE = 'Lax'
 
-    # Coogle Service Account Cred setup
-    GCP_SA_CRED_TYPE = getenv('GCP_SA_CRED_TYPE', GcpSaCredType.FILE.value)
-    GCP_SA_CRED_FILE = getenv('GCP_SA_CRED_FILE', optional=True)
-    GCP_SA_CRED_VALUE = getenv('GCP_SA_CRED_VALUE', optional=True)
-    # the Google account's email, shown on the import page so staff know who to share a sheet with
-    GCP_SA_EMAIL = getenv('GCP_SA_EMAIL', optional=True)
+    def __init__(self):
+        getenv = self.getenv
+        self.SERVER_BASE_URL = getenv('SERVER_BASE_URL', "http://localhost:5000/")
+        self.WIKI_BASE_URL = getenv('WIKI_BASE_URL', "https://github.com/berkeley-eecs/seating/wiki/")
+        self.LOCAL_TIMEZONE = getenv('TIMEZONE', 'US/Pacific')
 
-    # Canvas API setup
-    CANVAS_SERVER_URL = getenv('CANVAS_SERVER_URL')
-    CANVAS_CLIENT_ID = getenv('CANVAS_CLIENT_ID')
-    CANVAS_CLIENT_SECRET = getenv('CANVAS_CLIENT_SECRET')
+        # Coogle Service Account Cred setup
+        self.GCP_SA_CRED_TYPE = getenv('GCP_SA_CRED_TYPE', GcpSaCredType.FILE.value)
+        self.GCP_SA_CRED_FILE = getenv('GCP_SA_CRED_FILE', optional=True)
+        self.GCP_SA_CRED_VALUE = getenv('GCP_SA_CRED_VALUE', optional=True)
+        # the Google account's email, shown on the import page so staff know who to share a sheet with
+        self.GCP_SA_EMAIL = getenv('GCP_SA_EMAIL', optional=True)
 
-    # Stub Setup, allow
-    MOCK_CANVAS = getenv('MOCK_CANVAS', 'false').lower() == 'true'
-    SEND_EMAIL = getenv('SEND_EMAIL', 'off').lower()
+        # Canvas API setup
+        self.CANVAS_SERVER_URL = getenv('CANVAS_SERVER_URL')
+        self.CANVAS_CLIENT_ID = getenv('CANVAS_CLIENT_ID')
+        self.CANVAS_CLIENT_SECRET = getenv('CANVAS_CLIENT_SECRET')
 
-    # Email setup.
-    EMAIL_SERVER = getenv('EMAIL_SERVER', optional=True)
-    EMAIL_PORT = getenv('EMAIL_PORT', optional=True)
-    EMAIL_USERNAME = getenv('EMAIL_USERNAME', optional=True)
-    EMAIL_PASSWORD = getenv('EMAIL_PASSWORD', optional=True)
+        # Stub Setup, allow
+        self.MOCK_CANVAS = getenv('MOCK_CANVAS', 'false').lower() == 'true'
+        self.SEND_EMAIL = getenv('SEND_EMAIL', 'off').lower()
 
-    # C1C API setup
-    MOCK_C1C = getenv('MOCK_C1C', 'false').lower() == 'true'
-    C1C_PROXY_URL = getenv('C1C_PROXY_URL', optional=True)
-    C1C_API_DOMAIN = getenv('C1C_API_DOMAIN', optional=True)
-    C1C_API_USERNAME = getenv('C1C_API_USERNAME', optional=True)
-    C1C_API_PASSWORD = getenv('C1C_API_PASSWORD', optional=True)
-    C1C_PHOTO_CACHE_LIFE = getenv('C1C_PHOTO_CACHE_LIFE', 3600 * 24 * 90)
+        # Email setup.
+        self.EMAIL_SERVER = getenv('EMAIL_SERVER', optional=True)
+        self.EMAIL_PORT = getenv('EMAIL_PORT', optional=True)
+        self.EMAIL_USERNAME = getenv('EMAIL_USERNAME', optional=True)
+        self.EMAIL_PASSWORD = getenv('EMAIL_PASSWORD', optional=True)
+        self.EMAIL_SENDER = getenv('EMAIL_SENDER', optional=True)
 
-    # Master room sheet
-    MASTER_ROOM_SHEET_URL = getenv('MASTER_ROOM_SHEET_URL', optional=True)
+        # C1C API setup
+        self.MOCK_C1C = getenv('MOCK_C1C', 'false').lower() == 'true'
+        self.C1C_PROXY_URL = getenv('C1C_PROXY_URL', optional=True)
+        self.C1C_API_DOMAIN = getenv('C1C_API_DOMAIN', optional=True)
+        self.C1C_API_USERNAME = getenv('C1C_API_USERNAME', optional=True)
+        self.C1C_API_PASSWORD = getenv('C1C_API_PASSWORD', optional=True)
+        self.C1C_PHOTO_CACHE_LIFE = getenv('C1C_PHOTO_CACHE_LIFE', 3600 * 24 * 90)
 
-    PHOTO_DIRECTORY = getenv('PHOTO_DIRECTORY', "unset")
+        # Master room sheet
+        self.MASTER_ROOM_SHEET_URL = getenv('MASTER_ROOM_SHEET_URL', optional=True)
+
+        self.PHOTO_DIRECTORY = getenv('PHOTO_DIRECTORY', "unset")
 
 
 class ProductionConfig(ConfigBase):
     FLASK_ENV = AppEnvironment.PRODUCTION.value
-    MOCK_CANVAS = False
     # served over HTTPS only, so never send the session or remember cookie over plain HTTP
     SESSION_COOKIE_SECURE = True
     REMEMBER_COOKIE_SECURE = True
+
+    def __init__(self):
+        super().__init__()
+        self.MOCK_CANVAS = False
 
     @property
     def SECRET_KEY(self):
@@ -84,11 +95,14 @@ class ProductionConfig(ConfigBase):
 class StagingConfig(ConfigBase):
     FLASK_ENV = AppEnvironment.STAGING.value
     SECRET_KEY = 'staging'
-    # Staging talks to real Canvas, so the dev login is never available here.
-    MOCK_CANVAS = False
     # the PR previews are served over HTTPS only, like production
     SESSION_COOKIE_SECURE = True
     REMEMBER_COOKIE_SECURE = True
+
+    def __init__(self):
+        super().__init__()
+        # Staging talks to real Canvas, so the dev login is never available here.
+        self.MOCK_CANVAS = False
 
     @property
     def SQLALCHEMY_DATABASE_URI(self):
@@ -100,10 +114,13 @@ class StagingConfig(ConfigBase):
 class DevelopmentConfig(ConfigBase):
     FLASK_ENV = AppEnvironment.DEVELOPMENT.value
     SECRET_KEY = 'development'
-    # Outside staging and production the fake Canvas is the default, so a fresh
-    # checkout can be signed into through /dev_login without any Canvas
-    # credentials. Set MOCK_CANVAS=false to point a dev server at real Canvas.
-    MOCK_CANVAS = ConfigBase.getenv('MOCK_CANVAS', 'true').lower() == 'true'
+
+    def __init__(self):
+        super().__init__()
+        # Outside staging and production the fake Canvas is the default, so a fresh
+        # checkout can be signed into through /dev_login without any Canvas
+        # credentials. Set MOCK_CANVAS=false to point a dev server at real Canvas.
+        self.MOCK_CANVAS = self.getenv('MOCK_CANVAS', 'true').lower() == 'true'
 
     @property
     def SQLALCHEMY_DATABASE_URI(self):
@@ -113,7 +130,10 @@ class DevelopmentConfig(ConfigBase):
 class TestingConfig(ConfigBase):
     FLASK_ENV = AppEnvironment.TESTING.value
     SECRET_KEY = 'testing'
-    MOCK_CANVAS = True
+
+    def __init__(self):
+        super().__init__()
+        self.MOCK_CANVAS = True
 
     @property
     def SQLALCHEMY_DATABASE_URI(self):

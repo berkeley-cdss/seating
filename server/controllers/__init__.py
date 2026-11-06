@@ -82,7 +82,7 @@ class ExamConverter(BaseConverter):
             if not exam_student_seat:
                 abort(403,
                       "You have not been assigned a seat for this exam. " + GENERAL_STUDENT_HINT)
-            raise Redirect(url_for('student_single_seat', seat_id=exam_student_seat.seat.id))
+            raise Redirect(url_for('views.student_single_seat', seat_id=exam_student_seat.seat.id))
         else:
             abort(403, "You are not authorized to view this page. " + GENERAL_STUDENT_HINT)
 

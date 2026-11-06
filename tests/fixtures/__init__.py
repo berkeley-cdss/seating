@@ -2,7 +2,8 @@ import importlib
 import json
 import os
 
-from server import app
+from flask import current_app
+
 from server.models import db
 
 
@@ -31,8 +32,8 @@ def _load_fixtures_from_file(filepath):
 
 
 def seed_db():
-    seed_dir_paths = [os.path.join(app.config.get('BASE_DIR'), d)
-                      for d in app.config.get('FIXTURES_DIRS')]
+    seed_dir_paths = [os.path.join(current_app.config.get('BASE_DIR'), d)
+                      for d in current_app.config.get('FIXTURES_DIRS')]
     seed_file_paths = []
     seed_file_formats = set(['.yaml', '.yml', '.json'])
 

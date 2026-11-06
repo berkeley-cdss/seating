@@ -1,10 +1,11 @@
-from server import app
+from flask import current_app
+
 from server.services.c1c import fake_data
 
 
 def is_mock_c1c() -> bool:
-    return app.config['MOCK_C1C'] and \
-        app.config['FLASK_ENV'].lower() != 'production'
+    return current_app.config['MOCK_C1C'] and \
+        current_app.config['FLASK_ENV'].lower() != 'production'
 
 
 class C1C:
@@ -39,5 +40,8 @@ class C1C:
             return None
 
 
-c1c_client = C1C(app.config['C1C_PROXY_URL'], app.config['C1C_API_DOMAIN'],
-                 app.config['C1C_API_USERNAME'], app.config['C1C_API_PASSWORD'])
+def get_c1c_client():
+    """A C1C client for the current app's config."""
+    config = current_app.config
+    return C1C(config['C1C_PROXY_URL'], config['C1C_API_DOMAIN'],
+               config['C1C_API_USERNAME'], config['C1C_API_PASSWORD'])

@@ -53,4 +53,4 @@ HEALTHCHECK --interval=30s --timeout=5s --start-period=20s --retries=3 \
 # (Google's recommended pattern) handles concurrent I/O-bound requests without
 # duplicating the app in memory. Override WEB_CONCURRENCY / GUNICORN_THREADS
 # to tune; GUNICORN_TIMEOUT if a slower Canvas import needs longer than 120s.
-CMD ["sh", "-c", "exec gunicorn -b 0.0.0.0:${PORT:-8080} server:app --workers ${WEB_CONCURRENCY:-1} --threads ${GUNICORN_THREADS:-8} --timeout ${GUNICORN_TIMEOUT:-120} --access-logfile -"]
+CMD ["sh", "-c", "exec gunicorn -b 0.0.0.0:${PORT:-8080} server.main:app --workers ${WEB_CONCURRENCY:-1} --threads ${GUNICORN_THREADS:-8} --timeout ${GUNICORN_TIMEOUT:-120} --access-logfile -"]

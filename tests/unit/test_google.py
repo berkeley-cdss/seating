@@ -5,7 +5,8 @@ from unittest.mock import ANY, MagicMock, patch
 
 from apiclient import errors
 
-from server import app
+from config import TestingConfig as _TestingConfig
+from server.application import create_app
 from server.services import google
 from server.typings.exception import GcpError
 
@@ -17,6 +18,10 @@ class TestGetSpreadsheetService(unittest.TestCase):
 
     def setUp(self):
         google._get_spreadsheet_service.cache_clear()
+        self.app = create_app(_TestingConfig)
+        context = self.app.app_context()
+        context.push()
+        self.addCleanup(context.pop)
 
     def tearDown(self):
         google._get_spreadsheet_service.cache_clear()
@@ -24,7 +29,7 @@ class TestGetSpreadsheetService(unittest.TestCase):
     @patch('server.services.google.build')
     @patch('server.services.google.service_account.Credentials')
     def test_file_credentials(self, mock_creds, mock_build):
-        with patch.dict(app.config, {'GCP_SA_CRED_TYPE': 'file', 'GCP_SA_CRED_FILE': 'sa.json'}):
+        with patch.dict(self.app.config, {'GCP_SA_CRED_TYPE': 'file', 'GCP_SA_CRED_FILE': 'sa.json'}):
             service = google._get_spreadsheet_service()
         mock_creds.from_service_account_file.assert_called_once_with('sa.json', scopes=ANY)
         mock_build.assert_called_once_with(
@@ -36,7 +41,7 @@ class TestGetSpreadsheetService(unittest.TestCase):
     def test_env_credentials(self, mock_creds, mock_build):
         info = {'type': 'service_account'}
         encoded = base64.b64encode(json.dumps(info).encode()).decode()
-        with patch.dict(app.config, {'GCP_SA_CRED_TYPE': 'env', 'GCP_SA_CRED_VALUE': encoded}):
+        with patch.dict(self.app.config, {'GCP_SA_CRED_TYPE': 'env', 'GCP_SA_CRED_VALUE': encoded}):
             google._get_spreadsheet_service()
         mock_creds.from_service_account_info.assert_called_once_with(info, scopes=ANY)
 
@@ -47,8 +52,8 @@ class TestGetSpreadsheetService(unittest.TestCase):
         # no key: the credentials of the account the app runs as, read-only on Sheets
         runtime_credentials = MagicMock()
         mock_default.return_value = (runtime_credentials, 'staging-cdss-web-apps')
-        with patch.dict(app.config, {'GCP_SA_CRED_TYPE': 'runtime', 'GCP_SA_CRED_VALUE': None,
-                                     'GCP_SA_CRED_FILE': None}):
+        with patch.dict(self.app.config, {'GCP_SA_CRED_TYPE': 'runtime', 'GCP_SA_CRED_VALUE': None,
+                                          'GCP_SA_CRED_FILE': None}):
             service = google._get_spreadsheet_service()
         mock_default.assert_called_once_with(scopes=['https://www.googleapis.com/auth/spreadsheets.readonly'])
         mock_creds.from_service_account_file.assert_not_called()
@@ -57,7 +62,7 @@ class TestGetSpreadsheetService(unittest.TestCase):
         self.assertIs(service, mock_build.return_value)
 
     def test_invalid_cred_type(self):
-        with patch.dict(app.config, {'GCP_SA_CRED_TYPE': 'bogus'}):
+        with patch.dict(self.app.config, {'GCP_SA_CRED_TYPE': 'bogus'}):
             with self.assertRaisesRegex(GcpError, 'Invalid GCP_SA_CRED_TYPE'):
                 google._get_spreadsheet_service()
 
@@ -65,7 +70,7 @@ class TestGetSpreadsheetService(unittest.TestCase):
     @patch('server.services.google.service_account.Credentials')
     def test_missing_credentials(self, mock_creds, mock_build):
         mock_creds.from_service_account_file.return_value = None
-        with patch.dict(app.config, {'GCP_SA_CRED_TYPE': 'file'}):
+        with patch.dict(self.app.config, {'GCP_SA_CRED_TYPE': 'file'}):
             with self.assertRaisesRegex(GcpError, 'Invalid GCP credentials'):
                 google._get_spreadsheet_service()
         mock_build.assert_not_called()
@@ -73,7 +78,7 @@ class TestGetSpreadsheetService(unittest.TestCase):
     @patch('server.services.google.build')
     @patch('server.services.google.service_account.Credentials')
     def test_service_is_cached(self, mock_creds, mock_build):
-        with patch.dict(app.config, {'GCP_SA_CRED_TYPE': 'file'}):
+        with patch.dict(self.app.config, {'GCP_SA_CRED_TYPE': 'file'}):
             first = google._get_spreadsheet_service()
             second = google._get_spreadsheet_service()
         self.assertIs(first, second)

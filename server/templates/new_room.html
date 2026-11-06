@@ -22,7 +22,7 @@
 
 <div class="tab-content pt-3">
   <div class="tab-pane show active" id="sheet-panel" role="tabpanel" aria-labelledby="sheet-tab" tabindex="0">
-    <form action="{{ url_for('import_room_from_custom_sheet', exam=exam) }}" method="post">
+    <form action="{{ url_for('views.import_room_from_custom_sheet', exam=exam) }}" method="post">
       {{ new_form.hidden_tag() }}
       <div class="row">
         <div class="col-md-9 mb-3">
@@ -62,7 +62,7 @@
     <div class="mb-3">
     Master Sheet URL: <a href="{{ master_sheet_url }}" target="_blank">{{ master_sheet_url }}</a>
     </div>
-    <form action="{{ url_for('import_room_from_master_sheet', exam=exam) }}" method="post">
+    <form action="{{ url_for('views.import_room_from_master_sheet', exam=exam) }}" method="post">
       {{ choose_form.hidden_tag() }}
       <div class="checkbox">{{ choose_form.rooms }}</div>
       <div class="row">
@@ -80,7 +80,7 @@
   </div>
 
   <div class="tab-pane" id="upload-panel" role="tabpanel" aria-labelledby="upload-tab" tabindex="0">
-    <form action="{{ url_for('import_room_from_csv_upload', exam=exam) }}" method="post" enctype="multipart/form-data">
+    <form action="{{ url_for('views.import_room_from_csv_upload', exam=exam) }}" method="post" enctype="multipart/form-data">
       {{ upload_form.hidden_tag() }}
       <div class="mb-3">
         {{ upload_form.file(class="form-control", type="file", id="upload_csv_file", **{"aria-label": "CSV file"})}}
@@ -102,14 +102,14 @@
       <div class="form-buttons">{{ upload_form.submit(class="btn btn-primary") }}</div>
     </form>
     <p>
-      Not sure the file is right? <a href="{{ url_for('preview_layout') }}">Preview a layout CSV</a>
+      Not sure the file is right? <a href="{{ url_for('views.preview_layout') }}">Preview a layout CSV</a>
       without saving it to this exam.
     </p>
   </div>
 
   <div class="tab-pane" id="manual-panel" role="tabpanel" aria-labelledby="manual-tab" tabindex="0">
     <div class="form-buttons">
-      <a class="btn btn-primary" href="{{ url_for('import_room_manually', exam=exam) }}">Create New Room</a>
+      <a class="btn btn-primary" href="{{ url_for('views.import_room_manually', exam=exam) }}">Create New Room</a>
     </div>
   </div>
 </div>

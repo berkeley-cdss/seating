@@ -23,10 +23,10 @@
     {% set already = recipients.already_emailed %}
     {% if already and recipients.include_emailed %}
       Including {{ already }} {{ 'student' if already == 1 else 'students' }} already emailed.
-      <a href="{{ url_for('email_all_students', exam=exam) }}">Leave them out</a>.
+      <a href="{{ url_for('views.email_all_students', exam=exam) }}">Leave them out</a>.
     {% elif already %}
       Leaving out {{ already }} {{ 'student' if already == 1 else 'students' }} already emailed.
-      <a href="{{ url_for('email_all_students', exam=exam, include_emailed=1) }}">Email them again too</a>.
+      <a href="{{ url_for('views.email_all_students', exam=exam, include_emailed=1) }}">Email them again too</a>.
     {% endif %}
     {% if recipients.unseated %}
       Leaving out {{ recipients.unseated }} {{ 'student' if recipients.unseated == 1 else 'students' }} without a seat.
@@ -196,7 +196,7 @@
                   line('Stopped early: ' + stopped + '. The students not emailed yet are still marked as such; ' +
                        'reload this page to email just them.');
               }
-              line('Back to the students page', {{ url_for('students', exam=exam)|tojson }});
+              line('Back to the students page', {{ url_for('views.students', exam=exam)|tojson }});
               buttons.forEach(function (button) { button.disabled = false; });
           });
       })();

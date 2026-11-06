@@ -1,17 +1,16 @@
-from flask import session, request, url_for
+from flask import current_app, session, request, url_for
 from canvasapi import Canvas
 from canvasapi.user import User
 from canvasapi.course import Course
 
-from server import app
 from server.models import Offering
 from server.services.canvas.fake_canvas import FakeCanvas, FakeCourse, FakeUser
 from server.typings.exception import Redirect
 
 
 def is_mock_canvas() -> bool:
-    return app.config['MOCK_CANVAS'] and \
-        app.config['FLASK_ENV'].lower() != 'production'
+    return current_app.config['MOCK_CANVAS'] and \
+        current_app.config['FLASK_ENV'].lower() != 'production'
 
 
 def _get_client(key=None) -> FakeCanvas | Canvas:
@@ -22,7 +21,7 @@ def _get_client(key=None) -> FakeCanvas | Canvas:
     if not key:
         session['after_login'] = request.url
         raise Redirect(url_for('auth.login'))
-    return Canvas(app.config['CANVAS_SERVER_URL'], key)
+    return Canvas(current_app.config['CANVAS_SERVER_URL'], key)
 
 
 def get_user(canvas_id, key=None) -> FakeUser | User:
