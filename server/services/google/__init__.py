@@ -5,7 +5,7 @@ import base64
 from functools import cache
 
 from apiclient import errors
-from server import app
+from flask import current_app
 from server.typings.enum import GcpSaCredType
 from server.typings.exception import GcpError
 
@@ -20,13 +20,13 @@ def _get_spreadsheet_service():
     Returns an authorized API client service for Google Sheets API.
     """
     SCOPES = ['https://www.googleapis.com/auth/spreadsheets.readonly']
-    cred_type = app.config.get('GCP_SA_CRED_TYPE')
+    cred_type = current_app.config.get('GCP_SA_CRED_TYPE')
     credentials = None
     if cred_type == GcpSaCredType.FILE.value:
         credentials = service_account.Credentials.from_service_account_file(
-            app.config.get('GCP_SA_CRED_FILE'), scopes=SCOPES)
+            current_app.config.get('GCP_SA_CRED_FILE'), scopes=SCOPES)
     elif cred_type == GcpSaCredType.ENV.value:
-        decoded_credentials = base64.b64decode(app.config.get('GCP_SA_CRED_VALUE'))
+        decoded_credentials = base64.b64decode(current_app.config.get('GCP_SA_CRED_VALUE'))
         service_account_info = json.loads(decoded_credentials)
         credentials = service_account.Credentials.from_service_account_info(
             service_account_info, scopes=SCOPES)

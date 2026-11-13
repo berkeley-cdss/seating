@@ -10,11 +10,10 @@ from sqlalchemy.orm import backref, contains_eager, joinedload
 from sqlalchemy import UniqueConstraint, desc, false, text
 from sqlalchemy.ext.associationproxy import association_proxy
 
-from server import app
 from server.utils.date import parse_ISO8601
 from server.utils.misc import arr_to_dict, set_to_str
 
-db = SQLAlchemy(app=app)
+db = SQLAlchemy()
 
 
 class StringSet(types.TypeDecorator):

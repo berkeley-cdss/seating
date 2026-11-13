@@ -9,7 +9,6 @@ from urllib.parse import parse_qs, urlsplit
 
 from flask import render_template_string
 
-from server import app as flask_app
 from server.models import db, Room
 
 EXAM_URL = '/offerings/1234567/exams/midterm1'
@@ -85,9 +84,9 @@ def test_public_seat_page_ignores_the_proctor_view(seeded_db, login_as):
     assert 'Proctor view' not in html
 
 
-def test_seat_map_never_turns_around_for_students(seeded_db):
+def test_seat_map_never_turns_around_for_students(app, seeded_db):
     # the macro only honors `proctor` together with `staff`, whatever a caller passes
-    with flask_app.test_request_context():
+    with app.test_request_context():
         room = db.session.get(Room, 1)
         html = render_template_string(
             "{% import 'macros.html' as macros with context %}"

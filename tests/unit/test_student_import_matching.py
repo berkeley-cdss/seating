@@ -10,7 +10,6 @@ import pytest
 from markupsafe import Markup
 from werkzeug.datastructures import FileStorage
 
-from server import app as flask_app
 from server.models import db, Exam, Student, User
 from server.services.core.student import InvalidRow, StudentImportConfig, describe_invalid_rows, normalize_id, \
     prepare_students, room_id_to_attr

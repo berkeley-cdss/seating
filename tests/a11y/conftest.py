@@ -5,7 +5,8 @@ from selenium.webdriver.common.by import By
 from selenium.webdriver.support import expected_conditions as EC
 from selenium.webdriver.support.ui import WebDriverWait
 
-from server import app as flask_app
+from config import TestingConfig
+from server.application import create_app
 from server.models import db as sqlalchemy_db
 from tests.a11y.utils import REPORT_DIR, slugify
 from tests.conftest import chrome_driver, flask_server
@@ -45,7 +46,7 @@ class Site:
 
 @pytest.fixture(scope='session')
 def a11y_site():
-    with flask_app.app_context():
+    with create_app(TestingConfig).app_context():
         sqlalchemy_db.drop_all()
         sqlalchemy_db.create_all()
         seed_db()

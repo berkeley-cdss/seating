@@ -73,7 +73,7 @@ jobs:
           # GCP_SA_CRED_TYPE=runtime: Google Sheets are read as the account the preview runs as
           # (seating-run, set by --service-account above), so no key is stored or passed
           env_vars: |
-            FLASK_APP=server
+            FLASK_APP=server.main
             FLASK_ENV=staging
             SERVER_BASE_URL=https://preview-seating-pr-${{ github.event.number }}-137456085712.us-west1.run.app/
             WIKI_BASE_URL=https://github.com/berkeley-cdss/seating/wiki/

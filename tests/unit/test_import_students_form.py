@@ -11,7 +11,6 @@ import re
 import pytest
 from openpyxl import Workbook
 
-from server import app as flask_app
 
 import server.services.core.data as data
 from server.models import db, Student
@@ -161,6 +160,6 @@ def test_page_says_which_options_the_canvas_roster_ignores(staff):
      'share it with <strong class="share-email">seating@example.iam.gserviceaccount.com</strong>'),
     (None, "share it with the seating tool's Google account"),
 ])
-def test_page_names_the_google_account_to_share_with(staff, monkeypatch, email, shown):
-    monkeypatch.setitem(flask_app.config, 'GCP_SA_EMAIL', email)
+def test_page_names_the_google_account_to_share_with(app, staff, email, shown):
+    app.config['GCP_SA_EMAIL'] = email
     assert shown in staff.get(IMPORT_URL).get_data(as_text=True)

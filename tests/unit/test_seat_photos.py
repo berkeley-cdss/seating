@@ -38,3 +38,15 @@ def test_seat_map_photos_load_lazily(exam, login_as, path):
     assert len(photos) == 2  # one fixed seat, one movable seat
     for photo in photos:
         assert 'loading="lazy"' in photo
+
+
+@pytest.mark.app_config(MOCK_C1C=True)
+def test_photo_is_fetched_once_then_cached(seeded_db, login_as):
+    from server.cache import cache_key_photo, cache_store
+    sid = db.session.get(Student, 1).sid
+    cache_store.delete(cache_key_photo(sid))
+    response = login_as(1).get('/offerings/1234567/exams/midterm1/students/1/photo/')
+    assert response.status_code == 200
+    assert response.mimetype == 'image/jpeg'
+    assert cache_store.get(cache_key_photo(sid)) == response.data
+    cache_store.delete(cache_key_photo(sid))

@@ -7,7 +7,7 @@
 <div class="import-students">
   <h2 class="h4">Import students</h2>
   <p>Import Canvas/bCourses roster (below), or import students via a file, pasting rows, or a Google Sheet URL. See below for formatting.</p>
-  <form id="import-students" action="{{ url_for('import_students', exam=exam) }}" method="post" enctype="multipart/form-data">
+  <form id="import-students" action="{{ url_for('views.import_students', exam=exam) }}" method="post" enctype="multipart/form-data">
     {{ form.hidden_tag() }}
     <div class="import-source">
       <label class="form-label" for="import_file">Upload a CSV, TSV or Excel (.xlsx) file:</label>
@@ -42,7 +42,7 @@
     <div class="form-buttons">
       {{ form.submit(id="import-submit", class="btn btn-primary", value="Import") }}
       <input id="import-canvas-roster" class="btn btn-outline-primary" type="submit" value="Import Canvas roster"
-             formaction="{{ url_for('import_students_from_canvas_roster', exam=exam) }}">
+             formaction="{{ url_for('views.import_students_from_canvas_roster', exam=exam) }}">
     </div>
     <p class="form-text">Import Canvas roster takes the course's students from bCourses: names, emails and ids, but no seats or preferences, so replacing preferences clears them.</p>
   </form>

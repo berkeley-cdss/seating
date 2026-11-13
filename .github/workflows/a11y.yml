@@ -16,7 +16,7 @@ jobs:
     # or vars, so fall back to dummy values (tests mock Canvas and never call
     # Google Sheets, so no Google credentials are passed)
     env:
-      FLASK_APP: ${{ vars.FLASK_APP || 'server' }}
+      FLASK_APP: ${{ vars.FLASK_APP || 'server.main' }}
       FLASK_ENV: ${{ vars.FLASK_ENV || 'testing' }}
       MOCK_CANVAS: ${{ vars.MOCK_CANVAS }}
       CANVAS_SERVER_URL: ${{ vars.CANVAS_SERVER_URL || 'https://canvas.example.edu' }}

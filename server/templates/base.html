@@ -20,15 +20,15 @@
         {# the course, exam or page this is; the page's top-level heading #}
         <h1 class="site-title">
         {% if exam %}
-          <a class="navbar-brand" href="{{ url_for('exam', exam=exam) }}">
+          <a class="navbar-brand" href="{{ url_for('views.exam', exam=exam) }}">
             {{ exam.offering.name + " - " + exam.display_name }}
           </a>
         {% elif offering %}
-          <a class="navbar-brand" href="{{ url_for('offering', offering=offering) }}">
+          <a class="navbar-brand" href="{{ url_for('views.offering', offering=offering) }}">
             {{ offering.name }}
           </a>
         {% else %}
-          <a class="navbar-brand" href="{{ url_for('index') }}">
+          <a class="navbar-brand" href="{{ url_for('views.index') }}">
             {{ title or 'Exam Seating' }}
           </a>
         {% endif %}
@@ -48,13 +48,13 @@
                 </a>
                 <ul class="dropdown-menu" data-bs-theme="light" aria-labelledby="room-menu">
                   <li>
-                    <a class="dropdown-item add-item" href="{{ url_for('import_room', exam=exam) }}">
+                    <a class="dropdown-item add-item" href="{{ url_for('views.import_room', exam=exam) }}">
                       <i class="bi bi-plus-lg" aria-hidden="true"></i> Add rooms...
                     </a>
                   </li>
                   {% for room in exam.rooms %}
                   <li>
-                    <a class="dropdown-item" href="{{ url_for('room', exam=exam, id=room.id) }}">
+                    <a class="dropdown-item" href="{{ url_for('views.room', exam=exam, id=room.id) }}">
                       {{ room.display_name }}
                       {% if room.start_at %}
                         <small class="me-1">{{ room.start_at_time_display() }}</small>
@@ -67,13 +67,13 @@
                   {% endfor %}
                 </ul>
               </li>
-              <li class="nav-item"><a class="nav-link" href="{{ url_for('students', exam=exam) }}">Students</a></li>
-              <li class="nav-item"><a class="nav-link" href="{{ url_for('offering', offering=exam.offering) }}">All Exams</a></li>
+              <li class="nav-item"><a class="nav-link" href="{{ url_for('views.students', exam=exam) }}">Students</a></li>
+              <li class="nav-item"><a class="nav-link" href="{{ url_for('views.offering', offering=exam.offering) }}">All Exams</a></li>
             {% endif %}
-            <li class="nav-item"><a class="nav-link" href="{{ url_for('index') }}">Home</a></li>
+            <li class="nav-item"><a class="nav-link" href="{{ url_for('views.index') }}">Home</a></li>
             <li class="nav-item"><a class="nav-link" href="{{ wiki_base_url }}" target="_blank">Wiki</a></li>
             {% if current_user.is_authenticated %}
-              <li class="nav-item"><a class="nav-link" href="{{ url_for('preview_layout') }}">Layout Preview</a></li>
+              <li class="nav-item"><a class="nav-link" href="{{ url_for('views.preview_layout') }}">Layout Preview</a></li>
               <li class="nav-item dropdown">
                 <a id="auth-menu" class="nav-link dropdown-toggle" href="#" role="button" data-bs-toggle="dropdown" aria-expanded="false">
                   {{ current_user.name }}

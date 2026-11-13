@@ -1,6 +1,5 @@
 import pytest
 
-from server import app as flask_app
 from server.models import Seat
 from server.services.core.data import get_layout_preview_from_text
 from server.services.core.layout_preview import (
@@ -322,15 +321,13 @@ class TestMasterSheetLayout:
 @pytest.fixture()
 def authed_client(seeded_db, client):
     """A test client logged in as the seeded staff user."""
-    csrf_was_enabled = flask_app.config.get('WTF_CSRF_ENABLED', True)
-    flask_app.config['WTF_CSRF_ENABLED'] = False
     with client.session_transaction() as flask_session:
         flask_session['_user_id'] = '1'
         flask_session['_fresh'] = True
-    yield client
-    flask_app.config['WTF_CSRF_ENABLED'] = csrf_was_enabled
+    return client
 
 
+@pytest.mark.app_config(WTF_CSRF_ENABLED=False)
 class TestPreviewLayoutPage:
     def test_page_requires_login(self, client):
         response = client.get('/layouts/preview/')
