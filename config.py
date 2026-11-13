@@ -94,7 +94,6 @@ class ProductionConfig(ConfigBase):
 
 class StagingConfig(ConfigBase):
     FLASK_ENV = AppEnvironment.STAGING.value
-    SECRET_KEY = 'staging'
     # the PR previews are served over HTTPS only, like production
     SESSION_COOKIE_SECURE = True
     REMEMBER_COOKIE_SECURE = True
@@ -103,6 +102,11 @@ class StagingConfig(ConfigBase):
         super().__init__()
         # Staging talks to real Canvas, so the dev login is never available here.
         self.MOCK_CANVAS = False
+
+    # from the environment, as in production: staging signs in real Canvas users
+    @property
+    def SECRET_KEY(self):
+        return ConfigBase.getenv('SECRET_KEY')
 
     @property
     def SQLALCHEMY_DATABASE_URI(self):
