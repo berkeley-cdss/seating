@@ -34,6 +34,11 @@ ENV PATH="/opt/venv/bin:$PATH" \
     PYTHONDONTWRITEBYTECODE=1 \
     PORT=8080
 
+# The app falls back to development settings when FLASK_ENV is unset, which a
+# deployed image must never do. Deployments that aren't production (the PR
+# previews) set FLASK_ENV themselves.
+ENV FLASK_ENV=production
+
 WORKDIR /app
 COPY --chown=app:app . .
 
