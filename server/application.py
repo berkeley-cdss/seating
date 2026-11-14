@@ -2,6 +2,7 @@ import logging
 
 import flask.ctx
 from canvasapi.exceptions import InvalidAccessToken
+from dotenv import load_dotenv
 from flask import Flask, redirect
 from werkzeug.exceptions import HTTPException
 
@@ -56,9 +57,14 @@ CONTENT_SECURITY_POLICY = '; '.join([
 
 
 def config_for_environment():
-    """The config for FLASK_ENV, which defaults to development when not set."""
+    """
+    The config FLASK_ENV names. FLASK_ENV is required, as in sections, so a misconfigured
+    deployment can't fall back to development settings (the fake Canvas, a fixed SECRET_KEY).
+    A local .env file is read first, without overriding what the environment already sets.
+    """
     from config import ProductionConfig, StagingConfig, DevelopmentConfig, TestingConfig, ConfigBase
-    env_value = ConfigBase.getenv('FLASK_ENV', AppEnvironment.DEVELOPMENT.value).lower()
+    load_dotenv()
+    env_value = (ConfigBase.getenv('FLASK_ENV', optional=True) or '').lower()
     config_mapping = {
         AppEnvironment.PRODUCTION.value: ProductionConfig,
         AppEnvironment.TESTING.value: TestingConfig,
