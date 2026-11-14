@@ -11,6 +11,12 @@ import server.application as application
 from server.typings.exception import EnvironmentalVariableMissingError
 
 
+@pytest.fixture(autouse=True)
+def no_dotenv_file(monkeypatch):
+    """Keep a developer's own .env out of these tests: each sets FLASK_ENV itself."""
+    monkeypatch.setattr(application, 'load_dotenv', lambda: None)
+
+
 @pytest.mark.parametrize('env, config_class', [
     ('production', config.ProductionConfig),
     ('staging', config.StagingConfig),
@@ -23,9 +29,20 @@ def test_flask_env_picks_the_config(monkeypatch, env, config_class):
     assert application.config_for_environment() is config_class
 
 
-def test_flask_env_defaults_to_development(monkeypatch):
+@pytest.mark.parametrize('unset', [True, False])
+def test_flask_env_is_required(monkeypatch, unset):
+    if unset:
+        monkeypatch.delenv('FLASK_ENV', raising=False)
+    else:
+        monkeypatch.setenv('FLASK_ENV', '')
+    with pytest.raises(EnvironmentalVariableMissingError):
+        application.config_for_environment()
+
+
+def test_flask_env_can_come_from_a_dotenv_file(monkeypatch):
     monkeypatch.delenv('FLASK_ENV', raising=False)
-    assert application.config_for_environment() is config.DevelopmentConfig
+    monkeypatch.setattr(application, 'load_dotenv', lambda: monkeypatch.setenv('FLASK_ENV', 'staging'))
+    assert application.config_for_environment() is config.StagingConfig
 
 
 def test_unknown_flask_env_is_refused(monkeypatch):

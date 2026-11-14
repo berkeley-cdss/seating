@@ -17,3 +17,4 @@ gunicorn==26.2.0
 psycopg2-binary==2.9.12
 sentry-sdk[flask]
 Flask-Caching==2.5.1
+python-dotenv==1.2.4
