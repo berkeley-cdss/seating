@@ -3,6 +3,7 @@ import re
 from markupsafe import Markup
 
 from server.services.core.assign import get_preference_from_student, is_seat_valid_for_preference
+from server.services.csv import from_csv_safe
 from server.typings.enum import AssignmentImportStrategy, \
     MissingRowImportStrategy, NewRowImportStrategy, UpdatedRowImportStrategy
 from server.typings.exception import DataValidationError
@@ -204,6 +205,8 @@ def prepare_students(exam, headers, rows, *, config: StudentImportConfig = Stude
         rooms_by_display_name.setdefault(room.name_and_start_at_time_display(), room)
 
     for row_number, row in enumerate(rows, start=2):
+        # an export (to_csv_str) put an apostrophe before cells a spreadsheet would run as formulas
+        row = {from_csv_safe(key): from_csv_safe(value) for key, value in row.items()}
         canvas_id = normalize_id(row.pop('bcourses id', row.pop('canvas id', None)))
         sid = normalize_id(row.pop('student id', None))
         email = (row.pop('email', None) or '').strip() or None
