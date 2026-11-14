@@ -2,6 +2,10 @@ from flask import current_app
 
 from server.services.c1c import fake_data
 
+# seconds to wait for C1C, so a slow response can't hold a request thread until gunicorn gives
+# up on it; the student's photo shows the placeholder instead
+TIMEOUT = 10
+
 
 def is_mock_c1c() -> bool:
     return current_app.config['MOCK_C1C'] and \
@@ -21,11 +25,8 @@ class C1C:
     def _make_request(self, path, method='GET'):
         import requests
         url = f'{self.api_domain}{path}'
-        if self.proxy_dict:
-            return requests.request(method, url, proxies=self.proxy_dict,
-                                    auth=(self.username, self.password))
-        else:
-            return requests.request(method, url, auth=(self.username, self.password))
+        return requests.request(method, url, proxies=self.proxy_dict,
+                                auth=(self.username, self.password), timeout=TIMEOUT)
 
     def get_student_photo(self, sid):
         if is_mock_c1c():

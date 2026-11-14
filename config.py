@@ -30,6 +30,10 @@ class ConfigBase(object):
     SESSION_COOKIE_SAMESITE = 'Lax'
     REMEMBER_COOKIE_SAMESITE = 'Lax'
 
+    # Uploads (rooms, students, layout previews) are read into memory, so refuse a request
+    # larger than this with 413. A roster of thousands of students is well under 1 MB.
+    MAX_CONTENT_LENGTH = 5 * 1024 * 1024
+
     def __init__(self):
         getenv = self.getenv
         self.SERVER_BASE_URL = getenv('SERVER_BASE_URL', "http://localhost:5000/")
