@@ -90,13 +90,39 @@ def sniff_delimiter(text, candidates='\t,;'):
     return best if header.count(best) else ','
 
 
+# A spreadsheet reads a cell that starts with one of these as a formula
+FORMULA_STARTS = ('=', '+', '-', '@', '\t', '\r')
+
+
+def csv_safe(value) -> str:
+    """
+    The value as a CSV cell that a spreadsheet won't run as a formula: one that starts with =, +, -,
+    @, a tab or a carriage return gets a leading apostrophe (OWASP's advice for CSV injection), so it
+    opens as text. The same as sections' csv_safe.
+    """
+    text = '' if value is None else str(value)
+    return "'" + text if text[:1] in FORMULA_STARTS else text
+
+
+def from_csv_safe(value):
+    """
+    Undoes csv_safe, so an exported file imports back as it was: drops an apostrophe before one of
+    FORMULA_STARTS, and leaves everything else (a name like 'Ana, say) as it is.
+    """
+    if isinstance(value, str) and value[:1] == "'" and value[1:2] in FORMULA_STARTS:
+        return value[1:]
+    return value
+
+
 def to_csv_str(headers, rows) -> str:
     """
-    Convert a list of headers and rows to a CSV string.
+    Convert a list of headers and rows to a CSV string, every cell made safe to open in a
+    spreadsheet (csv_safe): names come from Canvas and from imports, so staff don't control them all.
     """
     output = io.StringIO()
     writer = csv.DictWriter(output, fieldnames=headers)
-    writer.writeheader()
+    # attributes are column names, so the header row is made safe too
+    writer.writerow({header: csv_safe(header) for header in headers})
     for row in rows:
-        writer.writerow(row)
+        writer.writerow({key: csv_safe(value) for key, value in row.items()})
     return output.getvalue()
