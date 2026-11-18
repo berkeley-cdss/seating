@@ -32,10 +32,8 @@ def test_students_page_links_use_database_ids(seeded_db, login_as):
     # every page about a student is linked: the student, edit, assign, email and delete
     assert {rest for _, rest in links} >= {'', '/edit', '/assign/', '/email/', '/delete'}, links
     # delete buttons last: pressing one deletes the student
-    csrf_token = re.search(r'name="csrf_token" type="hidden" value="([^"]+)"', page).group(1)
     for student_id, rest in sorted(links, key=lambda link: link[1] == '/delete'):
-        url = f'{EXAM_URL}/students/{student_id}{rest}'
-        response = client.post(url, data={'csrf_token': csrf_token}) if rest == '/delete' else client.get(url)
+        response = _open(client, f'{EXAM_URL}/students/{student_id}{rest}')
         assert response.status_code in (200, 302), (student_id, rest, response.status_code)
 
 
@@ -74,9 +72,7 @@ def test_student_with_a_bad_canvas_id_can_be_opened_and_deleted(seeded_db, login
     client = login_as(1)
     for rest in ['', '/edit', '/assign/', '/email/']:
         assert client.get(f'{EXAM_URL}/students/{stuck.id}{rest}').status_code == 200, rest
-    page = client.get(f'{EXAM_URL}/students/').get_data(as_text=True)
-    csrf_token = re.search(r'name="csrf_token" type="hidden" value="([^"]+)"', page).group(1)
-    assert client.post(f'{EXAM_URL}/students/{stuck.id}/delete', data={'csrf_token': csrf_token}).status_code == 302
+    assert client.post(f'{EXAM_URL}/students/{stuck.id}/delete').status_code == 302
     assert db.session.get(Student, stuck.id) is None
 
 

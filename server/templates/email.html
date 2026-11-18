@@ -172,7 +172,7 @@
                   var data = new FormData(form);
                   data.set('to_addr', recipients.slice(start, start + BATCH_SIZE).join(','));
                   try {
-                      var response = await fetch({{ batch_url|tojson }}, {method: 'POST', body: data, headers: {'Accept': 'application/json'}});
+                      var response = await fetch({{ batch_url|tojson }}, {method: 'POST', body: data});
                       var result = await response.json();
                       if (!response.ok) {
                           stopped = Object.entries(result.errors || {})
@@ -214,8 +214,7 @@
           button.addEventListener('click', async function () {
               error.textContent = '';
               try {
-                  var response = await fetch({{ preview_url|tojson }}, {method: 'POST', body: new FormData(button.form),
-                                                 headers: {'Accept': 'application/json'}});
+                  var response = await fetch({{ preview_url|tojson }}, {method: 'POST', body: new FormData(button.form)});
                   var result = await response.json();
                   if (!response.ok) {
                       preview.hidden = true;

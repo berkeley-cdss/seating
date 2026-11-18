@@ -1,12 +1,11 @@
 import logging
-from urllib.parse import urlsplit
 
 import flask.ctx
 from canvasapi.exceptions import InvalidAccessToken
 from dotenv import load_dotenv
-from flask import Flask, flash, jsonify, redirect, request, url_for
-from flask_wtf.csrf import CSRFError
+from flask import Flask, redirect
 from werkzeug.exceptions import HTTPException
+from werkzeug.middleware.proxy_fix import ProxyFix
 
 from server.typings.enum import AppEnvironment
 from server.typings.exception import EnvironmentalVariableMissingError
@@ -86,6 +85,9 @@ def create_app(config=None):
     # 'server' keeps the templates, static files and logger where they were
     app = App('server')
     configure_logging(app)
+    # Cloud Run terminates TLS, so trust its X-Forwarded-Proto for the request's scheme. Not
+    # X-Forwarded-Host: Cloud Run passes the requested Host through and leaves that header as sent.
+    app.wsgi_app = ProxyFix(app.wsgi_app, x_proto=1)
 
     if config is None:
         config = config_for_environment()
@@ -105,8 +107,9 @@ def create_app(config=None):
         'CACHE_DIR': '.cache',
         'CACHE_DEFAULT_TIMEOUT': 3600})
 
-    from server.csrf import csrf
-    csrf.init_app(app)
+    # before the other before_request hooks, so a post from another site reaches no view
+    from server.cross_origin import refuse_cross_origin_requests
+    refuse_cross_origin_requests(app)
 
     from server.services.auth import init_auth
     init_auth(app)
@@ -134,22 +137,6 @@ def create_app(config=None):
         Redirects to login page if the Canvas access token is invalid or expired.
         """
         return redirect('/login')
-
-    @app.errorhandler(CSRFError)
-    def handle_csrf_error(e):
-        """
-        A post with a missing or expired CSRF token, say from a page left open too long: say so
-        rather than show a bare 400 page. The email page's fetch() calls ask for JSON.
-        """
-        message = f"{e.description} Reload the page and try again."
-        if request.accept_mimetypes.best == 'application/json':
-            return jsonify(errors={'csrf_token': [message]}), 400
-        flash(message, 'error')
-        # back to the page the form was on, but never to another site
-        referrer = request.referrer
-        if referrer and urlsplit(referrer).netloc == request.host:
-            return redirect(referrer)
-        return redirect(url_for('views.index'))
 
     @app.after_request
     def set_security_headers(response):

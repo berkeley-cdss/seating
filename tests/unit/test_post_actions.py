@@ -1,6 +1,6 @@
 """
 Deleting an exam, a room or a student, toggling an exam and hiding an offering change data, so they
-take only POST, with the session's CSRF token: a link or form on another site can't make them.
+take only POST, and a post that another site made a signed-in browser send is refused (as in sections).
 """
 import re
 
@@ -10,10 +10,10 @@ from server.models import db, Exam, Offering, Room, Student
 
 OFFERING_URL = '/offerings/1234567/'
 EXAM_URL = '/offerings/1234567/exams/midterm1'
-
-
-def _csrf_token(page):
-    return re.search(r'name="csrf_token" type="hidden" value="([^"]+)"', page).group(1)
+# the test client's requests go to http://localhost
+SAME_ORIGIN = 'http://localhost'
+# same site, were the app served from a berkeley.edu subdomain, so SameSite=Lax cookies are sent
+OTHER_SUBDOMAIN = 'https://evil.berkeley.edu'
 
 
 def _room_id():
@@ -57,22 +57,52 @@ def test_following_a_link_changes_nothing(staff, action):
     assert _unchanged(action, url)
 
 
+@pytest.mark.parametrize('headers', [
+    {'Sec-Fetch-Site': 'same-site', 'Origin': OTHER_SUBDOMAIN},
+    {'Sec-Fetch-Site': 'cross-site', 'Origin': 'https://evil.example'},
+    # browsers that send Origin but not Sec-Fetch-Site
+    {'Origin': OTHER_SUBDOMAIN},
+    {'Origin': 'https://localhost'},  # another scheme is another origin
+    {'Origin': 'null'},  # e.g. from a sandboxed iframe
+])
 @pytest.mark.parametrize('action', ACTIONS)
-def test_posting_without_the_csrf_token_changes_nothing(staff, action):
+def test_posts_from_another_site_are_refused(staff, action, headers):
     url = ACTIONS[action]()
-    response = staff.post(url, follow_redirects=True)
-    assert 'The CSRF token is missing.' in response.get_data(as_text=True)
+    response = staff.post(url, headers=headers)
+    assert response.status_code == 403
+    assert 'came from another website' in response.get_data(as_text=True)
     db.session.expire_all()
     assert _unchanged(action, url)
 
 
+@pytest.mark.parametrize('headers', [
+    {'Sec-Fetch-Site': 'same-origin', 'Origin': SAME_ORIGIN},
+    {'Origin': SAME_ORIGIN},  # browsers that don't send Sec-Fetch-Site
+    # Sec-Fetch-Site decides when it's sent; "none" is a request the user made directly
+    {'Sec-Fetch-Site': 'same-origin', 'Origin': 'https://evil.example'},
+    {'Sec-Fetch-Site': 'none'},
+    {},  # not from a browser, so there's no borrowed cookie
+])
 @pytest.mark.parametrize('action', ACTIONS)
-def test_posting_with_the_csrf_token_makes_the_change(staff, action):
-    page = staff.get(f'{EXAM_URL}/students/').get_data(as_text=True)
+def test_posts_from_this_app_make_the_change(staff, action, headers):
     url = ACTIONS[action]()
-    assert staff.post(url, data={'csrf_token': _csrf_token(page)}).status_code == 302
+    assert staff.post(url, headers=headers).status_code == 302
     db.session.expire_all()
     assert not _unchanged(action, url)
+
+
+def test_origin_matches_behind_cloud_run(staff):
+    # Cloud Run terminates TLS and says so in X-Forwarded-Proto, which ProxyFix trusts, so a browser
+    # without Sec-Fetch-Site sends an https Origin to what Flask sees as an http request
+    response = staff.post(f'{EXAM_URL}/delete/', headers={'X-Forwarded-Proto': 'https', 'Origin': 'https://localhost'})
+    assert response.status_code == 302
+    assert db.session.get(Exam, 1) is None
+
+
+def test_gets_from_another_site_are_not_refused(staff):
+    # links from other sites, e.g. Canvas's redirect back after login, are GETs
+    response = staff.get('/offerings', headers={'Sec-Fetch-Site': 'cross-site', 'Origin': 'https://evil.example'})
+    assert response.status_code == 200
 
 
 @pytest.mark.parametrize('page_url, action', [
@@ -82,20 +112,8 @@ def test_posting_with_the_csrf_token_makes_the_change(staff, action):
     (f'{EXAM_URL}/', 'delete room'),
     (f'{EXAM_URL}/students/', 'delete student'),
 ])
-def test_buttons_post_with_the_csrf_token(staff, page_url, action):
+def test_buttons_post(staff, page_url, action):
     page = staff.get(page_url).get_data(as_text=True)
     url = ACTIONS[action]()
-    form = re.search(rf'<form method="POST" action="{re.escape(url)}"[^>]*>\s*<input name="csrf_token"', page)
-    assert form, f'no form posting to {url} with a CSRF token on {page_url}'
-
-
-def test_a_rejected_post_does_not_redirect_to_another_site(staff):
-    response = staff.post(f'{EXAM_URL}/delete/', headers={'Referer': 'https://example.com/'})
-    assert response.status_code == 302
-    assert 'example.com' not in response.location
-
-
-def test_a_rejected_fetch_gets_json(staff):
-    response = staff.post(f'{EXAM_URL}/students/email/preview/', headers={'Accept': 'application/json'})
-    assert response.status_code == 400
-    assert 'csrf_token' in response.get_json()['errors']
+    assert re.search(rf'<form method="POST" action="{re.escape(url)}"', page), \
+        f'no form posting to {url} on {page_url}'

@@ -4,7 +4,6 @@ from flask import request, jsonify, abort, flash, redirect, url_for, render_temp
 import server.services.canvas as canvas_client
 
 from server.controllers import dev_login_module
-from server.csrf import csrf
 from server.services.auth import oauth_provider
 from server.services.canvas.fake_data import FAKE_COURSES, FAKE_ENROLLMENTS, FAKE_USERS
 
@@ -79,7 +78,6 @@ def mock_authorize():
 
 
 @dev_login_module.route('/oauth2/token/', methods=['POST'])
-@csrf.exempt  # the app's OAuth client posts here server to server, as it would to Canvas
 def mock_token():
     if not canvas_client.is_mock_canvas():
         abort(404)
