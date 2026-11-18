@@ -131,3 +131,59 @@ def test_a_photos_roster_lookup_gives_up_after_its_deadline(staff, monkeypatch):
 def test_the_import_page_says_an_import_is_under_way(staff):
     page = staff.get(EXAM_URL + '/students/import/').get_data(as_text=True)
     assert 'id="import-status"' in page and 'role="status"' in page
+
+
+@pytest.fixture
+def roster_without_student_ids(monkeypatch):
+    """The signed-in user's Canvas role can't see student ids: Canvas leaves them out."""
+    roster = canvas._roster_students
+
+    def without_sids(*args, **kwargs):
+        students = list(roster(*args, **kwargs))
+        for student in students:
+            del student.sis_user_id
+        return students
+
+    monkeypatch.setattr(canvas, '_roster_students', without_sids)
+
+
+def test_an_import_by_someone_who_cant_see_student_ids_keeps_the_stored_ones(staff, request):
+    _manual(staff, 'canvas id,email,name\n345678,sharon@berkeley.edu,"Lovera, Sharon"')
+    stored = _canvas_sids()
+    request.getfixturevalue('roster_without_student_ids')
+    _manual(staff, 'canvas id,email,name\n345678,sharon@berkeley.edu,"Lovera, Sharon"')
+    _post(staff, 'canvas_roster')
+    assert _canvas_sids() == stored == {'234567': '3033033334', '345678': '3033033335', '456789': '3033033336'}
+
+
+def test_photos_dont_keep_asking_for_a_roster_without_student_ids(staff, roster_without_student_ids,
+                                                                  roster_requests):
+    assert staff.get(PHOTO_URL.format(1)).mimetype == 'image/png'
+    assert staff.get(PHOTO_URL.format(2)).mimetype == 'image/png'
+    assert roster_requests == ['1234567']
+
+
+def test_any_error_in_a_photos_roster_lookup_gives_the_placeholder(staff, monkeypatch):
+    # e.g. a canvasapi upgrade that breaks the timeout, which reaches into its internals
+    def broken_client(*args, **kwargs):
+        raise AttributeError("'Canvas' object has no attribute '_Canvas__requester'")
+
+    monkeypatch.setattr(canvas, '_get_client', broken_client)
+    assert staff.get(PHOTO_URL.format(1)).mimetype == 'image/png'
+
+
+def test_the_canvas_roster_import_has_a_timeout_and_caches_the_student_ids(staff, monkeypatch):
+    from server.cache import cache_key_roster_sids, cache_store
+    timeouts = []
+    roster = canvas._roster_students
+
+    def recording_roster(offering_canvas_id, key=None, timeout=None):
+        timeouts.append(timeout)
+        return roster(offering_canvas_id, key, timeout)
+
+    monkeypatch.setattr(canvas, '_roster_students', recording_roster)
+    _post(staff, 'canvas_roster')
+    assert timeouts == [canvas.ROSTER_TIMEOUT]
+    # so a photo right after the import doesn't fetch the roster again
+    assert cache_store.get(cache_key_roster_sids('1234567')) == {
+        '234567': '3033033334', '345678': '3033033335', '456789': '3033033336'}

@@ -117,4 +117,4 @@ def get_students_from_canvas(exam, student_form):
     """Prepares the students of the offering's Canvas roster, and gives the roster's student ids too."""
     headers, rows = get_student_roster_for_offering(exam.offering_canvas_id)
     return prepare_students(exam, headers, rows, config=_get_config_from_form(student_form)), \
-        roster_student_ids_from_rows(rows)
+        roster_student_ids_from_rows(exam.offering_canvas_id, rows)
