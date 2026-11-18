@@ -9,7 +9,7 @@ hand since) already have some or all of these tables. Upgrading one creates the
 tables it is missing, adds the columns its tables are missing, and records this
 revision.
 """
-from alembic import op
+from alembic import context, op
 import sqlalchemy as sa
 
 
@@ -112,8 +112,12 @@ def tables():
 
 
 def upgrade():
-    inspector = sa.inspect(op.get_bind())
-    existing = set(inspector.get_table_names())
+    if context.is_offline_mode():
+        # `flask db upgrade --sql` has no database to look at: write the SQL for all of it
+        inspector, existing = None, set()
+    else:
+        inspector = sa.inspect(op.get_bind())
+        existing = set(inspector.get_table_names())
     for (name, *items), indexes in tables():
         if name not in existing:
             op.create_table(name, *items)

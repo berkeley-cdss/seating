@@ -24,11 +24,7 @@ def get_engine():
 
 
 def get_engine_url():
-    try:
-        return get_engine().url.render_as_string(hide_password=False).replace(
-            '%', '%%')
-    except AttributeError:
-        return str(get_engine().url).replace('%', '%%')
+    return get_engine().url.render_as_string(hide_password=False).replace('%', '%%')
 
 
 # add your model's MetaData object here
@@ -45,8 +41,6 @@ target_db = current_app.extensions['migrate'].db
 
 
 def get_metadata():
-    if hasattr(target_db, 'metadatas'):
-        return target_db.metadatas[None]
     return target_db.metadata
 
 
@@ -98,11 +92,11 @@ def run_migrations_online():
                 directives[:] = []
                 logger.info('No changes in schema detected.')
 
-    conf_args = current_app.extensions['migrate'].configure_args
-    if conf_args.get("process_revision_directives") is None:
-        conf_args["process_revision_directives"] = process_revision_directives
-    if conf_args.get("render_item") is None:
-        conf_args["render_item"] = render_item
+    # a copy, so these callbacks (which read this run's config) aren't kept for the next
+    # command run in the same process, such as in the tests
+    conf_args = dict(current_app.extensions['migrate'].configure_args)
+    conf_args.setdefault("process_revision_directives", process_revision_directives)
+    conf_args.setdefault("render_item", render_item)
 
     connectable = get_engine()
 
@@ -114,9 +108,10 @@ def run_migrations_online():
         )
 
         with context.begin_transaction():
-            if connection.dialect.name == "postgresql":
-                # Several Cloud Run instances can start at once; the first takes
-                # this lock and migrates, and the rest wait, then find nothing to do.
+            # Several Cloud Run instances can start at once; the first takes this
+            # lock and migrates, and the rest wait, then find nothing to do. (The
+            # tests use SQLite, so they never take it.)
+            if connection.dialect.name == "postgresql":  # pragma: no cover
                 connection.execute(text("SELECT pg_advisory_xact_lock(724501)"))
             context.run_migrations()
 
