@@ -40,10 +40,31 @@ def test_importing_without_choosing_a_course(seeded_db, login_as):
 
 
 def test_new_exam(staff):
+    db.session.get(Exam, 1).is_active = True
+    db.session.commit()
     response = staff.post('/offerings/1234567/exams/new/',
                           data={'name': 'final', 'display_name': 'Final', 'active': 'y', 'submit': 'y'})
     _lands_on(response, OFFERING_URL)
     assert Exam.query.filter_by(name='final').one().is_active
+    assert not db.session.get(Exam, 1).is_active
+
+
+def test_new_exam_left_inactive(staff):
+    db.session.get(Exam, 1).is_active = True
+    db.session.commit()
+    response = staff.post('/offerings/1234567/exams/new/',
+                          data={'name': 'final', 'display_name': 'Final', 'submit': 'y'})
+    _lands_on(response, OFFERING_URL)
+    assert not Exam.query.filter_by(name='final').one().is_active
+    assert db.session.get(Exam, 1).is_active
+
+
+def test_new_exam_left_inactive_with_no_active_exam(staff):
+    # the seed exam starts inactive, so the offering has no active exam to keep
+    response = staff.post('/offerings/1234567/exams/new/',
+                          data={'name': 'final', 'display_name': 'Final', 'submit': 'y'})
+    _lands_on(response, OFFERING_URL)
+    assert [e.name for e in Exam.query.filter_by(offering_canvas_id='1234567', is_active=True)] == ['midterm1']
 
 
 def test_cancelling_an_exam_edit(staff):
