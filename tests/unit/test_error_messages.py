@@ -290,6 +290,45 @@ def test_edited_room_says_it_was_saved(staff):
     assert db.session.get(Room, 1).display_name == 'Soda 999 Overflow'
 
 
+NO_ACTIVE_EXAM_LEFT = ('info', "No active exam left. The first exam is activated by default.")
+
+
+def test_created_exam_says_it_was_created(staff):
+    staff.post('/offerings/1234567/exams/new/', data={'name': 'final', 'display_name': 'Final', 'submit': 'y'})
+    assert _flashes(staff) == [('success', "Created exam 'Final'.")]
+
+
+def test_edited_exam_says_it_was_saved(staff):
+    staff.post(f'{EXAM_URL}/edit/', data={'display_name': 'Midterm One', 'active': 'y', 'submit': 'y'})
+    assert _flashes(staff) == [('success', "Saved exam 'Midterm One'.")]
+
+
+def test_toggled_exam_says_what_changed(staff):
+    db.session.add(Exam(offering_canvas_id='1234567', name='midterm2', display_name='Midterm 2', is_active=False))
+    db.session.commit()
+    midterm2_url = '/offerings/1234567/exams/midterm2'
+    staff.post(f'{midterm2_url}/toggle/')
+    assert _flashes(staff) == [('success', "Activated exam 'Midterm 2'.")]
+    with staff.session_transaction() as session:
+        session.pop('_flashes')
+    # with no exam left active, the first by name (Midterm 1) is activated
+    staff.post(f'{midterm2_url}/toggle/')
+    assert _flashes(staff) == [NO_ACTIVE_EXAM_LEFT, ('success', "Deactivated exam 'Midterm 2'.")]
+
+
+def test_deactivating_the_only_exam_does_not_say_it_was_deactivated(staff):
+    # it stays active, as the info message says
+    staff.post(f'{EXAM_URL}/toggle/')
+    assert _flashes(staff) == [NO_ACTIVE_EXAM_LEFT]
+    db.session.expire_all()
+    assert db.session.get(Exam, 1).is_active
+
+
+def test_imported_room_says_it_was_imported(staff):
+    staff.post(f'{EXAM_URL}/rooms/import/from_manual/', data={**EDIT_ROOM, 'display_name': 'Cory 277'})
+    assert _flashes(staff) == [('success', "Imported room 'Cory 277'.")]
+
+
 def test_custom_sheet_room_error_hides_the_exception(staff, monkeypatch):
     monkeypatch.setattr(server.views, 'get_room_from_google_spreadsheet', _db_error)
     response = staff.post(f'{EXAM_URL}/rooms/import/from_custom_sheet/', data={
@@ -321,7 +360,8 @@ def test_master_sheet_rooms_report_each_failure(staff, monkeypatch):
     monkeypatch.setattr(server.views, 'get_room_from_google_spreadsheet', get_room)
     staff.post(f'{EXAM_URL}/rooms/import/from_master_sheet/',
                data={'rooms': ['Cory 277', 'Wheeler 150'], 'submit': 'y'})
-    assert _flashes(staff) == [('error', "Couldn't import room 'Cory 277': Sheet is empty")]
+    assert _flashes(staff) == [('error', "Couldn't import room 'Cory 277': Sheet is empty"),
+                               ('success', "Imported room 'Wheeler 150'.")]
     assert [r.display_name for r in Room.query.filter_by(exam_id=1).order_by(Room.id)] == ['Soda 999', 'Wheeler 150']
 
 

@@ -254,7 +254,7 @@ def new_exam(offering):
     title = "Create an Exam for {}".format(offering.name)
     if form.validate_on_submit():
         # a rollback expires the offering: read what the error paths need first
-        canvas_id, name = offering.canvas_id, form.name.data
+        canvas_id, name, display_name = offering.canvas_id, form.name.data, form.display_name.data
         offering_url = url_for('views.offering', offering=offering)
 
         def find_exam():
@@ -267,14 +267,15 @@ def new_exam(offering):
                 # only one exam can be active at a time, so deactivate all others first
                 offering.mark_all_exams_as_inactive()
             offering.exams.append(Exam(offering_canvas_id=canvas_id, name=name,
-                                       display_name=form.display_name.data, is_active=form.active.data))
+                                       display_name=display_name, is_active=form.active.data))
             if offering.ensure_one_exam_is_active():
                 flash("No active exam left. The first exam is activated by default.", 'info')
         except Exception:
             _flash_unexpected_error(f"create exam '{name}'")
             return redirect(offering_url)
         # a duplicate is one created by someone else since the check above
-        _commit_or_flash(f"create exam '{name}'", find_exam, lambda exam: _exam_exists_message(name))
+        if _commit_or_flash(f"create exam '{name}'", find_exam, lambda exam: _exam_exists_message(name)):
+            flash(f"Created exam '{display_name}'.", 'success')
         return redirect(offering_url)
     return render_template("upsert_exam.html", title=title, form=form, exam=None)
 
@@ -328,7 +329,8 @@ def edit_exam(exam):
             if exam.offering.ensure_one_exam_is_active():
                 flash("No active exam left. The first exam is activated by default.", 'info')
         offering_url = url_for('views.offering', offering=exam.offering)
-        _commit_or_flash(f"edit exam '{form.display_name.data}'")
+        if _commit_or_flash(f"edit exam '{form.display_name.data}'"):
+            flash(f"Saved exam '{form.display_name.data}'.", 'success')
         return redirect(offering_url)
     return render_template("upsert_exam.html",
                            title="Edit Exam: {}".format(exam.display_name),
@@ -341,6 +343,7 @@ def toggle_exam(exam):
     Path: /offerings/<canvas_id>/exams/<exam_name>/toggle
     Toggles an exam for a course offering.
     """
+    was_active = exam.is_active
     if exam.is_active:
         exam.is_active = False
         if exam.offering.ensure_one_exam_is_active():
@@ -351,7 +354,10 @@ def toggle_exam(exam):
         exam.is_active = True
     # the commit expires the exam
     display_name, offering_url = exam.display_name, url_for('views.offering', offering=exam.offering)
-    _commit_or_flash(f"activate or deactivate exam '{display_name}'")
+    # deactivating the only exam (or the first, with no other active) leaves it active, as the info above says
+    is_active = exam.is_active
+    if _commit_or_flash(f"activate or deactivate exam '{display_name}'") and is_active != was_active:
+        flash(f"{'Activated' if is_active else 'Deactivated'} exam '{display_name}'.", 'success')
     return redirect(offering_url)
 
 
@@ -394,7 +400,8 @@ def _save_new_room(room):
     exam_id, name, start_at, display_name = room.exam_id, room.name, room.start_at, room.display_name
     db.session.add(room)
     # a duplicate is one imported by someone else since prepare_room checked
-    _commit_or_flash(f"import room '{display_name}'", *_room_clash(exam_id, name, start_at))
+    if _commit_or_flash(f"import room '{display_name}'", *_room_clash(exam_id, name, start_at)):
+        flash(f"Imported room '{display_name}'.", 'success')
 
 
 @bp.route('/<exam:exam>/rooms/import/')
