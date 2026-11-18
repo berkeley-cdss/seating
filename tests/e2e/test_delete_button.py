@@ -24,7 +24,9 @@ def test_deleting_a_student_is_confirmed_then_posted(get_authed_driver, seeded_d
     assert db.session.get(Student, 1) is not None
 
     _press_delete(driver, name).accept()
-    WebDriverWait(driver, 10).until(lambda d: 'Deleted student.' in d.find_element(By.TAG_NAME, 'body').text)
+    # the page is replaced as the post goes through: this wait, unlike reading the body directly,
+    # tries again when it catches the old page's body going stale
+    WebDriverWait(driver, 10).until(EC.text_to_be_present_in_element((By.TAG_NAME, 'body'), 'Deleted student.'))
     assert driver.current_url == STUDENTS_URL
     db.session.commit()
     assert db.session.get(Student, 1) is None
