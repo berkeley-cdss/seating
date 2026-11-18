@@ -4,12 +4,15 @@ which for a database error holds the SQL statement, its parameters (student data
 """
 import io
 import re
+from datetime import datetime
 
 import pytest
 from markupsafe import escape
 from sqlalchemy.exc import IntegrityError, OperationalError
 
 import server.views
+from server.utils.date import to_ISO8601
+from server.views import _room_exists_message
 from server.models import db, Exam, Offering, Room
 from server.typings.exception import DataValidationError, GcpError
 
@@ -52,8 +55,7 @@ def test_duplicate_exam_name_is_reported_plainly(staff):
     assert Exam.query.filter_by(offering_canvas_id='1234567', name='midterm1').count() == 1
 
 
-def test_database_error_shows_a_reference_and_logs_the_error(staff, monkeypatch, caplog):
-    monkeypatch.setattr(db.session, 'commit', _db_error)
+def test_database_error_shows_a_reference_and_logs_the_error(staff, database_goes_down, caplog):
     staff.post(f'{EXAM_URL}/delete/')
     _assert_unexpected_error_flashed(staff, "Couldn't delete exam 'Midterm 1'")
     ref = re.search(r'ref ([0-9a-f]{8})', _flashes(staff)[0][1]).group(1)
@@ -79,8 +81,7 @@ def test_duplicate_room_is_reported_plainly(staff):
     assert Room.query.filter_by(exam_id=1).count() == rooms
 
 
-def test_room_save_error_hides_the_exception(staff, monkeypatch):
-    monkeypatch.setattr(db.session, 'commit', _db_error)
+def test_room_save_error_hides_the_exception(staff, database_goes_down):
     staff.post(f'{EXAM_URL}/rooms/import/from_csv_upload/', data={
         'display_name': 'Cory 277', 'submit': 'y',
         'file': (io.BytesIO(b'row,seat\nA,1\n'), 'room.csv'),
@@ -93,11 +94,32 @@ def test_layout_preview_of_a_file_that_is_not_utf8(staff):
         'file': (io.BytesIO('row,seat\nA,1\n'.encode('utf-16')), 'room.csv'), 'submit': 'y',
     }, content_type='multipart/form-data')
     assert response.status_code == 200
-    assert escape("Couldn't preview the layout: save the file as CSV with UTF-8 encoding.") in response.text
+    assert escape("Couldn't preview the layout: Save the file as CSV with UTF-8 encoding") in response.text
 
 
-def _integrity_error(*args, **kwargs):
-    raise IntegrityError(SECRET, {'email': 'oski@berkeley.edu'}, Exception('UNIQUE constraint failed'))
+def test_room_file_that_is_not_utf8(staff):
+    staff.post(f'{EXAM_URL}/rooms/import/from_csv_upload/', data={
+        'display_name': 'Cory 277', 'submit': 'y',
+        'file': (io.BytesIO('row,seat\nA,1\n'.encode('utf-16')), 'room.csv'),
+    }, content_type='multipart/form-data')
+    assert _flashes(staff) == [('error', "Couldn't import room 'Cory 277': Save the file as CSV with UTF-8 encoding")]
+
+
+def test_student_file_that_is_not_utf8(staff):
+    response = staff.post(f'{EXAM_URL}/students/import/', data={
+        'file': (io.BytesIO('name,email,canvas id\n'.encode('utf-16')), 'students.csv'), 'submit': 'y',
+    }, content_type='multipart/form-data')
+    assert response.status_code == 200
+    assert 'Save the file as CSV with UTF-8 encoding' in response.text
+
+
+def test_canvas_roster_import_keeps_messages_written_for_users(staff, monkeypatch):
+    def missing_emails(*args):
+        raise DataValidationError('Missing "email" column')
+    monkeypatch.setattr(server.views, 'get_students_from_canvas', missing_emails)
+    staff.post(f'{EXAM_URL}/students/import/from_canvas_roster/', data={'submit': 'y'})
+    assert _flashes(staff) == [
+        ('error', 'Couldn\'t import students from the Canvas roster: Missing "email" column')]
 
 
 EDIT_ROOM = {'display_name': 'Soda 999', 'movable_seats-0-attributes': '', 'movable_seats-0-count': '0', 'submit': 'y'}
@@ -116,10 +138,22 @@ DATABASE_FAILURES = {
 }
 
 
-@pytest.mark.parametrize('url, data, message_start', DATABASE_FAILURES.values(), ids=DATABASE_FAILURES.keys())
-def test_database_errors_hide_the_exception(staff, monkeypatch, url, data, message_start):
+@pytest.fixture
+def database_goes_down(monkeypatch):
+    """Commits fail, and so does every query after the rollback: the error path must not need the database."""
+    real_rollback = db.session.rollback
+
+    def rollback():
+        real_rollback()
+        monkeypatch.setattr(db.session(), 'execute', _db_error)
     monkeypatch.setattr(db.session, 'commit', _db_error)
-    staff.post(url, data=data)
+    monkeypatch.setattr(db.session, 'rollback', rollback)
+
+
+@pytest.mark.parametrize('url, data, message_start', DATABASE_FAILURES.values(), ids=DATABASE_FAILURES.keys())
+def test_database_errors_hide_the_exception(staff, database_goes_down, url, data, message_start):
+    response = staff.post(url, data=data)
+    assert response.status_code == 302
     _assert_unexpected_error_flashed(staff, message_start)
 
 
@@ -136,27 +170,76 @@ def test_importing_an_offering_hides_the_exception(seeded_db, login_as, monkeypa
     assert 'oski' not in response.text
 
 
+def _clash_with(make_duplicate):
+    """A commit that fails because another request just saved make_duplicate()."""
+    real_commit, real_rollback = db.session.commit, db.session.rollback
+
+    def commit():
+        real_rollback()
+        db.session.add(make_duplicate())
+        real_commit()
+        raise IntegrityError(SECRET, {}, Exception('UNIQUE constraint failed'))
+    return commit
+
+
 def test_exam_created_meanwhile_is_reported_plainly(staff, monkeypatch):
     # another request created it after the check for an existing exam
-    monkeypatch.setattr(db.session, 'commit', _integrity_error)
+    monkeypatch.setattr(db.session, 'commit', _clash_with(
+        lambda: Exam(offering_canvas_id='1234567', name='final', display_name='Final', is_active=False)))
     response = staff.post('/offerings/1234567/exams/new/',
                           data={'name': 'final', 'display_name': 'Final', 'submit': 'y'})
     assert response.status_code == 200
     assert escape("An exam named 'final' already exists in this offering.") in response.text
 
 
+def test_offering_imported_meanwhile_is_reported_plainly(seeded_db, login_as, monkeypatch):
+    offering = Offering.query.filter_by(canvas_id='2345678').one()
+    columns = {column.name: getattr(offering, column.name) for column in Offering.__table__.columns}
+    name = offering.name
+    db.session.delete(offering)
+    db.session.commit()
+    monkeypatch.setattr(db.session, 'commit', _clash_with(lambda: Offering(**columns)))
+    client = login_as(2)
+    client.post('/offerings/new', data={'offerings': '2345678', 'submit': 'y'})
+    assert _flashes(client) == [('error', f"Already imported: {name}.")]
+
+
 def test_room_imported_meanwhile_is_reported_plainly(staff, monkeypatch):
-    monkeypatch.setattr(db.session, 'commit', _integrity_error)
+    monkeypatch.setattr(db.session, 'commit', _clash_with(
+        lambda: Room(exam_id=1, name='cory277', display_name='Cory 277')))
     staff.post(f'{EXAM_URL}/rooms/import/from_manual/', data={**EDIT_ROOM, 'display_name': 'Cory 277'})
-    assert _flashes(staff) == [
-        ('error', "A room named 'Cory 277' with that start time already exists in this exam.")]
+    assert _flashes(staff) == [('error', _room_exists_message('Cory 277'))]
 
 
-def test_room_renamed_to_an_existing_room_is_reported_plainly(staff, monkeypatch):
-    monkeypatch.setattr(db.session, 'commit', _integrity_error)
-    staff.post(f'{EXAM_URL}/rooms/1/edit', data={**EDIT_ROOM, 'display_name': 'Cory 277'})
-    assert _flashes(staff) == [
-        ('error', "A room named 'Cory 277' with that start time already exists in this exam.")]
+def test_room_moved_onto_another_rooms_time_names_that_room(staff):
+    # same name (slug) as the seed room, at another time
+    db.session.add(Room(exam_id=1, name='soda999', display_name='Soda 999 (late)',
+                        start_at=to_ISO8601(datetime(2023, 12, 12, 14, 0))))
+    db.session.commit()
+    # renaming doesn't change the slug: moving the seed room to that time clashes with the late room
+    staff.post(f'{EXAM_URL}/rooms/1/edit', data={**EDIT_ROOM, 'display_name': 'Soda 999 Overflow',
+                                                 'start_at': '2023-12-12T14:00'})
+    assert _flashes(staff) == [('error', _room_exists_message('Soda 999 (late)'))]
+
+
+@pytest.mark.parametrize('url, data, message_start', [
+    ('/offerings/1234567/exams/new/', {'name': 'final', 'display_name': 'Final', 'submit': 'y'},
+     "Couldn't create exam 'final'"),
+    (f'{EXAM_URL}/rooms/import/from_manual/', {**EDIT_ROOM, 'display_name': 'Cory 277'},
+     "Couldn't import room 'Cory 277'"),
+    (f'{EXAM_URL}/rooms/1/edit', EDIT_ROOM, "Couldn't edit room 'Soda 999'"),
+], ids=['create exam', 'import room', 'edit room'])
+def test_other_broken_constraints_are_unexpected(staff, monkeypatch, url, data, message_start):
+    # not a duplicate: a bug, so it is logged with a reference rather than called a duplicate
+    def commit():
+        raise IntegrityError(SECRET, {}, Exception('NOT NULL constraint failed'))
+    monkeypatch.setattr(db.session, 'commit', commit)
+    response = staff.post(url, data=data)
+    flashes = _flashes(staff) if response.status_code == 302 else []
+    if flashes:
+        _assert_unexpected_error_flashed(staff, message_start)
+    else:
+        assert re.search(re.escape(str(escape(message_start))) + r" due to an unexpected error", response.text)
 
 
 @pytest.mark.parametrize('error, message', [
@@ -222,3 +305,13 @@ def test_layout_preview_error_hides_the_exception(staff, monkeypatch):
     assert re.search(r"Couldn(&#39;|')t preview the layout due to an unexpected error \(ref [0-9a-f]{8}\)\.",
                      response.text)
     assert 'oski' not in response.text
+
+
+def test_broken_constraint_with_the_database_gone_is_unexpected(staff, database_goes_down, monkeypatch):
+    # looking for the duplicate fails too, so it can't be called one
+    def commit():
+        raise IntegrityError(SECRET, {}, Exception('UNIQUE constraint failed'))
+    monkeypatch.setattr(db.session, 'commit', commit)
+    response = staff.post(f'{EXAM_URL}/rooms/import/from_manual/', data={**EDIT_ROOM, 'display_name': 'Cory 277'})
+    assert response.status_code == 302
+    _assert_unexpected_error_flashed(staff, "Couldn't import room 'Cory 277'")
