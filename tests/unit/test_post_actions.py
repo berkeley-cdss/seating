@@ -3,10 +3,14 @@ Deleting an exam, a room or a student, toggling an exam, hiding an offering and 
 POST, and a post that another site made a signed-in browser send is refused (as in sections).
 """
 import re
+import time
 
 import pytest
 
 from server.models import db, Exam, Offering, Room, Student
+from server.services.auth import SIGNED_IN_AT_KEY
+from server.services.auth.after_login import NOT_DONE
+from server.services.canvas.fake_data import FAKE_USERS
 
 OFFERING_URL = '/offerings/1234567/'
 EXAM_URL = '/offerings/1234567/exams/midterm1'
@@ -41,11 +45,15 @@ ACTIONS = {
 
 
 @pytest.fixture
-def staff(seeded_db, login_as):
+def seeded(seeded_db):
     # the seed exam starts inactive, so toggling it has a change to make
     db.session.get(Exam, 1).is_active = False
     db.session.add(Exam(offering_canvas_id='1234567', name='final', display_name='Final', is_active=True))
     db.session.commit()
+
+
+@pytest.fixture
+def staff(seeded, login_as):
     return login_as(1)
 
 
@@ -120,48 +128,121 @@ def test_buttons_post(staff, page_url, action):
 
 
 FORGED = {'Sec-Fetch-Site': 'same-site', 'Origin': OTHER_SUBDOMAIN}
+SAME = {'Sec-Fetch-Site': 'same-origin'}
+
+
+def _session(client):
+    # read the session itself: the tests share one app context, so Flask-Login keeps the user it
+    # loaded in g from one request to the next
+    with client.session_transaction() as session:
+        return dict(session)
 
 
 @pytest.mark.parametrize('url', [
-    # forms with their own CSRF token are refused all the same
-    f'{EXAM_URL}/edit/',
     '/offerings/new',
     f'{EXAM_URL}/students/remove_deleted_rooms/',
-    '/dev_login/',
 ])
 def test_other_posts_from_another_site_are_refused(staff, url):
-    response = staff.post(url, data={'display_name': 'Renamed', 'user_id': '123456'}, headers=FORGED)
-    assert response.status_code == 403
+    assert staff.post(url, headers=FORGED).status_code == 403
+
+
+def test_a_csrf_token_does_not_get_a_post_from_another_site_through(staff):
+    page = staff.get(f'{EXAM_URL}/edit/').get_data(as_text=True)
+    csrf_token = re.search(r'name="csrf_token" type="hidden" value="([^"]+)"', page).group(1)
+    data = {'csrf_token': csrf_token, 'display_name': 'Renamed', 'submit': 'y'}
+    assert staff.post(f'{EXAM_URL}/edit/', data=data, headers=FORGED).status_code == 403
     db.session.expire_all()
     assert db.session.get(Exam, 1).display_name == 'Midterm 1'
+    # the same post from this app goes through
+    assert staff.post(f'{EXAM_URL}/edit/', data=data, headers=SAME).status_code == 302
+    db.session.expire_all()
+    assert db.session.get(Exam, 1).display_name == 'Renamed'
+
+
+def test_other_sites_cannot_sign_users_in_as_someone_else(staff):
+    other_user = next(user_id for user_id in FAKE_USERS if user_id != '123456')
+    response = staff.post('/dev_login/', data={'user_id': other_user}, headers=FORGED)
+    assert response.status_code == 403
+    assert _session(staff)['_user_id'] == '1'
 
 
 def test_other_sites_cannot_log_users_out(staff):
     assert staff.get('/logout/').status_code == 405
     assert staff.post('/logout/', headers=FORGED).status_code == 403
-    # still signed in
-    assert staff.get('/offerings').status_code == 200
-    assert staff.post('/logout/', headers={'Sec-Fetch-Site': 'same-origin'}).status_code == 302
-    assert staff.get('/offerings').status_code == 302
+    assert _session(staff)['_user_id'] == '1'
+    assert staff.post('/logout/', headers=SAME).status_code == 302
+    assert '_user_id' not in _session(staff)
 
 
-def _after_login(client):
-    with client.session_transaction() as session:
-        return session.get('after_login')
+def test_logging_out_once_the_sign_in_has_expired(staff):
+    # e.g. a tab left open past the sign-in limit: Log Out signs out, rather than sending the user
+    # to sign in again, which Canvas may do without asking, leaving them signed in
+    with staff.session_transaction() as session:
+        session[SIGNED_IN_AT_KEY] = time.time() - 365 * 24 * 60 * 60
+    response = staff.post('/logout/', headers=SAME)
+    assert response.status_code == 302
+    assert response.location == '/'
+    assert _session(staff) == {}
+
+
+def test_logging_out_when_already_signed_out(seeded_db, client):
+    response = client.post('/logout/', headers=SAME)
+    assert response.status_code == 302
+    assert response.location == '/'
+
+
+@pytest.fixture
+def canvas_signs_in(app, monkeypatch):
+    """Makes the OAuth callback succeed as the fake Canvas user 123456 (user 1)."""
+    provider = app.extensions['seating_oauth_provider']
+    monkeypatch.setattr(provider, 'authorize_access_token',
+                        lambda: {'access_token': 'dev_access_token', 'user': FAKE_USERS['123456']})
+
+
+def _sign_in(client):
+    """Signs in through the OAuth callback, and returns where it sends the user."""
+    response = client.get('/authorized/')
+    assert response.status_code == 302
+    return response.location
 
 
 @pytest.mark.parametrize('action', ACTIONS)
-def test_pressing_a_button_once_signed_out_returns_to_the_home_page(seeded_db, client, action):
-    # e.g. the page was left open past the idle limit: signing in again must not come back to a
-    # GET of a POST-only url, which would be a 405
+def test_pressing_a_button_once_signed_out_does_not_come_back_to_it(seeded, client, canvas_signs_in, action):
+    # e.g. the page was left open past the idle limit: signing in again comes back with a GET, which
+    # can't redo the post (and would be a 405), so it lands on the home page and says it wasn't done
     url = ACTIONS[action]()
-    response = client.post(url, headers={'Sec-Fetch-Site': 'same-origin'})
-    assert response.status_code == 302
-    assert response.location.endswith('/login/')
-    assert _after_login(client) is None
+    response = client.post(url, headers=SAME)
+    assert response.location == '/login/'
+    assert _sign_in(client) == '/'
+    page = client.get('/', follow_redirects=True).get_data(as_text=True)
+    assert NOT_DONE.replace("'", '&#39;') in page
+    db.session.expire_all()
+    assert _unchanged(action, url)
 
 
-def test_opening_a_page_once_signed_out_returns_to_it(seeded_db, client):
-    response = client.get(f'{EXAM_URL}/students/')
-    assert response.location.endswith('/login/')
-    assert _after_login(client) == f'http://localhost{EXAM_URL}/students/'
+def test_posting_a_form_once_signed_out_does_not_come_back_to_it(seeded_db, client, canvas_signs_in):
+    # login_required sends it to sign in, rather than a url converter
+    assert client.post('/offerings/new', headers=SAME).location == '/login/'
+    assert _sign_in(client) == '/'
+
+
+@pytest.mark.app_config(MOCK_CANVAS=False)
+def test_posting_without_a_canvas_token_does_not_come_back_to_it(staff):
+    # signed in to the app, but the session has no Canvas token to call Canvas with
+    assert staff.post('/offerings/new', headers=SAME).location == '/login/'
+    session = _session(staff)
+    assert 'after_login' not in session
+    assert NOT_DONE in [message for _, message in session['_flashes']]
+
+
+def test_a_page_opened_earlier_is_not_returned_to_after_a_post(seeded_db, client, canvas_signs_in):
+    client.get(f'{EXAM_URL}/students/')
+    client.post(f'{EXAM_URL}/students/1/delete', headers=SAME)
+    assert _sign_in(client) == '/'
+
+
+def test_opening_a_page_once_signed_out_comes_back_to_it(seeded_db, client, canvas_signs_in):
+    assert client.get(f'{EXAM_URL}/students/').location == '/login/'
+    assert _sign_in(client) == f'http://localhost{EXAM_URL}/students/'
+    page = client.get(f'{EXAM_URL}/students/').get_data(as_text=True)
+    assert NOT_DONE.replace("'", '&#39;') not in page

@@ -27,16 +27,16 @@
       </a>
       {% if is_staff %}
       {% call macros.post_button(url_for('views.toggle_exam', exam=exam),
-                                 ('Deactivate ' if exam.is_active else 'Activate ') ~ exam.display_name) %}
+                                 ('Deactivate ' if exam.is_active else 'Activate ') ~ exam.display_name) -%}
         <i class="bi {{ 'bi-star-fill' if exam.is_active else 'bi-star' }}" aria-hidden="true"></i>
-      {% endcall %}
+      {%- endcall %}
       <a class="icon-button" href="{{ url_for('views.edit_exam', exam=exam) }}" aria-label="Edit {{ exam.display_name }}">
         <i class="bi bi-pencil" aria-hidden="true"></i>
       </a>
       {% call macros.post_button(url_for('views.delete_exam', exam=exam), 'Delete ' ~ exam.display_name,
-                                 confirm='Are you sure you want to delete this exam?') %}
+                                 confirm='Are you sure you want to delete this exam?') -%}
         <i class="bi bi-x-lg" aria-hidden="true"></i>
-      {% endcall %}
+      {%- endcall %}
       {% endif %}
     </li>
   {% endfor %}
