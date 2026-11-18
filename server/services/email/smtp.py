@@ -24,9 +24,12 @@ class SMTPConfig:
                 f'use_auth={self.use_auth})')
 
 
-def construct_email(*, from_addr, to_addr, subject, body, body_html=None, bcc_addr=None, cc_addr=None):
+def construct_email(*, from_addr, to_addr, subject, body, body_html=None, bcc_addr=None, cc_addr=None,
+                    reply_to=None):
     msg = EmailMessage()
     msg['From'], msg['To'], msg['Subject'] = from_addr, to_addr, subject
+    if reply_to:
+        msg['Reply-To'] = reply_to
     if bcc_addr:
         if isinstance(bcc_addr, str):
             bcc_addr = [address.strip() for address in bcc_addr.split(',') if address.strip()]

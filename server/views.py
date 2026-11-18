@@ -900,6 +900,7 @@ def _send_test_email(exam, form, **page):
 
 def _render_email_page(exam, form, **page):
     return render_template('email.html', exam=exam, form=form, variables=VARIABLES,
+                           sender=current_app.config.get('EMAIL_SENDER'),
                            preview_url=url_for('views.email_preview', exam=exam), **page)
 
 
