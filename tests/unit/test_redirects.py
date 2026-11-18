@@ -53,11 +53,11 @@ def test_cancelling_an_exam_edit(staff):
 
 
 def test_toggling_an_exam(staff):
-    _lands_on(staff.get(f'{EXAM_URL}/toggle/'), OFFERING_URL)
+    _lands_on(staff.post(f'{EXAM_URL}/toggle/'), OFFERING_URL)
 
 
 def test_deleting_an_exam(staff):
-    _lands_on(staff.get(f'{EXAM_URL}/delete/'), OFFERING_URL)
+    _lands_on(staff.post(f'{EXAM_URL}/delete/'), OFFERING_URL)
     assert db.session.get(Exam, 1) is None
 
 

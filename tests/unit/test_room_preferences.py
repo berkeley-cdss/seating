@@ -76,7 +76,11 @@ def test_deleting_a_room_removes_it_from_student_preferences(seeded_db, exam, lo
         student.room_avoids = {STALE_ROOM_ID}
     seeded_db.session.commit()
 
-    response = login_as(1).get(f'{EXAM_URL}/rooms/{room_id}/delete')
+    client = login_as(1)
+    page = client.get(f'{EXAM_URL}/').get_data(as_text=True)
+    csrf_token = re.search(r'name="csrf_token" type="hidden" value="([^"]+)"', page).group(1)
+    response = client.post(f'{EXAM_URL}/rooms/{room_id}/delete', data={'csrf_token': csrf_token},
+                           follow_redirects=True)
     assert response.status_code == 200
     assert 'Deleted room.' in response.get_data(as_text=True)
 

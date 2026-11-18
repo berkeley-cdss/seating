@@ -82,8 +82,10 @@ def test_remove_button_cleans_preferences(exam, stale_students, login_as):
 
 
 def test_remove_button_rejects_missing_csrf_token(exam, stale_students, login_as):
-    response = login_as(1).post(f'{STUDENTS_URL}remove_deleted_rooms/', follow_redirects=True)
-    assert 'Failed to remove deleted rooms' in response.get_data(as_text=True)
+    response = login_as(1).post(f'{STUDENTS_URL}remove_deleted_rooms/', headers={'Referer': f'http://localhost{STUDENTS_URL}'},
+                                follow_redirects=True)
+    assert response.request.path == STUDENTS_URL
+    assert 'The CSRF token is missing. Reload the page and try again.' in response.get_data(as_text=True)
     first, _, _ = stale_students
     db.session.expire_all()
     assert _prefs(first.id) == ({'1', '999'}, set())

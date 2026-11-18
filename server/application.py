@@ -1,9 +1,11 @@
 import logging
+from urllib.parse import urlsplit
 
 import flask.ctx
 from canvasapi.exceptions import InvalidAccessToken
 from dotenv import load_dotenv
-from flask import Flask, redirect
+from flask import Flask, flash, jsonify, redirect, request, url_for
+from flask_wtf.csrf import CSRFError
 from werkzeug.exceptions import HTTPException
 
 from server.typings.enum import AppEnvironment
@@ -103,6 +105,9 @@ def create_app(config=None):
         'CACHE_DIR': '.cache',
         'CACHE_DEFAULT_TIMEOUT': 3600})
 
+    from server.csrf import csrf
+    csrf.init_app(app)
+
     from server.services.auth import init_auth
     init_auth(app)
 
@@ -129,6 +134,22 @@ def create_app(config=None):
         Redirects to login page if the Canvas access token is invalid or expired.
         """
         return redirect('/login')
+
+    @app.errorhandler(CSRFError)
+    def handle_csrf_error(e):
+        """
+        A post with a missing or expired CSRF token, say from a page left open too long: say so
+        rather than show a bare 400 page. The email page's fetch() calls ask for JSON.
+        """
+        message = f"{e.description} Reload the page and try again."
+        if request.accept_mimetypes.best == 'application/json':
+            return jsonify(errors={'csrf_token': [message]}), 400
+        flash(message, 'error')
+        # back to the page the form was on, but never to another site
+        referrer = request.referrer
+        if referrer and urlsplit(referrer).netloc == request.host:
+            return redirect(referrer)
+        return redirect(url_for('views.index'))
 
     @app.after_request
     def set_security_headers(response):

@@ -164,7 +164,7 @@ def offering(offering):
                            is_staff=is_staff)
 
 
-@bp.route('/<offering:offering>/hide/')
+@bp.route('/<offering:offering>/hide/', methods=['POST'])
 def hide_offering(offering):
     """
     Path: /offerings/<canvas_id>/hide
@@ -218,7 +218,7 @@ def new_exam(offering):
                            form=form, exam=None)
 
 
-@bp.route("/<exam:exam>/delete/", methods=["GET", "DELETE"])
+@bp.route("/<exam:exam>/delete/", methods=["POST"])
 def delete_exam(exam):
     """
     Path: /offerings/<canvas_id>/exams/<exam_name>/delete
@@ -267,7 +267,7 @@ def edit_exam(exam):
                            form=form, exam=exam)
 
 
-@bp.route("/<exam:exam>/toggle/", methods=["GET", "PATCH"])
+@bp.route("/<exam:exam>/toggle/", methods=["POST"])
 def toggle_exam(exam):
     """
     Path: /offerings/<canvas_id>/exams/<exam_name>/toggle
@@ -446,7 +446,7 @@ def import_room_manually(exam):  # noqa: C901
     return render_template('upsert_room.html', exam=exam, form=form, room=None)
 
 
-@bp.route('/<exam:exam>/rooms/<int:id>/delete', methods=['GET', 'DELETE'])
+@bp.route('/<exam:exam>/rooms/<int:id>/delete', methods=['POST'])
 def delete_room(exam, id):
     """
     Path: /offerings/<canvas_id>/exams/<exam_name>/rooms/<room_name>/delete
@@ -463,7 +463,7 @@ def delete_room(exam, id):
         except Exception as e:
             db.session.rollback()
             flash(f"Failed to delete room {room.display_name} (ID: {room.id}) due to an error:\n{e}", 'error')
-    return render_template('exam.html', exam=exam)
+    return redirect(url_for('views.exam', exam=exam))
 
 
 @bp.route('/<exam:exam>/rooms/<int:id>/edit', methods=['GET', 'POST'])
@@ -776,7 +776,7 @@ def edit_students(exam):  # noqa: C901
                            did_not_exist=did_not_exist, student=None)
 
 
-@bp.route('/<exam_student:exam_student>/delete', methods=['GET', 'DELETE'])
+@bp.route('/<exam_student:exam_student>/delete', methods=['POST'])
 def delete_student(exam_student):
     exam, student = exam_student
     if student:
