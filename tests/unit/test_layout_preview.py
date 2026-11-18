@@ -384,3 +384,8 @@ class TestPreviewLayoutPage:
         assert response.status_code == 200
         assert b'preview the layout: Missing compulsory columns' in response.data
         assert b'class="layout-seat"' not in response.data
+
+
+def test_row_shorter_than_the_header_has_no_attributes_for_its_missing_cells():
+    seats = prepare_seat(*parse_csv_str("row,seat,lefty,aisle\nA,1,TRUE\n"))
+    assert seats[0].attributes == {'lefty'}

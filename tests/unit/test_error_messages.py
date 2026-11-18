@@ -162,12 +162,9 @@ def test_importing_an_offering_hides_the_exception(seeded_db, login_as, monkeypa
     db.session.delete(Offering.query.filter_by(canvas_id='2345678').one())
     db.session.commit()
     monkeypatch.setattr(db.session, 'commit', _db_error)
-    response = login_as(2).post('/offerings/new', data={'offerings': '2345678', 'submit': 'y'})
-    # the course list stays up to try again
-    assert response.status_code == 200
-    assert re.search(r"Couldn(&#39;|')t import the course offerings due to an unexpected error"
-                     r" \(ref [0-9a-f]{8}\)\.", response.text)
-    assert 'oski' not in response.text
+    client = login_as(2)
+    client.post('/offerings/new', data={'offerings': '2345678', 'submit': 'y'})
+    _assert_unexpected_error_flashed(client, "Couldn't import the course offerings")
 
 
 def _clash_with(make_duplicate):
@@ -186,10 +183,8 @@ def test_exam_created_meanwhile_is_reported_plainly(staff, monkeypatch):
     # another request created it after the check for an existing exam
     monkeypatch.setattr(db.session, 'commit', _clash_with(
         lambda: Exam(offering_canvas_id='1234567', name='final', display_name='Final', is_active=False)))
-    response = staff.post('/offerings/1234567/exams/new/',
-                          data={'name': 'final', 'display_name': 'Final', 'submit': 'y'})
-    assert response.status_code == 200
-    assert escape("An exam named 'final' already exists in this offering.") in response.text
+    staff.post('/offerings/1234567/exams/new/', data={'name': 'final', 'display_name': 'Final', 'submit': 'y'})
+    assert _flashes(staff) == [('error', "An exam named 'final' already exists in this offering.")]
 
 
 def test_offering_imported_meanwhile_is_reported_plainly(seeded_db, login_as, monkeypatch):
@@ -234,12 +229,8 @@ def test_other_broken_constraints_are_unexpected(staff, monkeypatch, url, data, 
     def commit():
         raise IntegrityError(SECRET, {}, Exception('NOT NULL constraint failed'))
     monkeypatch.setattr(db.session, 'commit', commit)
-    response = staff.post(url, data=data)
-    flashes = _flashes(staff) if response.status_code == 302 else []
-    if flashes:
-        _assert_unexpected_error_flashed(staff, message_start)
-    else:
-        assert re.search(re.escape(str(escape(message_start))) + r" due to an unexpected error", response.text)
+    assert staff.post(url, data=data).status_code == 302
+    _assert_unexpected_error_flashed(staff, message_start)
 
 
 @pytest.mark.parametrize('error, message', [
@@ -315,3 +306,88 @@ def test_broken_constraint_with_the_database_gone_is_unexpected(staff, database_
     response = staff.post(f'{EXAM_URL}/rooms/import/from_manual/', data={**EDIT_ROOM, 'display_name': 'Cory 277'})
     assert response.status_code == 302
     _assert_unexpected_error_flashed(staff, "Couldn't import room 'Cory 277'")
+
+
+def test_offering_shown_again_is_not_called_a_duplicate(seeded_db, login_as, monkeypatch):
+    # 2345678 is hidden, so importing it shows it again: its row always exists, so it is no duplicate
+    Offering.query.filter_by(canvas_id='2345678').one().is_hidden = True
+    db.session.commit()
+
+    def commit():
+        raise IntegrityError(SECRET, {}, Exception('NOT NULL constraint failed'))
+    monkeypatch.setattr(db.session, 'commit', commit)
+    client = login_as(2)
+    client.post('/offerings/new', data={'offerings': '2345678', 'submit': 'y'})
+    _assert_unexpected_error_flashed(client, "Couldn't import the course offerings")
+
+
+def test_hiding_reports_success_without_the_database(staff, monkeypatch):
+    # after the commit the offering is expired: the message must not need it reloaded
+    real_commit = db.session.commit
+
+    def commit():
+        real_commit()
+        monkeypatch.setattr(db.session(), 'execute', _db_error)
+    monkeypatch.setattr(db.session, 'commit', commit)
+    staff.post('/offerings/1234567/hide/')
+    assert _flashes(staff) == [('success', 'Hid Introduction to Software Engineering (Fall 2023). Its exams are kept;'
+                                           ' import it again from Canvas to show it again.')]
+
+
+def test_failed_room_lookup_does_not_fail_the_next_rooms(staff, monkeypatch):
+    # on Postgres a failed statement aborts the transaction until a rollback
+    monkeypatch.setattr(server.views, 'get_spreadsheet_tabs', lambda url: ['Cory 277', 'Wheeler 150'])
+    rolled_back = []
+    real_rollback = db.session.rollback
+    monkeypatch.setattr(db.session, 'rollback', lambda: (rolled_back.append(True), real_rollback()))
+
+    def get_room(exam, form):
+        if form.display_name.data == 'Cory 277':
+            raise OperationalError(SECRET, {}, Exception('statement timeout'))
+        assert rolled_back
+        return Room(exam_id=exam.id, name='wheeler150', display_name='Wheeler 150')
+    monkeypatch.setattr(server.views, 'get_room_from_google_spreadsheet', get_room)
+    staff.post(f'{EXAM_URL}/rooms/import/from_master_sheet/',
+               data={'rooms': ['Cory 277', 'Wheeler 150'], 'submit': 'y'})
+    _assert_unexpected_error_flashed(staff, "Couldn't import room 'Cory 277'")
+    assert Room.query.filter_by(exam_id=1, display_name='Wheeler 150').count() == 1
+
+
+def test_failed_seat_update_is_reported_once(staff, database_goes_down, monkeypatch):
+    monkeypatch.setattr(server.views, 'update_room_from_manual_input', _db_error)
+    assert staff.post(f'{EXAM_URL}/rooms/1/edit', data=EDIT_ROOM).status_code == 302
+    _assert_unexpected_error_flashed(staff, "Couldn't edit the seats of room 'Soda 999'")
+
+
+@pytest.mark.parametrize('csv, message', [
+    ('row,seat,x\nA,1,left\n', 'Seat A1: x and y must be numbers.'),
+    ('row,seat,count\n,,two\n', 'Each movable seat row needs a whole number in its count column (got "two").'),
+], ids=['coordinate', 'count'])
+def test_room_file_with_bad_numbers(staff, csv, message):
+    staff.post(f'{EXAM_URL}/rooms/import/from_csv_upload/', data={
+        'display_name': 'Cory 277', 'submit': 'y', 'file': (io.BytesIO(csv.encode()), 'room.csv'),
+    }, content_type='multipart/form-data')
+    assert _flashes(staff) == [('error', f"Couldn't import room 'Cory 277': {message}")]
+
+
+def test_failure_before_saving_an_exam_is_unexpected(staff, monkeypatch):
+    monkeypatch.setattr(Offering, 'mark_all_exams_as_inactive', _db_error)
+    assert staff.post('/offerings/1234567/exams/new/',
+                      data={'name': 'final', 'display_name': 'Final', 'active': 'y', 'submit': 'y'}).status_code == 302
+    _assert_unexpected_error_flashed(staff, "Couldn't create exam 'final'")
+
+
+def test_failed_room_preference_cleanup_keeps_the_room(staff, monkeypatch):
+    monkeypatch.setattr(Exam, 'remove_room_preferences', _db_error)
+    staff.post(f'{EXAM_URL}/rooms/1/delete')
+    _assert_unexpected_error_flashed(staff, "Couldn't delete room 'Soda 999'")
+    monkeypatch.undo()
+    assert db.session.get(Room, 1)
+
+
+def test_failed_rollback_still_reports_the_error(staff, monkeypatch):
+    # with the connection gone, even the rollback can fail
+    monkeypatch.setattr(db.session, 'commit', _db_error)
+    monkeypatch.setattr(db.session, 'rollback', _db_error)
+    staff.post(f'{EXAM_URL}/toggle/')
+    _assert_unexpected_error_flashed(staff, "Couldn't activate or deactivate exam 'Midterm 1'")

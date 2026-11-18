@@ -20,6 +20,7 @@ from server.services.email import email_about_assignment, send_test_email, subst
 from server.services.core.data import get_room_from_csv, get_room_from_google_spreadsheet, get_room_from_manual_input, \
     get_students_from_canvas, get_students_from_import_form, update_room_from_manual_input, \
     get_layout_preview_from_file, get_layout_preview_from_text
+from server.services.core.room import find_room
 from server.services.core.assign import assign_single_student, assign_students
 from server.typings.exception import DataValidationError, GcpError, NotEnoughSeatError, SeatAssignmentError
 from server.typings.enum import EmailTemplate
@@ -36,29 +37,50 @@ bp = Blueprint('views', __name__)
 
 def _flash_unexpected_error(action):
     """
-    Says an action failed, with a short reference to find the error in the logs by. Call it while
-    handling the exception: its text never reaches the user, since it can hold SQL statements, their
-    student data and the database's host, and flashes are stored in the (unencrypted) session cookie.
+    Rolls back, and says an action failed, with a short reference to find the error in the logs by.
+    Call it while handling the exception: its text never reaches the user, since it can hold SQL
+    statements, their student data and the database's host, and flashes are stored in the
+    (unencrypted) session cookie.
+
+    The rollback leaves the session usable (on Postgres, a failed statement aborts the transaction)
+    but expires every loaded object: read what is needed afterwards, like names and redirect URLs, first.
     """
+    try:
+        db.session.rollback()
+    except Exception:
+        pass  # the session is thrown away at the end of the request anyway
     ref = secrets.token_hex(4)
     current_app.logger.exception("Couldn't %s (ref %s)", action, ref)
     flash(f"Couldn't {action} due to an unexpected error (ref {ref}).", 'error')
 
 
-def _flash_integrity_error(action, find_duplicate, duplicate_message):
+def _commit_or_flash(action, find_duplicate=None, duplicate_message=None):
     """
-    Says why a commit broke a constraint, after the rollback. If find_duplicate now finds what the
-    commit clashed with (saved by another request meanwhile), says so with duplicate_message(it);
-    any other broken constraint is a bug, so it is unexpected.
+    Commits, or rolls back and says why it couldn't, and returns whether it committed.
+
+    A broken constraint is a duplicate if find_duplicate, run after the rollback, finds what the commit
+    clashed with (e.g. saved by another request since the check before saving): that gets
+    duplicate_message(it). Anything else is unexpected (see _flash_unexpected_error, whose note on
+    reading things before the rollback applies here too).
     """
     try:
-        duplicate = find_duplicate()
-    except Exception:
+        db.session.commit()
+        return True
+    except IntegrityError:
+        db.session.rollback()
         duplicate = None
-    if duplicate:
-        flash(duplicate_message(duplicate), 'error')
-    else:
+        if find_duplicate:
+            try:
+                duplicate = find_duplicate()
+            except Exception:
+                db.session.rollback()
+        if duplicate:
+            flash(duplicate_message(duplicate), 'error')
+        else:
+            _flash_unexpected_error(action)
+    except Exception:
         _flash_unexpected_error(action)
+    return False
 
 
 @bp.route('/')
@@ -157,26 +179,20 @@ def add_offerings():
         if not chosen:
             flash("No course offering imported.", 'info')
             return redirect(url_for('views.offerings'))
-        try:
-            for canvas_id in chosen:
-                if canvas_id in hidden_offerings:
-                    hidden_offerings[canvas_id].is_hidden = False
-            db.session.bulk_save_objects([staff_offerings_id_to_model[canvas_id]
-                                          for canvas_id in chosen if canvas_id not in hidden_offerings])
-            db.session.commit()
-            flash(f"Imported {len(chosen)} course offerings.", 'success')
-            return redirect(url_for('views.offerings'))
-        except IntegrityError:
-            # imported by someone else since this page was loaded
-            db.session.rollback()
-            _flash_integrity_error(
+        # hidden ones are shown again; the rest are new
+        new_canvas_ids = [canvas_id for canvas_id in chosen if canvas_id not in hidden_offerings]
+        for canvas_id in chosen:
+            if canvas_id in hidden_offerings:
+                hidden_offerings[canvas_id].is_hidden = False
+        db.session.bulk_save_objects([staff_offerings_id_to_model[canvas_id] for canvas_id in new_canvas_ids])
+        if _commit_or_flash(
                 "import the course offerings",
-                lambda: Offering.query.filter(Offering.canvas_id.in_(chosen)).with_entities(Offering.name).all(),
-                lambda imported: f"Already imported: {', '.join(name for name, in imported)}.")
-            return redirect(url_for('views.offerings'))
-        except Exception:
-            db.session.rollback()
-            _flash_unexpected_error("import the course offerings")
+                # new ones imported by someone else since this page was loaded
+                lambda: Offering.query.filter(Offering.canvas_id.in_(new_canvas_ids))
+                .with_entities(Offering.name).all(),
+                lambda imported: f"Already imported: {', '.join(name for name, in imported)}."):
+            flash(f"Imported {len(chosen)} course offerings.", 'success')
+        return redirect(url_for('views.offerings'))
     return render_template("new_offerings.html",
                            title="Add New Course Offerings",
                            form=form)
@@ -211,14 +227,11 @@ def hide_offering(offering):
     # offering urls convertor lets the course's students in too: check staff status here
     if str(offering.canvas_id) not in current_user.staff_offerings:
         abort(403, "You are not a staff member in this offering.")
+    # the commit expires the offering
     name = offering.name
-    try:
-        offering.is_hidden = True
-        db.session.commit()
-        flash(f"Hid {offering.name}. Its exams are kept; import it again from Canvas to show it again.", 'success')
-    except Exception:
-        db.session.rollback()
-        _flash_unexpected_error(f"hide {name}")
+    offering.is_hidden = True
+    if _commit_or_flash(f"hide {name}"):
+        flash(f"Hid {name}. Its exams are kept; import it again from Canvas to show it again.", 'success')
     return redirect(url_for('views.offerings'))
 
 
@@ -248,27 +261,20 @@ def new_exam(offering):
         try:
             if find_exam():
                 flash(_exam_exists_message(name), 'error')
-            else:
-                if form.active.data:
-                    # only one exam can be active at a time, so deactivate all others first
-                    offering.mark_all_exams_as_inactive()
-                exam = Exam(offering_canvas_id=canvas_id,
-                            name=name,
-                            display_name=form.display_name.data,
-                            is_active=form.active.data)
-                offering.exams.append(exam)
-                if offering.ensure_one_exam_is_active():
-                    flash("No active exam left. The first exam is activated by default.", 'info')
-                db.session.commit()
-                return redirect(offering_url)
-        except IntegrityError:
-            # e.g. created by someone else since the check above
-            db.session.rollback()
-            _flash_integrity_error(f"create exam '{name}'", find_exam, lambda exam: _exam_exists_message(name))
+                return render_template("upsert_exam.html", title=title, form=form, exam=None)
+            if form.active.data:
+                # only one exam can be active at a time, so deactivate all others first
+                offering.mark_all_exams_as_inactive()
+            offering.exams.append(Exam(offering_canvas_id=canvas_id, name=name,
+                                       display_name=form.display_name.data, is_active=form.active.data))
+            if offering.ensure_one_exam_is_active():
+                flash("No active exam left. The first exam is activated by default.", 'info')
         except Exception:
-            db.session.rollback()
             _flash_unexpected_error(f"create exam '{name}'")
             return redirect(offering_url)
+        # a duplicate is one created by someone else since the check above
+        _commit_or_flash(f"create exam '{name}'", find_exam, lambda exam: _exam_exists_message(name))
+        return redirect(offering_url)
     return render_template("upsert_exam.html", title=title, form=form, exam=None)
 
 
@@ -286,15 +292,11 @@ def delete_exam(exam):
     Path: /offerings/<canvas_id>/exams/<exam_name>/delete
     Deletes an exam for a course offering.
     """
-    # a rollback expires the exam: read what the error path needs first
+    # the commit expires the exam
     display_name, offering_url = exam.display_name, url_for('views.offering', offering=exam.offering)
-    try:
-        db.session.delete(exam)
-        db.session.commit()
+    db.session.delete(exam)
+    if _commit_or_flash(f"delete exam '{display_name}'"):
         flash("Deleted exam.", 'success')
-    except Exception:
-        db.session.rollback()
-        _flash_unexpected_error(f"delete exam '{display_name}'")
     return redirect(offering_url)
 
 
@@ -320,11 +322,7 @@ def edit_exam(exam):
             if exam.offering.ensure_one_exam_is_active():
                 flash("No active exam left. The first exam is activated by default.", 'info')
         offering_url = url_for('views.offering', offering=exam.offering)
-        try:
-            db.session.commit()
-        except Exception:
-            db.session.rollback()
-            _flash_unexpected_error(f"edit exam '{form.display_name.data}'")
+        _commit_or_flash(f"edit exam '{form.display_name.data}'")
         return redirect(offering_url)
     return render_template("upsert_exam.html",
                            title="Edit Exam: {}".format(exam.display_name),
@@ -345,13 +343,9 @@ def toggle_exam(exam):
         # only one exam can be active at a time, so deactivate all others first
         exam.offering.mark_all_exams_as_inactive()
         exam.is_active = True
-    # a rollback expires the exam: read what the error path needs first
+    # the commit expires the exam
     display_name, offering_url = exam.display_name, url_for('views.offering', offering=exam.offering)
-    try:
-        db.session.commit()
-    except Exception:
-        db.session.rollback()
-        _flash_unexpected_error(f"activate or deactivate exam '{display_name}'")
+    _commit_or_flash(f"activate or deactivate exam '{display_name}'")
     return redirect(offering_url)
 
 
@@ -379,27 +373,12 @@ def _prepare_room(display_name, prepare):
     return None
 
 
-def _find_room(exam_id, name, start_at, other_than=None):
-    """The room of an exam with this name (slug) and start time, the pair a room must not share."""
-    query = Room.query.filter_by(exam_id=exam_id, name=name, start_at=start_at)
-    if other_than is not None:
-        query = query.filter(Room.id != other_than)
-    return query.first()
-
-
 def _save_new_room(room):
     exam_id, name, start_at, display_name = room.exam_id, room.name, room.start_at, room.display_name
-    try:
-        db.session.add(room)
-        db.session.commit()
-    except IntegrityError:
-        # e.g. imported by someone else since prepare_room checked
-        db.session.rollback()
-        _flash_integrity_error(f"import room '{display_name}'", lambda: _find_room(exam_id, name, start_at),
-                               lambda existing: _room_exists_message(existing.display_name))
-    except Exception:
-        db.session.rollback()
-        _flash_unexpected_error(f"import room '{display_name}'")
+    db.session.add(room)
+    # a duplicate is one imported by someone else since prepare_room checked
+    _commit_or_flash(f"import room '{display_name}'", lambda: find_room(exam_id, name, start_at),
+                     lambda existing: _room_exists_message(existing.display_name))
 
 
 @bp.route('/<exam:exam>/rooms/import/')
@@ -532,17 +511,17 @@ def delete_room(exam, id):
     Deletes a room for an exam.
     """
     room = Room.query.filter_by(exam_id=exam.id, id=id).first_or_404()
-    # a rollback expires the room and exam: read what the error path needs first
+    # the commit expires the room and exam
     display_name, exam_url = room.display_name, url_for('views.exam', exam=exam)
     try:
         # students may still reference this room in their wants/avoids
         exam.remove_room_preferences(room.id)
         db.session.delete(room)
-        db.session.commit()
-        flash("Deleted room.", 'success')
     except Exception:
-        db.session.rollback()
         _flash_unexpected_error(f"delete room '{display_name}'")
+        return redirect(exam_url)
+    if _commit_or_flash(f"delete room '{display_name}'"):
+        flash("Deleted room.", 'success')
     return redirect(exam_url)
 
 
@@ -585,6 +564,9 @@ def edit_room(exam, id):  # noqa: C901
         seats_to_add = defaultdict(int)
         for seat_form in form.movable_seats.data:
             seats_to_add[frozenset(str_set_to_set(seat_form['attributes']))] += max(0, seat_form['count'])
+        # a rollback expires the room and exam: read what the error paths need first
+        exam_url = url_for('views.exam', exam=exam)
+        exam_id, name = exam.id, room.name
         try:
             # its queries would flush the new start time, which can clash with another room: leave that to the commit
             with db.session.no_autoflush:
@@ -593,20 +575,11 @@ def edit_room(exam, id):  # noqa: C901
             flash(f"Couldn't edit the seats of room '{form.display_name.data}': {e}", 'error')
         except Exception:
             _flash_unexpected_error(f"edit the seats of room '{form.display_name.data}'")
-        # a rollback expires the room and exam: read what the error paths need first
-        exam_url = url_for('views.exam', exam=exam)
-        exam_id, name = exam.id, room.name
-        try:
-            db.session.commit()
-        except IntegrityError:
-            # the name (slug) never changes here: the room clashes with another of that name at its new start time
-            db.session.rollback()
-            _flash_integrity_error(f"edit room '{form.display_name.data}'",
-                                   lambda: _find_room(exam_id, name, start_at_iso, other_than=id),
-                                   lambda existing: _room_exists_message(existing.display_name))
-        except Exception:
-            db.session.rollback()
-            _flash_unexpected_error(f"edit room '{form.display_name.data}'")
+            return redirect(exam_url)
+        # the name (slug) never changes here: a duplicate is another room of that name at the new start time
+        _commit_or_flash(f"edit room '{form.display_name.data}'",
+                         lambda: find_room(exam_id, name, start_at_iso, other_than=id),
+                         lambda existing: _room_exists_message(existing.display_name))
         return redirect(exam_url)
     return render_template('upsert_room.html', exam=exam, form=form, room=room)
 
@@ -694,7 +667,6 @@ def import_students(exam):
             flash(str(e), 'error')
             return _render_import_students(exam, form, from_canvas_form)
         except Exception:
-            db.session.rollback()
             _flash_unexpected_error("import students")
         return redirect(students_url)
     return _render_import_students(exam, form, from_canvas_form)
@@ -717,7 +689,6 @@ def import_students_from_canvas_roster(exam):
             db.session.rollback()
             flash(f"Couldn't import students from the Canvas roster: {e}", 'error')
         except Exception:
-            db.session.rollback()
             _flash_unexpected_error("import students from the Canvas roster")
         return redirect(students_url)
     return _render_import_students(exam, form, from_canvas_form)
@@ -900,15 +871,11 @@ def edit_students(exam):  # noqa: C901
 def delete_student(exam_student):
     exam, student = exam_student
     if student:
-        # a rollback expires the student and exam: read what the error path needs first
+        # the commit expires the student and exam
         name, students_url = student.name, url_for('views.students', exam=exam)
-        try:
-            db.session.delete(student)
-            db.session.commit()
+        db.session.delete(student)
+        if _commit_or_flash(f"delete student {name}"):
             flash("Deleted student.", 'success')
-        except Exception:
-            db.session.rollback()
-            _flash_unexpected_error(f"delete student {name}")
         return redirect(students_url)
     return redirect(url_for('views.students', exam=exam))
 
