@@ -135,9 +135,9 @@ def send_emails(*, smtp: SMTPConfig, messages=list[EmailMessage],
 
 
 def send_single_email(*, smtp: SMTPConfig, from_addr, to_addr, subject, body,
-                      body_html=None, bcc_addr=None, cc_addr=None):
+                      body_html=None, bcc_addr=None, cc_addr=None, reply_to=None):
     msg = construct_email(from_addr=from_addr, to_addr=to_addr, subject=subject, body=body,
-                          body_html=body_html, bcc_addr=bcc_addr, cc_addr=cc_addr)
+                          body_html=body_html, bcc_addr=bcc_addr, cc_addr=cc_addr, reply_to=reply_to)
     successful_emails, failed_emails = send_emails(smtp=smtp, messages=[msg])
     if successful_emails:
         return successful_emails[0]
