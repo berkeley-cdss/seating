@@ -144,6 +144,23 @@ def get_student_roster_for_offering(offering_canvas_id, key=None):
     return headers, rows
 
 
+def get_roster_student_ids(offering_canvas_id) -> dict[str, str]:
+    """
+    The student id (sis_user_id) of each student on the offering's Canvas roster, by Canvas id, kept
+    for a few minutes. A student without a student id in Canvas is left out.
+    """
+    from server.cache import cache_store, cache_key_roster_sids, ROSTER_SIDS_CACHE_LIFE
+    key = cache_key_roster_sids(offering_canvas_id)
+    sids = cache_store.get(key)
+    if sids is None:
+        course = _get_client().get_course(offering_canvas_id)
+        sids = {str(student.id): str(student.sis_user_id)
+                for student in course.get_users(enrollment_type='student')
+                if getattr(student, 'sis_user_id', None)}
+        cache_store.set(key, sids, timeout=ROSTER_SIDS_CACHE_LIFE)
+    return sids
+
+
 def api_course_to_model(course: Course | FakeCourse) -> Offering:
     return Offering(
         canvas_id=str(course.id),

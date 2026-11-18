@@ -1017,9 +1017,15 @@ def student(exam_student):
 
 @bp.route('/<exam_student:exam_student>/photo/', methods=['GET'])
 def student_photo(exam_student):
-    _, student = exam_student
-    sid = student.sid
+    """
+    The student's Cal1Card photo, only if they're on the course's Canvas roster, by the student id
+    Canvas has for them: the one stored for them came from an import, which could name anyone.
+    """
+    exam, student = exam_student
+    sid = canvas_client.get_roster_student_ids(exam.offering_canvas_id).get(str(student.canvas_id))
     if sid:
+        current_app.logger.info('User %s viewed the photo of student %s in offering %s',
+                                current_user.canvas_id, student.canvas_id, exam.offering_canvas_id)
         from server.cache import cache_store, cache_key_photo, cache_life_photo
         import io
         photo = cache_store.get(cache_key_photo(sid))

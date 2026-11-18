@@ -50,3 +50,74 @@ def test_photo_is_fetched_once_then_cached(seeded_db, login_as):
     assert response.mimetype == 'image/jpeg'
     assert cache_store.get(cache_key_photo(sid)) == response.data
     cache_store.delete(cache_key_photo(sid))
+
+
+PHOTO_URL = EXAM_URL + '/students/{}/photo/'
+
+
+@pytest.fixture
+def photo_caches(seeded_db):
+    """Empty photo and roster caches, and the C1C requests made, by student id."""
+    from server.cache import cache_key_photo, cache_key_roster_sids, cache_store
+    sids = ['3033033334', '3033033335', '3033033336', '3033033399']
+
+    def clear():
+        cache_store.delete(cache_key_roster_sids('1234567'))
+        for sid in sids:
+            cache_store.delete(cache_key_photo(sid))
+
+    clear()
+    yield
+    clear()
+
+
+@pytest.fixture
+def c1c_requests(monkeypatch):
+    from server.services.c1c import C1C
+    requested = []
+    get_photo = C1C.get_student_photo
+
+    def recording_get_photo(self, sid):
+        requested.append(sid)
+        return get_photo(self, sid)
+
+    monkeypatch.setattr(C1C, 'get_student_photo', recording_get_photo)
+    return requested
+
+
+@pytest.mark.app_config(MOCK_C1C=True)
+def test_photo_uses_the_student_id_from_canvas(photo_caches, c1c_requests, login_as):
+    # the import gave another student id: the photo is still fetched by the one Canvas has
+    student = db.session.get(Student, 1)
+    student.sid = '3033033399'
+    db.session.commit()
+    response = login_as(1).get(PHOTO_URL.format(1))
+    assert response.mimetype == 'image/jpeg'
+    assert c1c_requests == ['3033033334']
+
+
+@pytest.mark.app_config(MOCK_C1C=True)
+def test_no_photo_for_a_student_not_on_the_canvas_roster(photo_caches, c1c_requests, login_as):
+    student = db.session.get(Student, 1)
+    student.canvas_id = '999999'
+    db.session.commit()
+    response = login_as(1).get(PHOTO_URL.format(1))
+    assert response.mimetype == 'image/png'  # the placeholder
+    assert c1c_requests == []
+
+
+@pytest.mark.parametrize('sid', ['3033033334/../../other', '../photo', '', None, '３０３'])
+def test_c1c_requests_only_all_digit_student_ids(app, monkeypatch, sid):
+    from server.services.c1c import C1C
+    client = C1C(None, 'https://c1c.example', 'user', 'password')
+    monkeypatch.setattr(client, '_make_request', lambda path: pytest.fail(f'requested {path}'))
+    with app.app_context():
+        assert client.get_student_photo(sid) is None
+
+
+@pytest.mark.app_config(MOCK_C1C=True)
+def test_photo_views_are_logged(photo_caches, login_as, caplog):
+    import logging
+    with caplog.at_level(logging.INFO, logger='server'):
+        login_as(1).get(PHOTO_URL.format(2))
+    assert 'User 123456 viewed the photo of student 345678 in offering 1234567' in caplog.text
