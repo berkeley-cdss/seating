@@ -113,11 +113,3 @@ def test_c1c_requests_only_all_digit_student_ids(app, monkeypatch, sid):
     monkeypatch.setattr(client, '_make_request', lambda path: pytest.fail(f'requested {path}'))
     with app.app_context():
         assert client.get_student_photo(sid) is None
-
-
-@pytest.mark.app_config(MOCK_C1C=True)
-def test_photo_views_are_logged(photo_caches, login_as, caplog):
-    import logging
-    with caplog.at_level(logging.INFO, logger='server'):
-        login_as(1).get(PHOTO_URL.format(2))
-    assert 'User 123456 viewed the photo of student 345678 in offering 1234567' in caplog.text

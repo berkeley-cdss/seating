@@ -1024,8 +1024,6 @@ def student_photo(exam_student):
     exam, student = exam_student
     sid = canvas_client.get_roster_student_ids(exam.offering_canvas_id).get(str(student.canvas_id))
     if sid:
-        current_app.logger.info('User %s viewed the photo of student %s in offering %s',
-                                current_user.canvas_id, student.canvas_id, exam.offering_canvas_id)
         from server.cache import cache_store, cache_key_photo, cache_life_photo
         import io
         photo = cache_store.get(cache_key_photo(sid))

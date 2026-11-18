@@ -155,7 +155,8 @@ def get_roster_student_ids(offering_canvas_id) -> dict[str, str]:
     if sids is None:
         course = _get_client().get_course(offering_canvas_id)
         sids = {str(student.id): str(student.sis_user_id)
-                for student in course.get_users(enrollment_type='student')
+                # Canvas sends 10 a page unless asked: 150 requests for a course of 1,500
+                for student in course.get_users(enrollment_type='student', per_page=100)
                 if getattr(student, 'sis_user_id', None)}
         cache_store.set(key, sids, timeout=ROSTER_SIDS_CACHE_LIFE)
     return sids
