@@ -588,12 +588,18 @@ def edit_room(exam, id):  # noqa: C901
             with db.session.no_autoflush:
                 update_room_from_manual_input(room, seats_to_add)
         except DataValidationError as e:
-            flash(f"Couldn't edit the seats of room '{form.display_name.data}': {e}", 'error')
+            # save all of the edit or none of it: keep the form up so the seats can be fixed
+            db.session.rollback()
+            flash(f"Couldn't edit the seats of room '{form.display_name.data}', so nothing was saved: {e}", 'error')
+            return render_template('upsert_room.html', exam=exam, form=form, room=room)
         except Exception:
+            # the rollback also undoes the new name and time
             _flash_unexpected_error(f"edit the seats of room '{form.display_name.data}'")
             return redirect(exam_url)
         # the name (slug) never changes here: a duplicate is another room of that name at the new start time
-        _commit_or_flash(f"edit room '{form.display_name.data}'", *_room_clash(exam_id, name, start_at_iso, other_than=id))
+        if _commit_or_flash(f"edit room '{form.display_name.data}'",
+                            *_room_clash(exam_id, name, start_at_iso, other_than=id)):
+            flash(f"Saved room '{form.display_name.data}'.", 'success')
         return redirect(exam_url)
     return render_template('upsert_room.html', exam=exam, form=form, room=room)
 

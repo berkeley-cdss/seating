@@ -250,20 +250,44 @@ def test_other_broken_constraints_are_unexpected(staff, monkeypatch, url, data, 
     _assert_unexpected_error_flashed(staff, message_start)
 
 
-@pytest.mark.parametrize('error, message', [
-    (DataValidationError('Fixed seat name repeated: A1'),
-     "Couldn't edit the seats of room 'Soda 999': Fixed seat name repeated: A1"),
-    (OperationalError(SECRET, {}, Exception()), None),
-])
-def test_editing_room_seats_that_fail(staff, monkeypatch, error, message):
+RENAMED_ROOM = {**EDIT_ROOM, 'display_name': 'Soda 999 Overflow', 'start_at': '2023-12-12T14:00'}
+
+
+def _seed_room_name_and_time():
+    db.session.expire_all()
+    room = db.session.get(Room, 1)
+    return room.display_name, room.start_at
+
+
+def test_room_seats_that_fail_validation_save_nothing(staff, monkeypatch):
     def fail(*args):
-        raise error
+        raise DataValidationError('Fixed seat name repeated: A1')
     monkeypatch.setattr(server.views, 'update_room_from_manual_input', fail)
-    staff.post(f'{EXAM_URL}/rooms/1/edit', data=EDIT_ROOM)
-    if message:
-        assert _flashes(staff) == [('error', message)]
-    else:
-        _assert_unexpected_error_flashed(staff, "Couldn't edit the seats of room 'Soda 999'")
+    before = _seed_room_name_and_time()
+    response = staff.post(f'{EXAM_URL}/rooms/1/edit', data=RENAMED_ROOM)
+    # the form stays up, with what was entered, to fix the seats
+    assert response.status_code == 200
+    assert 'value="Soda 999 Overflow"' in response.text
+    assert str(escape("Couldn't edit the seats of room 'Soda 999 Overflow', so nothing was saved:"
+                      " Fixed seat name repeated: A1")) in response.text
+    assert _seed_room_name_and_time() == before
+
+
+def test_room_seats_that_fail_unexpectedly_save_nothing(staff, monkeypatch):
+    def fail(*args):
+        raise OperationalError(SECRET, {}, Exception())
+    monkeypatch.setattr(server.views, 'update_room_from_manual_input', fail)
+    before = _seed_room_name_and_time()
+    staff.post(f'{EXAM_URL}/rooms/1/edit', data=RENAMED_ROOM)
+    _assert_unexpected_error_flashed(staff, "Couldn't edit the seats of room 'Soda 999 Overflow'")
+    assert _seed_room_name_and_time() == before
+
+
+def test_edited_room_says_it_was_saved(staff):
+    assert staff.post(f'{EXAM_URL}/rooms/1/edit', data=RENAMED_ROOM).status_code == 302
+    assert _flashes(staff) == [('success', "Saved room 'Soda 999 Overflow'.")]
+    db.session.expire_all()
+    assert db.session.get(Room, 1).display_name == 'Soda 999 Overflow'
 
 
 def test_custom_sheet_room_error_hides_the_exception(staff, monkeypatch):
