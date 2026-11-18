@@ -1,8 +1,8 @@
 """
-Seat maps show each assigned student's photo in their seat's tooltip. The photos must load only
-when shown: otherwise the browser fetches one photo per assigned student as soon as a seat map
-opens (1,500 requests on the assign page of a large exam), even though they stay hidden. Each
-photo shows the placeholder until it has loaded (showPhotos in static/js/utils.js).
+Seat maps show each assigned student's photo in their seat's tooltip. The photos must load
+lazily: otherwise the browser fetches one photo per assigned student as soon as a seat map
+opens (1,500 requests on the assign page of a large exam), even though they stay hidden.
+Each photo is in a .photo, which shows the placeholder until the photo has loaded.
 """
 import re
 
@@ -27,26 +27,23 @@ def exam(seeded_db):
 
 def _photo_imgs(response):
     assert response.status_code == 200
-    return re.findall(r'<img class="photo"[^>]*>', response.get_data(as_text=True))
+    return re.findall(r'<span class="photo"><img [^>]*>', response.get_data(as_text=True))
 
 
 @pytest.mark.parametrize('path', [
     '/rooms/1/',
     '/students/3/assign/',
 ])
-def test_seat_map_photos_start_as_the_placeholder(exam, login_as, path):
+def test_seat_map_photos_load_lazily(exam, login_as, path):
     photos = _photo_imgs(login_as(1).get(EXAM_URL + path))
     assert len(photos) == 2  # one fixed seat, one movable seat
     for photo in photos:
-        # the photo's url only in data-photo, which the page's script loads when the tooltip is shown
-        assert 'src="/static/img/photo-placeholder.png"' in photo
-        assert re.search(r'data-photo="[^"]*/photo/"', photo)
+        assert 'loading="lazy"' in photo
 
 
-def test_student_page_photo_starts_as_the_placeholder(seeded_db, login_as):
+def test_student_page_photo_shows_the_placeholder_until_loaded(seeded_db, login_as):
     photo, = _photo_imgs(login_as(1).get(EXAM_URL + '/students/1'))
-    assert 'src="/static/img/photo-placeholder.png"' in photo
-    assert f'data-photo="{EXAM_URL}/students/1/photo/"' in photo
+    assert f'src="{EXAM_URL}/students/1/photo/"' in photo
 
 
 @pytest.mark.app_config(MOCK_C1C=True)
@@ -111,7 +108,7 @@ def test_no_photo_for_a_student_not_on_the_canvas_roster(photo_caches, c1c_reque
     student.canvas_id = '999999'
     db.session.commit()
     response = login_as(1).get(PHOTO_URL.format(1))
-    assert response.status_code == 204  # no photo: the page keeps the placeholder
+    assert response.mimetype == 'image/png'  # the placeholder
     assert c1c_requests == []
 
 
@@ -134,7 +131,8 @@ def test_placeholder_when_canvas_fails(photo_caches, c1c_requests, login_as, mon
 
     monkeypatch.setattr(canvas, '_roster_students', failing_roster)
     response = login_as(1).get(PHOTO_URL.format(1))
-    assert response.status_code == 204
+    assert response.status_code == 200
+    assert response.mimetype == 'image/png'
     assert c1c_requests == []
 
 
@@ -151,7 +149,7 @@ def test_a_roster_without_student_ids_is_not_cached(photo_caches, login_as, monk
         return students
 
     monkeypatch.setattr(canvas, '_roster_students', roster_without_sids)
-    assert login_as(1).get(PHOTO_URL.format(1)).status_code == 204
+    assert login_as(1).get(PHOTO_URL.format(1)).mimetype == 'image/png'
     assert cache_store.get(cache_key_roster_sids('1234567')) is None
 
 
@@ -159,7 +157,8 @@ def test_a_roster_without_student_ids_is_not_cached(photo_caches, login_as, monk
 def test_placeholder_without_a_canvas_token(photo_caches, login_as, client):
     # signed in, but this browser has no Canvas token: no sign-in redirect for an <img>
     response = login_as(1).get(PHOTO_URL.format(1))
-    assert response.status_code == 204
+    assert response.status_code == 200
+    assert response.mimetype == 'image/png'
     with client.session_transaction() as session:
         assert 'after_login' not in session
 
