@@ -56,7 +56,7 @@ def authorized():
     return redirect(after_login)
 
 
-@auth_module.route('/logout/')
+@auth_module.route('/logout/', methods=['POST'])
 @login_required
 def logout():
     discard_token()

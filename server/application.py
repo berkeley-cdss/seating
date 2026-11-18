@@ -87,6 +87,8 @@ def create_app(config=None):
     configure_logging(app)
     # Cloud Run terminates TLS, so trust its X-Forwarded-Proto for the request's scheme. Not
     # X-Forwarded-Host: Cloud Run passes the requested Host through and leaves that header as sent.
+    # ProxyFix also trusts the last X-Forwarded-For entry by default (x_for=1), which Cloud Run sets, so
+    # the access log shows the client's address rather than Cloud Run's.
     app.wsgi_app = ProxyFix(app.wsgi_app, x_proto=1)
 
     if config is None:
@@ -107,7 +109,9 @@ def create_app(config=None):
         'CACHE_DIR': '.cache',
         'CACHE_DEFAULT_TIMEOUT': 3600})
 
-    # before the other before_request hooks, so a post from another site reaches no view
+    # before the other before_request hooks, so a post from another site reaches no view. (The URL
+    # converters still run first, in UrlRequestContext.push: they check the user and look up the
+    # offering, exam or student, but change nothing on a post.)
     from server.cross_origin import refuse_cross_origin_requests
     refuse_cross_origin_requests(app)
 

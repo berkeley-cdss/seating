@@ -1,6 +1,6 @@
 """
-Deleting an exam, a room or a student, toggling an exam and hiding an offering change data, so they
-take only POST, and a post that another site made a signed-in browser send is refused (as in sections).
+Deleting an exam, a room or a student, toggling an exam, hiding an offering and logging out take only
+POST, and a post that another site made a signed-in browser send is refused (as in sections).
 """
 import re
 
@@ -21,7 +21,7 @@ def _room_id():
 
 
 def _unchanged(action, url):
-    """Whether the data `action`, posted to `url`, would change is as the seed left it."""
+    """Whether what posting `action` to `url` would change is still as the seed left it."""
     return {
         'hide': lambda: not Offering.query.filter_by(canvas_id='1234567').one().is_hidden,
         'delete exam': lambda: db.session.get(Exam, 1) is not None,
@@ -117,3 +117,51 @@ def test_buttons_post(staff, page_url, action):
     url = ACTIONS[action]()
     assert re.search(rf'<form method="POST" action="{re.escape(url)}"', page), \
         f'no form posting to {url} on {page_url}'
+
+
+FORGED = {'Sec-Fetch-Site': 'same-site', 'Origin': OTHER_SUBDOMAIN}
+
+
+@pytest.mark.parametrize('url', [
+    # forms with their own CSRF token are refused all the same
+    f'{EXAM_URL}/edit/',
+    '/offerings/new',
+    f'{EXAM_URL}/students/remove_deleted_rooms/',
+    '/dev_login/',
+])
+def test_other_posts_from_another_site_are_refused(staff, url):
+    response = staff.post(url, data={'display_name': 'Renamed', 'user_id': '123456'}, headers=FORGED)
+    assert response.status_code == 403
+    db.session.expire_all()
+    assert db.session.get(Exam, 1).display_name == 'Midterm 1'
+
+
+def test_other_sites_cannot_log_users_out(staff):
+    assert staff.get('/logout/').status_code == 405
+    assert staff.post('/logout/', headers=FORGED).status_code == 403
+    # still signed in
+    assert staff.get('/offerings').status_code == 200
+    assert staff.post('/logout/', headers={'Sec-Fetch-Site': 'same-origin'}).status_code == 302
+    assert staff.get('/offerings').status_code == 302
+
+
+def _after_login(client):
+    with client.session_transaction() as session:
+        return session.get('after_login')
+
+
+@pytest.mark.parametrize('action', ACTIONS)
+def test_pressing_a_button_once_signed_out_returns_to_the_home_page(seeded_db, client, action):
+    # e.g. the page was left open past the idle limit: signing in again must not come back to a
+    # GET of a POST-only url, which would be a 405
+    url = ACTIONS[action]()
+    response = client.post(url, headers={'Sec-Fetch-Site': 'same-origin'})
+    assert response.status_code == 302
+    assert response.location.endswith('/login/')
+    assert _after_login(client) is None
+
+
+def test_opening_a_page_once_signed_out_returns_to_it(seeded_db, client):
+    response = client.get(f'{EXAM_URL}/students/')
+    assert response.location.endswith('/login/')
+    assert _after_login(client) == f'http://localhost{EXAM_URL}/students/'

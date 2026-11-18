@@ -453,16 +453,15 @@ def delete_room(exam, id):
     Deletes a room for an exam.
     """
     room = Room.query.filter_by(exam_id=exam.id, id=id).first_or_404()
-    if room:
-        try:
-            # students may still reference this room in their wants/avoids
-            exam.remove_room_preferences(room.id)
-            db.session.delete(room)
-            db.session.commit()
-            flash("Deleted room.", 'success')
-        except Exception as e:
-            db.session.rollback()
-            flash(f"Failed to delete room {room.display_name} (ID: {room.id}) due to an error:\n{e}", 'error')
+    try:
+        # students may still reference this room in their wants/avoids
+        exam.remove_room_preferences(room.id)
+        db.session.delete(room)
+        db.session.commit()
+        flash("Deleted room.", 'success')
+    except Exception as e:
+        db.session.rollback()
+        flash(f"Failed to delete room {room.display_name} (ID: {room.id}) due to an error:\n{e}", 'error')
     return redirect(url_for('views.exam', exam=exam))
 
 

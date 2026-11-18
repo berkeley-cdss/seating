@@ -78,7 +78,6 @@ SKIPPED_ENDPOINTS = {
     'health.check_logging': 'not a page',
     'auth.login': 'redirects to the login page',
     'auth.authorized': 'redirects after login',
-    'auth.logout': 'redirects after logout',
     'dev_login.mock_authorize': 'redirects during login',
     'views.add_offerings': 'redirects when every Canvas course is already added, as in the seed data',
     'views.import_room': 'reads the master room sheet from Google Sheets',
