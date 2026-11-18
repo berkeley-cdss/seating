@@ -3,6 +3,7 @@ from flask import Blueprint, abort, current_app, redirect, render_template, requ
     Response
 from flask.json import jsonify
 from flask_login import current_user, login_required
+from werkzeug.exceptions import HTTPException
 
 from server.models import SeatAssignment, db, Exam, Room, Seat, Student
 from server.forms import AssignSingleForm, EditExamForm, EditRoomForm, ExamForm, ImportStudentsForm, \
@@ -596,6 +597,9 @@ def import_students_from_canvas_roster(exam):
     if from_canvas_form.validate_on_submit():
         try:
             _save_student_import(exam, *get_students_from_canvas(exam, from_canvas_form))
+        except HTTPException:
+            # e.g. the redirect to sign in again once the Canvas token has expired
+            raise
         except Exception as e:
             flash(f"Failed to import students due to an unexpected error: {str(e)}", 'error')
         return redirect(url_for('views.students', exam=exam))

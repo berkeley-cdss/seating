@@ -7,10 +7,13 @@ import time
 
 import pytest
 
-from server.models import db, Exam, Offering, Room, Student
+import server.services.canvas as canvas_client
+from server.models import db, CanvasToken, Exam, Offering, Room, Student
 from server.services.auth import SIGNED_IN_AT_KEY
 from server.services.auth.after_login import NOT_DONE
 from server.services.canvas.fake_data import FAKE_USERS
+from server.typings.enum import AssignmentImportStrategy, MissingRowImportStrategy, NewRowImportStrategy, \
+    UpdatedRowImportStrategy
 
 OFFERING_URL = '/offerings/1234567/'
 EXAM_URL = '/offerings/1234567/exams/midterm1'
@@ -159,11 +162,12 @@ def test_a_csrf_token_does_not_get_a_post_from_another_site_through(staff):
     assert db.session.get(Exam, 1).display_name == 'Renamed'
 
 
+@pytest.mark.app_config(WTF_CSRF_ENABLED=False)  # the dev login form's own token is not what's tested
 def test_other_sites_cannot_sign_users_in_as_someone_else(staff):
+    # a dev login post starts a sign-in as the posted user (it is finished at /authorized/)
     other_user = next(user_id for user_id in FAKE_USERS if user_id != '123456')
-    response = staff.post('/dev_login/', data={'user_id': other_user}, headers=FORGED)
-    assert response.status_code == 403
-    assert _session(staff)['_user_id'] == '1'
+    assert staff.post('/dev_login/', data={'user_id': other_user}, headers=FORGED).status_code == 403
+    assert staff.post('/dev_login/', data={'user_id': other_user}, headers=SAME).status_code == 302
 
 
 def test_other_sites_cannot_log_users_out(staff):
@@ -185,6 +189,18 @@ def test_logging_out_once_the_sign_in_has_expired(staff):
     assert _session(staff) == {}
 
 
+def test_logging_out_once_the_sign_in_has_expired_revokes_the_token(seeded_db, client, canvas_signs_in, monkeypatch):
+    revoked = []
+    monkeypatch.setattr(canvas_client, 'revoke_token', revoked.append)
+    _sign_in(client)
+    assert CanvasToken.query.count() == 1
+    with client.session_transaction() as session:
+        session[SIGNED_IN_AT_KEY] = time.time() - 365 * 24 * 60 * 60
+    assert client.post('/logout/', headers=SAME).location == '/'
+    assert CanvasToken.query.count() == 0
+    assert revoked == ['dev_access_token']
+
+
 def test_logging_out_when_already_signed_out(seeded_db, client):
     response = client.post('/logout/', headers=SAME)
     assert response.status_code == 302
@@ -200,7 +216,9 @@ def canvas_signs_in(app, monkeypatch):
 
 
 def _sign_in(client):
-    """Signs in through the OAuth callback, and returns where it sends the user."""
+    """Signs in from /login/ through the OAuth callback, and returns where it sends the user."""
+    # the fake Canvas's login page would show (and so use up) any flash, as Canvas's own wouldn't
+    assert client.get('/login/').status_code == 302
     response = client.get('/authorized/')
     assert response.status_code == 302
     return response.location
@@ -224,15 +242,35 @@ def test_posting_a_form_once_signed_out_does_not_come_back_to_it(seeded_db, clie
     # login_required sends it to sign in, rather than a url converter
     assert client.post('/offerings/new', headers=SAME).location == '/login/'
     assert _sign_in(client) == '/'
+    page = client.get('/', follow_redirects=True).get_data(as_text=True)
+    assert NOT_DONE.replace("'", '&#39;') in page
 
 
 @pytest.mark.app_config(MOCK_CANVAS=False)
 def test_posting_without_a_canvas_token_does_not_come_back_to_it(staff):
     # signed in to the app, but the session has no Canvas token to call Canvas with
+    with staff.session_transaction() as session:
+        session['after_login'] = f'http://localhost{EXAM_URL}/students/'
     assert staff.post('/offerings/new', headers=SAME).location == '/login/'
     session = _session(staff)
     assert 'after_login' not in session
-    assert NOT_DONE in [message for _, message in session['_flashes']]
+    assert session['_flashes'] == [('warning', NOT_DONE)]
+
+
+@pytest.mark.app_config(MOCK_CANVAS=False, WTF_CSRF_ENABLED=False)
+def test_importing_the_roster_without_a_canvas_token_asks_to_sign_in(staff):
+    # the view's catch-all for import errors must not swallow the redirect to sign in
+    data = {
+        'assignment_import_strategy': AssignmentImportStrategy.REVALIDATE.value,
+        'updated_student_info_import_strategy': UpdatedRowImportStrategy.MERGE.value,
+        'updated_preference_import_strategy': UpdatedRowImportStrategy.MERGE.value,
+        'new_student_import_strategy': NewRowImportStrategy.APPEND.value,
+        'missing_student_import_strategy': MissingRowImportStrategy.IGNORE.value,
+        'submit': 'y',
+    }
+    response = staff.post(f'{EXAM_URL}/students/import/from_canvas_roster/', data=data, headers=SAME)
+    assert response.location == '/login/'
+    assert _session(staff)['_flashes'] == [('warning', NOT_DONE)]
 
 
 def test_a_page_opened_earlier_is_not_returned_to_after_a_post(seeded_db, client, canvas_signs_in):
@@ -246,3 +284,42 @@ def test_opening_a_page_once_signed_out_comes_back_to_it(seeded_db, client, canv
     assert _sign_in(client) == f'http://localhost{EXAM_URL}/students/'
     page = client.get(f'{EXAM_URL}/students/').get_data(as_text=True)
     assert NOT_DONE.replace("'", '&#39;') not in page
+
+
+def test_a_post_from_another_site_while_signed_out_leaves_the_session_alone(seeded_db, client):
+    # the URL converters ask for a sign-in before the cross-origin check refuses the post
+    page = f'http://localhost{EXAM_URL}/students/'
+    with client.session_transaction() as session:
+        session['after_login'] = page
+    assert client.post(f'{EXAM_URL}/delete/', headers=FORGED).status_code == 403
+    session = _session(client)
+    assert session['after_login'] == page
+    assert '_flashes' not in session
+
+
+@pytest.mark.parametrize('method', ['HEAD', 'OPTIONS'])
+def test_head_and_options_while_signed_out_leave_the_session_alone(seeded_db, client, method):
+    # a page, which a GET would remember to come back to
+    client.open(f'{EXAM_URL}/students/', method=method)
+    session = _session(client)
+    assert 'after_login' not in session and '_flashes' not in session
+
+
+def test_a_fetch_while_signed_out_flashes_nothing(seeded_db, client):
+    # the email page previews and sends with fetch(), which would never show the flash
+    for _ in range(3):
+        client.post(f'{EXAM_URL}/students/email/preview/', headers={**SAME, 'Sec-Fetch-Mode': 'cors'})
+    assert '_flashes' not in _session(client)
+
+
+def test_pressing_buttons_while_signed_out_says_so_once(seeded_db, client):
+    for _ in range(3):
+        client.post(f'{EXAM_URL}/students/1/delete', headers={**SAME, 'Sec-Fetch-Mode': 'navigate'})
+    assert _session(client)['_flashes'] == [('warning', NOT_DONE)]
+
+
+def test_a_link_from_another_site_while_signed_out_comes_back_to_its_page(seeded_db, client, canvas_signs_in):
+    # e.g. a link from Canvas
+    response = client.get(f'{EXAM_URL}/students/', headers={'Sec-Fetch-Site': 'cross-site'})
+    assert response.location == '/login/'
+    assert _sign_in(client) == f'http://localhost{EXAM_URL}/students/'
