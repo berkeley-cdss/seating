@@ -1,6 +1,8 @@
 import requests
+from requests.adapters import HTTPAdapter
 from flask import current_app, url_for
 from canvasapi import Canvas
+from canvasapi.exceptions import CanvasException
 from canvasapi.user import User
 from canvasapi.course import Course
 
@@ -15,19 +17,44 @@ def is_mock_canvas(config=None) -> bool:
     return config['MOCK_CANVAS'] and config['FLASK_ENV'].lower() != 'production'
 
 
-def _get_client(key=None) -> FakeCanvas | Canvas:
+# seconds to wait for each Canvas request on a photo, so a slow Canvas can't hold a request thread
+PHOTO_ROSTER_TIMEOUT = 10
+
+
+class _TimeoutAdapter(HTTPAdapter):
+    """Gives each request a timeout: canvasapi sets none and has no setting for one."""
+
+    def __init__(self, timeout):
+        super().__init__()
+        self.timeout = timeout
+
+    def send(self, request, **kwargs):
+        kwargs['timeout'] = kwargs.get('timeout') or self.timeout
+        return super().send(request, **kwargs)
+
+
+def _current_token():
+    # imported here because canvas_tokens imports this module
+    from server.services.auth.canvas_tokens import current_token
+    return current_token()
+
+
+def _get_client(key=None, timeout=None) -> FakeCanvas | Canvas:
     if is_mock_canvas():
         return FakeCanvas()
     if not key:
-        # imported here because canvas_tokens imports this module
-        from server.services.auth.canvas_tokens import current_token
-        key = current_token()
+        key = _current_token()
     if not key:
         # imported here because the auth package imports this module
         from server.services.auth.after_login import remember_page_for_after_login
         remember_page_for_after_login()
         raise Redirect(url_for('auth.login'))
-    return Canvas(current_app.config['CANVAS_SERVER_URL'], key)
+    client = Canvas(current_app.config['CANVAS_SERVER_URL'], key)
+    if timeout:
+        session = client._Canvas__requester._session
+        session.mount('https://', _TimeoutAdapter(timeout))
+        session.mount('http://', _TimeoutAdapter(timeout))
+    return client
 
 
 def revoke_token(access_token: str):
@@ -125,12 +152,17 @@ def get_user_courses_categorized(user: FakeUser | User) \
     return list(staff_courses), list(student_courses), list(other), list(skipped)
 
 
+def _roster_students(offering_canvas_id, key=None, timeout=None):
+    """The students on the offering's Canvas roster."""
+    course = _get_client(key, timeout).get_course(offering_canvas_id)
+    # Canvas sends 10 a page unless asked: 150 requests for a course of 1,500
+    return course.get_users(enrollment_type='student', per_page=100)
+
+
 def get_student_roster_for_offering(offering_canvas_id, key=None):
-    course = _get_client(key).get_course(offering_canvas_id)
-    students = course.get_users(enrollment_type='student')
     headers = ['canvas id', 'email', 'name', 'student id']
     rows = []
-    for student in students:
+    for student in _roster_students(offering_canvas_id, key):
         stu_dict = {}
         if hasattr(student, 'id'):
             stu_dict['canvas id'] = student.id
@@ -148,17 +180,31 @@ def get_roster_student_ids(offering_canvas_id) -> dict[str, str]:
     """
     The student id (sis_user_id) of each student on the offering's Canvas roster, by Canvas id, kept
     for a few minutes. A student without a student id in Canvas is left out.
+
+    For photos, so it never fails: with no Canvas token, or if Canvas fails, there are no ids (and
+    the photos show the placeholder) rather than a sign-in redirect or an error.
     """
     from server.cache import cache_store, cache_key_roster_sids, ROSTER_SIDS_CACHE_LIFE
-    key = cache_key_roster_sids(offering_canvas_id)
-    sids = cache_store.get(key)
-    if sids is None:
-        course = _get_client().get_course(offering_canvas_id)
+    cache_key = cache_key_roster_sids(offering_canvas_id)
+    sids = cache_store.get(cache_key)
+    if sids is not None:
+        return sids
+    key = None
+    if not is_mock_canvas():
+        key = _current_token()
+        if not key:
+            return {}
+    try:
         sids = {str(student.id): str(student.sis_user_id)
-                # Canvas sends 10 a page unless asked: 150 requests for a course of 1,500
-                for student in course.get_users(enrollment_type='student', per_page=100)
+                for student in _roster_students(offering_canvas_id, key, PHOTO_ROSTER_TIMEOUT)
                 if getattr(student, 'sis_user_id', None)}
-        cache_store.set(key, sids, timeout=ROSTER_SIDS_CACHE_LIFE)
+    except (CanvasException, requests.RequestException) as error:
+        current_app.logger.warning("Couldn't get the Canvas roster of offering %s: %s", offering_canvas_id, error)
+        return {}
+    # Canvas leaves out student ids for staff whose role can't see them: don't let one such
+    # viewer hide the photos from everyone else
+    if sids:
+        cache_store.set(cache_key, sids, timeout=ROSTER_SIDS_CACHE_LIFE)
     return sids
 
 

@@ -113,3 +113,82 @@ def test_c1c_requests_only_all_digit_student_ids(app, monkeypatch, sid):
     monkeypatch.setattr(client, '_make_request', lambda path: pytest.fail(f'requested {path}'))
     with app.app_context():
         assert client.get_student_photo(sid) is None
+
+
+@pytest.mark.app_config(MOCK_C1C=True)
+def test_placeholder_when_canvas_fails(photo_caches, c1c_requests, login_as, monkeypatch):
+    from canvasapi.exceptions import CanvasException
+    from server.services import canvas
+
+    def failing_roster(*args, **kwargs):
+        raise CanvasException('Canvas is down')
+
+    monkeypatch.setattr(canvas, '_roster_students', failing_roster)
+    response = login_as(1).get(PHOTO_URL.format(1))
+    assert response.status_code == 200
+    assert response.mimetype == 'image/png'
+    assert c1c_requests == []
+
+
+def test_a_roster_without_student_ids_is_not_cached(photo_caches, login_as, monkeypatch):
+    """A viewer whose Canvas role can't see student ids mustn't hide the photos from other staff."""
+    from server.cache import cache_key_roster_sids, cache_store
+    from server.services import canvas
+    roster = canvas._roster_students
+
+    def roster_without_sids(*args, **kwargs):
+        students = list(roster(*args, **kwargs))
+        for student in students:
+            del student.sis_user_id
+        return students
+
+    monkeypatch.setattr(canvas, '_roster_students', roster_without_sids)
+    assert login_as(1).get(PHOTO_URL.format(1)).mimetype == 'image/png'
+    assert cache_store.get(cache_key_roster_sids('1234567')) is None
+
+
+@pytest.mark.app_config(MOCK_CANVAS=False)
+def test_placeholder_without_a_canvas_token(photo_caches, login_as, client):
+    # signed in, but this browser has no Canvas token: no sign-in redirect for an <img>
+    response = login_as(1).get(PHOTO_URL.format(1))
+    assert response.status_code == 200
+    assert response.mimetype == 'image/png'
+    with client.session_transaction() as session:
+        assert 'after_login' not in session
+
+
+@pytest.mark.app_config(MOCK_CANVAS=False)
+def test_photo_roster_requests_time_out(app, monkeypatch):
+    from requests import Response
+    from requests.adapters import HTTPAdapter
+    from server.services import canvas
+    sent = {}
+
+    def send(self, request, **kwargs):
+        sent.update(kwargs)
+        response = Response()
+        response.status_code = 200
+        return response
+
+    monkeypatch.setattr(HTTPAdapter, 'send', send)
+    with app.app_context():
+        client = canvas._get_client('token', timeout=canvas.PHOTO_ROSTER_TIMEOUT)
+        session = client._Canvas__requester._session
+        session.get('https://canvas.example.edu/api/v1/courses/1')
+    assert sent['timeout'] == canvas.PHOTO_ROSTER_TIMEOUT
+
+
+def test_roster_import_asks_for_100_students_a_page(app, monkeypatch):
+    from server.services import canvas
+    from server.services.canvas.fake_canvas import FakeCourse
+    asked = {}
+    get_users = FakeCourse.get_users
+
+    def recording_get_users(self, **kwargs):
+        asked.update(kwargs)
+        return get_users(self, **kwargs)
+
+    monkeypatch.setattr(FakeCourse, 'get_users', recording_get_users)
+    with app.test_request_context():
+        canvas.get_student_roster_for_offering('1234567')
+    assert asked['per_page'] == 100
