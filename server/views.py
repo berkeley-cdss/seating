@@ -54,9 +54,17 @@ def _flash_unexpected_error(action):
     flash(f"Couldn't {action} due to an unexpected error (ref {ref}).", 'error')
 
 
+SAVED, DUPLICATE, FAILED = 'saved', 'duplicate', 'failed'
+
+
 def _commit_or_flash(action, find_duplicate=None, duplicate_message=None):
+    """Commits, or rolls back and says why it couldn't (see _commit), and returns whether it committed."""
+    return _commit(action, find_duplicate, duplicate_message) == SAVED
+
+
+def _commit(action, find_duplicate=None, duplicate_message=None):
     """
-    Commits, or rolls back and says why it couldn't, and returns whether it committed.
+    Commits, or rolls back and says why it couldn't, and returns SAVED, DUPLICATE or FAILED.
 
     A broken constraint is a duplicate if find_duplicate, run after the rollback, finds what the commit
     clashed with (e.g. saved by another request since the check before saving): that gets
@@ -65,7 +73,7 @@ def _commit_or_flash(action, find_duplicate=None, duplicate_message=None):
     """
     try:
         db.session.commit()
-        return True
+        return SAVED
     except IntegrityError:
         db.session.rollback()
         duplicate = None
@@ -76,11 +84,11 @@ def _commit_or_flash(action, find_duplicate=None, duplicate_message=None):
                 db.session.rollback()
         if duplicate:
             flash(duplicate_message(duplicate), 'error')
-        else:
-            _flash_unexpected_error(action)
+            return DUPLICATE
+        _flash_unexpected_error(action)
     except Exception:
         _flash_unexpected_error(action)
-    return False
+    return FAILED
 
 
 @bp.route('/')
@@ -396,12 +404,15 @@ def _room_clash(exam_id, name, start_at, other_than=None):
             lambda existing: _room_exists_message(existing.display_name))
 
 
-def _save_new_room(room):
+def _save_new_room(room, say_so=True):
+    """Saves a room, or says why it couldn't, and returns whether it saved it."""
     exam_id, name, start_at, display_name = room.exam_id, room.name, room.start_at, room.display_name
     db.session.add(room)
     # a duplicate is one imported by someone else since prepare_room checked
-    if _commit_or_flash(f"import room '{display_name}'", *_room_clash(exam_id, name, start_at)):
+    saved = _commit_or_flash(f"import room '{display_name}'", *_room_clash(exam_id, name, start_at))
+    if saved and say_so:
         flash(f"Imported room '{display_name}'.", 'success')
+    return saved
 
 
 @bp.route('/<exam:exam>/rooms/import/')
@@ -456,14 +467,18 @@ def import_room_from_master_sheet(exam):
     choose_form = ChooseRoomForm(room_list=get_spreadsheet_tabs(current_app.config.get('MASTER_ROOM_SHEET_URL')))
     upload_form = UploadRoomForm()
     if choose_form.validate_on_submit():
+        # one message for all the rooms imported: flashes are kept in the session cookie, which is small
+        imported = 0
         for r in choose_form.rooms.data:
             f = RoomForm(
                 display_name=r,
                 sheet_url=current_app.config.get("MASTER_ROOM_SHEET_URL"),
                 sheet_range=r)
             room = _prepare_room(r, lambda: get_room_from_google_spreadsheet(exam, f))
-            if room:
-                _save_new_room(room)
+            if room and _save_new_room(room, say_so=False):
+                imported += 1
+        if imported:
+            flash(f"Imported {imported} room{'' if imported == 1 else 's'}.", 'success')
         return redirect(exam_url)
     for field, errors in choose_form.errors.items():
         for error in errors:
@@ -596,17 +611,44 @@ def edit_room(exam, id):  # noqa: C901
                 update_room_from_manual_input(room, seats_to_add)
         except DataValidationError as e:
             # save all of the edit or none of it: keep the form up so the seats can be fixed
-            db.session.rollback()
+            try:
+                db.session.rollback()
+            except Exception:
+                pass  # the session is thrown away at the end of the request anyway
             flash(f"Couldn't edit the seats of room '{form.display_name.data}', so nothing was saved: {e}", 'error')
-            return render_template('upsert_room.html', exam=exam, form=form, room=room)
+            return _room_form_again(exam_id, id, form, exam_url)
         except Exception:
             # the rollback also undoes the new name and time
             _flash_unexpected_error(f"edit the seats of room '{form.display_name.data}'")
             return redirect(exam_url)
         # the name (slug) never changes here: a duplicate is another room of that name at the new start time
-        if _commit_or_flash(f"edit room '{form.display_name.data}'",
-                            *_room_clash(exam_id, name, start_at_iso, other_than=id)):
+        outcome = _commit(f"edit room '{form.display_name.data}'",
+                          *_room_clash(exam_id, name, start_at_iso, other_than=id))
+        if outcome == SAVED:
             flash(f"Saved room '{form.display_name.data}'.", 'success')
+        elif outcome == DUPLICATE:
+            # keep the form up so another time can be picked
+            return _room_form_again(exam_id, id, form, exam_url)
+        return redirect(exam_url)
+    return render_template('upsert_room.html', exam=exam, form=form, room=room)
+
+
+def _room_form_again(exam_id, id, form, exam_url):
+    """
+    After a rolled back edit, the form again with what was entered, or the exam page if the room
+    can't be loaded (deleted meanwhile, or the database is down): what went wrong is already flashed.
+    """
+    try:
+        # the rollback expired the room and exam: load them before rendering, which shows the flashes
+        room = Room.query.filter_by(exam_id=exam_id, id=id).first()
+        if room is None:
+            return redirect(exam_url)
+        exam = room.exam
+    except Exception:
+        try:
+            db.session.rollback()
+        except Exception:
+            pass
         return redirect(exam_url)
     return render_template('upsert_room.html', exam=exam, form=form, room=room)
 
