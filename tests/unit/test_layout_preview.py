@@ -382,5 +382,5 @@ class TestPreviewLayoutPage:
     def test_csv_without_required_columns_is_reported(self, authed_client):
         response = authed_client.post('/layouts/preview/', data={'text': 'name\nA1\n'})
         assert response.status_code == 200
-        assert b'Failed to preview layout' in response.data
+        assert b'preview the layout: Missing compulsory columns' in response.data
         assert b'class="layout-seat"' not in response.data
