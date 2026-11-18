@@ -35,6 +35,16 @@ from sqlalchemy.orm import joinedload
 bp = Blueprint('views', __name__)
 
 
+def _rollback_quietly():
+    """Rolls back, and returns whether it could: when it can't, the database is down, and the session
+    is thrown away at the end of the request anyway."""
+    try:
+        db.session.rollback()
+        return True
+    except Exception:
+        return False
+
+
 def _flash_unexpected_error(action):
     """
     Rolls back, and says an action failed, with a short reference to find the error in the logs by.
@@ -45,10 +55,7 @@ def _flash_unexpected_error(action):
     The rollback leaves the session usable (on Postgres, a failed statement aborts the transaction)
     but expires every loaded object: read what is needed afterwards, like names and redirect URLs, first.
     """
-    try:
-        db.session.rollback()
-    except Exception:
-        pass  # the session is thrown away at the end of the request anyway
+    _rollback_quietly()
     ref = secrets.token_hex(4)
     current_app.logger.exception("Couldn't %s (ref %s)", action, ref)
     flash(f"Couldn't {action} due to an unexpected error (ref {ref}).", 'error')
@@ -75,13 +82,13 @@ def _commit(action, find_duplicate=None, duplicate_message=None):
         db.session.commit()
         return SAVED
     except IntegrityError:
-        db.session.rollback()
         duplicate = None
-        if find_duplicate:
+        # if even the rollback fails, the database is down: there is no looking for the duplicate
+        if _rollback_quietly() and find_duplicate:
             try:
                 duplicate = find_duplicate()
             except Exception:
-                db.session.rollback()
+                _rollback_quietly()
         if duplicate:
             flash(duplicate_message(duplicate), 'error')
             return DUPLICATE
@@ -611,10 +618,7 @@ def edit_room(exam, id):  # noqa: C901
                 update_room_from_manual_input(room, seats_to_add)
         except DataValidationError as e:
             # save all of the edit or none of it: keep the form up so the seats can be fixed
-            try:
-                db.session.rollback()
-            except Exception:
-                pass  # the session is thrown away at the end of the request anyway
+            _rollback_quietly()
             flash(f"Couldn't edit the seats of room '{form.display_name.data}', so nothing was saved: {e}", 'error')
             return _room_form_again(exam_id, id, form, exam_url)
         except Exception:
@@ -645,10 +649,7 @@ def _room_form_again(exam_id, id, form, exam_url):
             return redirect(exam_url)
         exam = room.exam
     except Exception:
-        try:
-            db.session.rollback()
-        except Exception:
-            pass
+        _rollback_quietly()
         return redirect(exam_url)
     return render_template('upsert_room.html', exam=exam, form=form, room=room)
 

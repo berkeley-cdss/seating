@@ -318,6 +318,32 @@ def test_room_deleted_while_its_seats_fail_goes_back_to_the_exam(staff, monkeypa
                                          " Fixed seat name repeated: A1")]
 
 
+def _clash_on_commit(monkeypatch, rollbacks_that_work):
+    """The commit breaks a constraint, then the database goes down: queries fail, and so do rollbacks
+    after the first rollbacks_that_work."""
+    def commit():
+        raise IntegrityError(SECRET, {}, Exception('UNIQUE constraint failed'))
+    real_rollback = db.session.rollback
+    calls = []
+
+    def rollback():
+        calls.append(1)
+        if len(calls) > rollbacks_that_work:
+            _db_error()
+        real_rollback()
+        monkeypatch.setattr(db.session(), 'execute', _db_error)
+    monkeypatch.setattr(db.session, 'commit', commit)
+    monkeypatch.setattr(db.session, 'rollback', rollback)
+
+
+@pytest.mark.parametrize('rollbacks_that_work', [0, 1], ids=['first rollback fails', 'looking for the clash fails'])
+def test_a_clash_with_the_database_going_down_says_so(staff, monkeypatch, rollbacks_that_work):
+    _clash_on_commit(monkeypatch, rollbacks_that_work)
+    # with a start time, the clashing room is looked for
+    assert staff.post(f'{EXAM_URL}/rooms/1/edit', data=RENAMED_ROOM).status_code == 302
+    _assert_unexpected_error_flashed(staff, "Couldn't edit room 'Soda 999 Overflow'")
+
+
 def test_room_seats_that_fail_unexpectedly_save_nothing(staff, monkeypatch):
     def fail(*args):
         raise OperationalError(SECRET, {}, Exception())
