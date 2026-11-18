@@ -184,7 +184,8 @@ def add_offerings():
         for canvas_id in chosen:
             if canvas_id in hidden_offerings:
                 hidden_offerings[canvas_id].is_hidden = False
-        db.session.bulk_save_objects([staff_offerings_id_to_model[canvas_id] for canvas_id in new_canvas_ids])
+        # added, not bulk saved: a bulk save inserts right away, and the insert can fail on a duplicate
+        db.session.add_all([staff_offerings_id_to_model[canvas_id] for canvas_id in new_canvas_ids])
         if _commit_or_flash(
                 "import the course offerings",
                 # new ones imported by someone else since this page was loaded
@@ -294,7 +295,12 @@ def delete_exam(exam):
     """
     # the commit expires the exam
     display_name, offering_url = exam.display_name, url_for('views.offering', offering=exam.offering)
-    db.session.delete(exam)
+    try:
+        # loads its rooms, students, seats and assignments, to delete them with it
+        db.session.delete(exam)
+    except Exception:
+        _flash_unexpected_error(f"delete exam '{display_name}'")
+        return redirect(offering_url)
     if _commit_or_flash(f"delete exam '{display_name}'"):
         flash("Deleted exam.", 'success')
     return redirect(offering_url)
@@ -373,12 +379,22 @@ def _prepare_room(display_name, prepare):
     return None
 
 
+def _room_clash(exam_id, name, start_at, other_than=None):
+    """
+    What _commit_or_flash needs to tell a room that a commit found to be a duplicate. The database
+    only rejects a room with the same name and start time: rooms with no start time never clash.
+    """
+    if not start_at:
+        return None, None
+    return (lambda: find_room(exam_id, name, start_at, other_than=other_than),
+            lambda existing: _room_exists_message(existing.display_name))
+
+
 def _save_new_room(room):
     exam_id, name, start_at, display_name = room.exam_id, room.name, room.start_at, room.display_name
     db.session.add(room)
     # a duplicate is one imported by someone else since prepare_room checked
-    _commit_or_flash(f"import room '{display_name}'", lambda: find_room(exam_id, name, start_at),
-                     lambda existing: _room_exists_message(existing.display_name))
+    _commit_or_flash(f"import room '{display_name}'", *_room_clash(exam_id, name, start_at))
 
 
 @bp.route('/<exam:exam>/rooms/import/')
@@ -577,9 +593,7 @@ def edit_room(exam, id):  # noqa: C901
             _flash_unexpected_error(f"edit the seats of room '{form.display_name.data}'")
             return redirect(exam_url)
         # the name (slug) never changes here: a duplicate is another room of that name at the new start time
-        _commit_or_flash(f"edit room '{form.display_name.data}'",
-                         lambda: find_room(exam_id, name, start_at_iso, other_than=id),
-                         lambda existing: _room_exists_message(existing.display_name))
+        _commit_or_flash(f"edit room '{form.display_name.data}'", *_room_clash(exam_id, name, start_at_iso, other_than=id))
         return redirect(exam_url)
     return render_template('upsert_room.html', exam=exam, form=form, room=room)
 
@@ -873,7 +887,12 @@ def delete_student(exam_student):
     if student:
         # the commit expires the student and exam
         name, students_url = student.name, url_for('views.students', exam=exam)
-        db.session.delete(student)
+        try:
+            # loads their seat assignment, to delete it with them
+            db.session.delete(student)
+        except Exception:
+            _flash_unexpected_error(f"delete student {name}")
+            return redirect(students_url)
         if _commit_or_flash(f"delete student {name}"):
             flash("Deleted student.", 'success')
         return redirect(students_url)

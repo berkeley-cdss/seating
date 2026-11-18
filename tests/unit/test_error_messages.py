@@ -14,6 +14,7 @@ import server.views
 from server.utils.date import to_ISO8601
 from server.views import _room_exists_message
 from server.models import db, Exam, Offering, Room
+from server.forms import ChooseCourseOfferingForm
 from server.typings.exception import DataValidationError, GcpError
 
 EXAM_URL = '/offerings/1234567/exams/midterm1'
@@ -201,9 +202,25 @@ def test_offering_imported_meanwhile_is_reported_plainly(seeded_db, login_as, mo
 
 def test_room_imported_meanwhile_is_reported_plainly(staff, monkeypatch):
     monkeypatch.setattr(db.session, 'commit', _clash_with(
-        lambda: Room(exam_id=1, name='cory277', display_name='Cory 277')))
-    staff.post(f'{EXAM_URL}/rooms/import/from_manual/', data={**EDIT_ROOM, 'display_name': 'Cory 277'})
+        lambda: Room(exam_id=1, name='cory277', display_name='Cory 277',
+                     start_at=to_ISO8601(datetime(2023, 12, 12, 9, 0)))))
+    staff.post(f'{EXAM_URL}/rooms/import/from_manual/',
+               data={**EDIT_ROOM, 'display_name': 'Cory 277', 'start_at': '2023-12-12T09:00'})
     assert _flashes(staff) == [('error', _room_exists_message('Cory 277'))]
+
+
+def test_room_without_a_start_time_is_never_a_duplicate(staff, monkeypatch):
+    # the database lets rooms without a start time share a name, so a broken constraint is something else
+    db.session.add(Room(exam_id=1, name='soda999', display_name='Soda 999 (late)',
+                        start_at=to_ISO8601(datetime(2023, 12, 12, 14, 0))))
+    db.session.commit()
+
+    def commit():
+        raise IntegrityError(SECRET, {}, Exception('NOT NULL constraint failed'))
+    monkeypatch.setattr(db.session, 'commit', commit)
+    # EDIT_ROOM has no start time
+    staff.post(f'{EXAM_URL}/rooms/1/edit', data=EDIT_ROOM)
+    _assert_unexpected_error_flashed(staff, "Couldn't edit room 'Soda 999'")
 
 
 def test_room_moved_onto_another_rooms_time_names_that_room(staff):
@@ -303,9 +320,9 @@ def test_broken_constraint_with_the_database_gone_is_unexpected(staff, database_
     def commit():
         raise IntegrityError(SECRET, {}, Exception('UNIQUE constraint failed'))
     monkeypatch.setattr(db.session, 'commit', commit)
-    response = staff.post(f'{EXAM_URL}/rooms/import/from_manual/', data={**EDIT_ROOM, 'display_name': 'Cory 277'})
+    response = staff.post('/offerings/1234567/exams/new/', data={'name': 'final', 'display_name': 'Final', 'submit': 'y'})
     assert response.status_code == 302
-    _assert_unexpected_error_flashed(staff, "Couldn't import room 'Cory 277'")
+    _assert_unexpected_error_flashed(staff, "Couldn't create exam 'final'")
 
 
 def test_offering_shown_again_is_not_called_a_duplicate(seeded_db, login_as, monkeypatch):
@@ -391,3 +408,32 @@ def test_failed_rollback_still_reports_the_error(staff, monkeypatch):
     monkeypatch.setattr(db.session, 'rollback', _db_error)
     staff.post(f'{EXAM_URL}/toggle/')
     _assert_unexpected_error_flashed(staff, "Couldn't activate or deactivate exam 'Midterm 1'")
+
+
+def test_offering_really_imported_meanwhile(seeded_db, login_as, monkeypatch):
+    # no stand-in commit: another request saves the course after this one has listed it as new
+    offering = Offering.query.filter_by(canvas_id='2345678').one()
+    columns = {column.name: getattr(offering, column.name) for column in Offering.__table__.columns}
+    db.session.delete(offering)
+    db.session.commit()
+    real_validate = ChooseCourseOfferingForm.validate_on_submit
+
+    def validate_then_import_elsewhere(form):
+        db.session.add(Offering(**columns))
+        db.session.commit()
+        return real_validate(form)
+    monkeypatch.setattr(ChooseCourseOfferingForm, 'validate_on_submit', validate_then_import_elsewhere)
+    client = login_as(2)
+    assert client.post('/offerings/new', data={'offerings': '2345678', 'submit': 'y'}).status_code == 302
+    assert _flashes(client) == [('error', f"Already imported: {columns['name']}.")]
+
+
+@pytest.mark.parametrize('url, message_start', [
+    (f'{EXAM_URL}/delete/', "Couldn't delete exam 'Midterm 1'"),
+    (f'{EXAM_URL}/students/1/delete', "Couldn't delete student Jimmy Xu"),
+], ids=['exam', 'student'])
+def test_failure_loading_what_a_delete_takes_with_it(staff, monkeypatch, url, message_start):
+    # deleting loads what goes with it (an exam's rooms and students, a student's assignment)
+    monkeypatch.setattr(db.session, 'delete', _db_error)
+    assert staff.post(url).status_code == 302
+    _assert_unexpected_error_flashed(staff, message_start)
