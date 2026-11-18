@@ -37,6 +37,7 @@ def test_students_page_links_use_database_ids(seeded_db, login_as):
         assert response.status_code in (200, 302), (student_id, rest, response.status_code)
 
 
+@pytest.mark.app_config(MOCK_C1C=True)
 @pytest.mark.parametrize('rest', PAGES)
 def test_student_pages_work_by_database_id(seeded_db, login_as, rest):
     assert login_as(1).get(f'{EXAM_URL}/students/1{rest}').status_code == 200

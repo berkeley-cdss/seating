@@ -1020,6 +1020,7 @@ def student_photo(exam_student):
     """
     The student's Cal1Card photo, only if they're on the course's Canvas roster, by the student id
     Canvas has for them: the one stored for them came from an import, which could name anyone.
+    No content if there's none: pages show the placeholder until a photo loads (see showPhotos).
     """
     exam, student = exam_student
     sid = canvas_client.get_roster_student_ids(exam.offering_canvas_id).get(str(student.canvas_id))
@@ -1034,7 +1035,7 @@ def student_photo(exam_student):
         if photo is not None:
             cache_store.set(cache_key_photo(sid), photo, timeout=cache_life_photo())
             return send_file(io.BytesIO(photo), mimetype='image/jpeg')
-    return send_file('static/img/photo-placeholder.png', mimetype='image/png')
+    return '', 204
 
 # endregion
 

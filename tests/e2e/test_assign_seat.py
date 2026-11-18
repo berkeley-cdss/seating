@@ -81,11 +81,13 @@ def test_seat_photos_load_only_when_shown(get_authed_driver, seeded_db):
         return performance.getEntriesByType('resource').filter(e => e.name.includes('/photo/')).length
     """
     assert driver.execute_script(photo_requests) == 0
+    # the seat's tooltip shows the placeholder until the photo has loaded behind it
+    hidden_photo = driver.find_element(By.CSS_SELECTOR, '.seat-tooltip img.photo')
+    assert hidden_photo.get_attribute('src').endswith('/static/img/photo-placeholder.png')
 
     seat = driver.find_element(By.ID, '1')
     driver.execute_script('arguments[0].scrollIntoView({block: "center"})', seat)
     ActionChains(driver).move_to_element(seat).perform()
     photo = WebDriverWait(driver, 5).until(lambda d: d.find_element(By.CSS_SELECTOR, '.tooltip img.photo'))
-    WebDriverWait(driver, 5).until(
-        lambda d: d.execute_script('return arguments[0].complete && arguments[0].naturalWidth > 0', photo))
+    WebDriverWait(driver, 5).until(lambda d: photo.get_attribute('src').endswith('/photo/'))
     assert driver.execute_script(photo_requests) == 1
