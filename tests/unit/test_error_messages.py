@@ -8,6 +8,7 @@ from datetime import datetime
 
 import pytest
 from markupsafe import escape
+from sqlalchemy import delete
 from sqlalchemy.exc import IntegrityError, OperationalError
 
 import server.views
@@ -283,6 +284,35 @@ def test_room_seats_that_fail_with_the_database_down_go_back_to_the_exam(staff, 
         raise DataValidationError('Fixed seat name repeated: A1')
     monkeypatch.setattr(server.views, 'update_room_from_manual_input', fail)
     # after the rollback, the room can't be loaded to show the form again
+    assert staff.post(f'{EXAM_URL}/rooms/1/edit', data=RENAMED_ROOM).status_code == 302
+    assert _flashes(staff) == [('error', "Couldn't edit the seats of room 'Soda 999 Overflow', so nothing was saved:"
+                                         " Fixed seat name repeated: A1")]
+
+
+def test_room_seats_that_fail_when_even_rollbacks_fail_go_back_to_the_exam(staff, monkeypatch):
+    def fail(*args):
+        # the database goes down: queries fail, and so do rollbacks
+        monkeypatch.setattr(db.session(), 'execute', _db_error)
+        raise DataValidationError('Fixed seat name repeated: A1')
+    monkeypatch.setattr(server.views, 'update_room_from_manual_input', fail)
+    monkeypatch.setattr(db.session, 'rollback', _db_error)
+    assert staff.post(f'{EXAM_URL}/rooms/1/edit', data=RENAMED_ROOM).status_code == 302
+    assert _flashes(staff) == [('error', "Couldn't edit the seats of room 'Soda 999 Overflow', so nothing was saved:"
+                                         " Fixed seat name repeated: A1")]
+
+
+def test_room_deleted_while_its_seats_fail_goes_back_to_the_exam(staff, monkeypatch):
+    def fail(*args):
+        raise DataValidationError('Fixed seat name repeated: A1')
+    monkeypatch.setattr(server.views, 'update_room_from_manual_input', fail)
+    real_rollback = db.session.rollback
+
+    def rollback():
+        real_rollback()
+        # another staff member deletes the room before the form is shown again
+        db.session.execute(delete(Room).where(Room.id == 1))
+        db.session.commit()
+    monkeypatch.setattr(db.session, 'rollback', rollback)
     assert staff.post(f'{EXAM_URL}/rooms/1/edit', data=RENAMED_ROOM).status_code == 302
     assert _flashes(staff) == [('error', "Couldn't edit the seats of room 'Soda 999 Overflow', so nothing was saved:"
                                          " Fixed seat name repeated: A1")]
