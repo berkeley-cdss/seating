@@ -1,3 +1,5 @@
+import time
+
 import requests
 from requests.adapters import HTTPAdapter
 from flask import current_app, url_for
@@ -17,8 +19,12 @@ def is_mock_canvas(config=None) -> bool:
     return config['MOCK_CANVAS'] and config['FLASK_ENV'].lower() != 'production'
 
 
-# seconds to wait for each Canvas request on a photo, so a slow Canvas can't hold a request thread
-PHOTO_ROSTER_TIMEOUT = 10
+# seconds to wait for each Canvas request for a roster's student ids, so a slow Canvas can't hold a
+# request thread; and for all of them, for a photo, which can't wait on a roster of many pages
+ROSTER_TIMEOUT = 10
+PHOTO_ROSTER_DEADLINE = 20
+# after Canvas fails to give a roster for a photo, seconds before photos ask again: not on every hover
+ROSTER_FAILURE_CACHE_LIFE = 60
 
 
 class _TimeoutAdapter(HTTPAdapter):
@@ -176,35 +182,82 @@ def get_student_roster_for_offering(offering_canvas_id, key=None):
     return headers, rows
 
 
-def get_roster_student_ids(offering_canvas_id) -> dict[str, str]:
-    """
-    The student id (sis_user_id) of each student on the offering's Canvas roster, by Canvas id, kept
-    for a few minutes. A student without a student id in Canvas is left out.
+class _RosterDeadlinePassed(Exception):
+    pass
 
-    For photos, so it never fails: with no Canvas token, or if Canvas fails, there are no ids (and
-    the photos show the placeholder) rather than a sign-in redirect or an error.
+
+def _fetch_student_ids(offering_canvas_id, key, deadline=None) -> dict[str, str] | None:
     """
-    from server.cache import cache_store, cache_key_roster_sids, ROSTER_SIDS_CACHE_LIFE
-    cache_key = cache_key_roster_sids(offering_canvas_id)
-    sids = cache_store.get(cache_key)
-    if sids is not None:
-        return sids
-    key = None
-    if not is_mock_canvas():
-        key = _current_token()
-        if not key:
-            return {}
+    The student id (sis_user_id) of each student on the offering's Canvas roster, by Canvas id, or None
+    if Canvas fails or the deadline (a time.monotonic()) passes. A student without one is left out.
+    """
+    sids = {}
     try:
-        sids = {str(student.id): str(student.sis_user_id)
-                for student in _roster_students(offering_canvas_id, key, PHOTO_ROSTER_TIMEOUT)
-                if getattr(student, 'sis_user_id', None)}
-    except (CanvasException, requests.RequestException) as error:
+        for student in _roster_students(offering_canvas_id, key, ROSTER_TIMEOUT):
+            if deadline is not None and time.monotonic() > deadline:
+                raise _RosterDeadlinePassed('took too long')
+            if getattr(student, 'sis_user_id', None):
+                sids[str(student.id)] = str(student.sis_user_id)
+    except (CanvasException, requests.RequestException, _RosterDeadlinePassed) as error:
         current_app.logger.warning("Couldn't get the Canvas roster of offering %s: %s", offering_canvas_id, error)
-        return {}
+        return None
+    return sids
+
+
+def _roster_key():
+    """The Canvas token to get a roster with: '' for the fake Canvas, which needs none, or None if there's none."""
+    return '' if is_mock_canvas() else _current_token()
+
+
+def _cache_student_ids(offering_canvas_id, sids):
+    from server.cache import cache_store, cache_key_roster_sids, ROSTER_SIDS_CACHE_LIFE
     # Canvas leaves out student ids for staff whose role can't see them: don't let one such
     # viewer hide the photos from everyone else
     if sids:
-        cache_store.set(cache_key, sids, timeout=ROSTER_SIDS_CACHE_LIFE)
+        cache_store.set(cache_key_roster_sids(offering_canvas_id), sids, timeout=ROSTER_SIDS_CACHE_LIFE)
+
+
+def fetch_roster_student_ids(offering_canvas_id) -> dict[str, str] | None:
+    """
+    For an import: the student ids on the offering's Canvas roster now (see _fetch_student_ids), or
+    None if there's no Canvas token or Canvas fails, so the import goes ahead without them.
+    """
+    key = _roster_key()
+    if key is None:
+        return None
+    sids = _fetch_student_ids(offering_canvas_id, key)
+    if sids is not None:
+        _cache_student_ids(offering_canvas_id, sids)
+    return sids
+
+
+def roster_student_ids_from_rows(rows) -> dict[str, str]:
+    """The same, from the rows of get_student_roster_for_offering."""
+    return {str(row['canvas id']): str(row['student id'])
+            for row in rows if row.get('canvas id') and row.get('student id')}
+
+
+def get_roster_student_ids(offering_canvas_id) -> dict[str, str]:
+    """
+    For a photo of a student whose student id wasn't on the roster at the last import: the student ids
+    on the offering's Canvas roster (see _fetch_student_ids), kept for a few minutes.
+
+    It never fails: with no Canvas token, or if Canvas fails or is slow, there are no ids (and the photo
+    is the placeholder) rather than a sign-in redirect or an error. After a failure, photos don't ask
+    Canvas again for a minute.
+    """
+    from server.cache import cache_store, cache_key_roster_sids, cache_key_roster_failed
+    sids = cache_store.get(cache_key_roster_sids(offering_canvas_id))
+    if sids is not None:
+        return sids
+    key = _roster_key()
+    if key is None or cache_store.get(cache_key_roster_failed(offering_canvas_id)):
+        return {}
+    sids = _fetch_student_ids(offering_canvas_id, key, deadline=time.monotonic() + PHOTO_ROSTER_DEADLINE)
+    if sids is None:
+        cache_store.set(cache_key_roster_failed(offering_canvas_id), True, timeout=ROSTER_FAILURE_CACHE_LIFE)
+        return {}
+    _cache_student_ids(offering_canvas_id, sids)
     return sids
 
 

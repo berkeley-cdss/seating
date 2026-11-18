@@ -446,6 +446,10 @@ p a,
   min-height: 1em;
 }
 
+.import-status:empty {
+  display: none;
+}
+
 .import-format li {
   margin-bottom: 4px;
 }

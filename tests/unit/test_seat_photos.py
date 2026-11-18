@@ -64,11 +64,12 @@ PHOTO_URL = EXAM_URL + '/students/{}/photo/'
 @pytest.fixture
 def photo_caches(seeded_db):
     """Empty photo and roster caches, and the C1C requests made, by student id."""
-    from server.cache import cache_key_photo, cache_key_roster_sids, cache_store
+    from server.cache import cache_key_photo, cache_key_roster_failed, cache_key_roster_sids, cache_store
     sids = ['3033033334', '3033033335', '3033033336', '3033033399']
 
     def clear():
         cache_store.delete(cache_key_roster_sids('1234567'))
+        cache_store.delete(cache_key_roster_failed('1234567'))
         for sid in sids:
             cache_store.delete(cache_key_photo(sid))
 
@@ -178,10 +179,10 @@ def test_photo_roster_requests_time_out(app, monkeypatch):
 
     monkeypatch.setattr(HTTPAdapter, 'send', send)
     with app.app_context():
-        client = canvas._get_client('token', timeout=canvas.PHOTO_ROSTER_TIMEOUT)
+        client = canvas._get_client('token', timeout=canvas.ROSTER_TIMEOUT)
         session = client._Canvas__requester._session
         session.get('https://canvas.example.edu/api/v1/courses/1')
-    assert sent['timeout'] == canvas.PHOTO_ROSTER_TIMEOUT
+    assert sent['timeout'] == canvas.ROSTER_TIMEOUT
 
 
 def test_roster_import_asks_for_100_students_a_page(app, monkeypatch):
