@@ -277,9 +277,6 @@ def new_exam(offering):
         def find_exam():
             return Exam.query.filter_by(offering_canvas_id=canvas_id, name=name).first()
         try:
-            if find_exam():
-                flash(_exam_exists_message(name), 'error')
-                return render_template("upsert_exam.html", title=title, form=form, exam=None)
             if form.active.data:
                 # only one exam can be active at a time, so deactivate all others first
                 offering.mark_all_exams_as_inactive()
@@ -290,7 +287,7 @@ def new_exam(offering):
         except Exception:
             _flash_unexpected_error(f"create exam '{name}'")
             return redirect(offering_url)
-        # a duplicate is one created by someone else since the check above
+        # _internal_exam_name skips taken names, so a duplicate is one someone else just created
         if _commit_or_flash(f"create exam '{name}'", find_exam, lambda exam: _exam_exists_message(name)):
             flash(f"Created exam '{display_name}'.", 'success')
         return redirect(offering_url)
