@@ -70,7 +70,7 @@
               <li class="nav-item"><a class="nav-link" href="{{ url_for('views.students', exam=exam) }}">Students</a></li>
               <li class="nav-item"><a class="nav-link" href="{{ url_for('views.offering', offering=exam.offering) }}">All Exams</a></li>
             {% endif %}
-            <li class="nav-item"><a class="nav-link" href="{{ url_for('views.index') }}">Home</a></li>
+            <li class="nav-item"><a class="nav-link" href="{{ url_for('views.index') }}">Offerings</a></li>
             <li class="nav-item"><a class="nav-link" href="{{ wiki_base_url }}" target="_blank">Wiki</a></li>
             {% if current_user.is_authenticated %}
               <li class="nav-item"><a class="nav-link" href="{{ url_for('views.preview_layout') }}">Layout Preview</a></li>
