@@ -15,7 +15,7 @@ WTForms==3.2.2
 canvasapi==3.6.0
 gunicorn==26.2.0
 psycopg2-binary==2.9.12
-sentry-sdk[flask]
+sentry-sdk[flask]==2.76.0
 Flask-Caching==2.5.1
 python-dotenv==1.2.4
 Flask-Migrate==4.1.0
